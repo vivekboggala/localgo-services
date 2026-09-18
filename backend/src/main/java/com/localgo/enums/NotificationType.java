@@ -1,0 +1,12 @@
+package com.localgo.enums;
+
+public enum NotificationType {
+    BOOKING_CREATED,
+    BOOKING_ACCEPTED,
+    BOOKING_REJECTED,
+    PROVIDER_ON_THE_WAY,
+    SERVICE_STARTED,
+    SERVICE_COMPLETED,
+    BOOKING_CANCELLED,
+    NEW_REVIEW
+}
