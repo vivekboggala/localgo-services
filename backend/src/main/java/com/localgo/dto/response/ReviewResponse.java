@@ -12,12 +12,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReviewResponse {
-    private Long id;
-    private Long bookingId;
+    private String id;
+    private String bookingId;
     private String customerName;
     private String providerName;
     private Integer rating;
     private String comment;
-    private Boolean hidden;
     private LocalDateTime createdAt;
 }

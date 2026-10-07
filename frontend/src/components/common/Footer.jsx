@@ -40,7 +40,7 @@ export const Footer = () => {
 
         <div>
           <h4 className="text-white font-semibold text-xs mb-3 uppercase tracking-wider">Geographic Coverage</h4>
-          <p className="text-slate-400 mb-2">Madanapalle Region & Surrounding Municipalities</p>
+          <p className="text-slate-400 mb-2">Doorstep Services Across Your City & Region</p>
           <p className="text-[11px] text-slate-500">Haversine spatial algorithm with OpenStreetMap tile rendering.</p>
         </div>
       </div>

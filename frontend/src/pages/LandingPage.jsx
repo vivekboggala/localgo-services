@@ -90,7 +90,7 @@ export const LandingPage = () => {
               <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div>
                   <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase block">LIVE MARKETPLACE</span>
-                  <h3 className="text-lg font-bold text-white mt-0.5 tracking-tight">Madanapalle Coverage Zone</h3>
+                  <h3 className="text-lg font-bold text-white mt-0.5 tracking-tight">Verified Local Service Zone</h3>
                 </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold border border-emerald-500/20">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>

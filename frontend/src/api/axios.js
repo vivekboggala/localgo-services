@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api';
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,6 +10,11 @@ const api = axios.create({
 // Request Interceptor: Attach JWT Token
 api.interceptors.request.use(
   (config) => {
+    // Ensure /api prefix if baseURL does not end with /api and endpoint path does not start with /api
+    if (config.baseURL && !config.baseURL.endsWith('/api') && config.url && !config.url.startsWith('/api')) {
+      config.url = `/api${config.url.startsWith('/') ? '' : '/'}${config.url}`;
+    }
+
     const token = localStorage.getItem('localgo_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

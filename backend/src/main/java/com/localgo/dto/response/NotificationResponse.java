@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class NotificationResponse {
-    private Long id;
+    private String id;
     private NotificationType type;
     private String title;
     private String message;
-    private Long bookingId;
+    private String bookingId;
     private Boolean isRead;
     private LocalDateTime createdAt;
 }

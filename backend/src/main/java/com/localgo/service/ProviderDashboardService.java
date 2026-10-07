@@ -1,268 +1,280 @@
 package com.localgo.service;
 
+import com.google.cloud.firestore.Firestore;
 import com.localgo.dto.request.ProviderProfileUpdateRequest;
 import com.localgo.dto.request.StatusUpdateRequest;
 import com.localgo.dto.response.BookingResponse;
+import com.localgo.dto.response.EarningsTrendResponse;
 import com.localgo.dto.response.ProviderDashboardResponse;
-import com.localgo.entity.Booking;
-import com.localgo.entity.ProviderProfile;
+import com.localgo.dto.response.ProviderResponse;
 import com.localgo.enums.BookingStatus;
-import com.localgo.enums.NotificationType;
-import com.localgo.enums.PaymentStatus;
-import com.localgo.exception.BadRequestException;
-import com.localgo.exception.BookingConflictException;
 import com.localgo.exception.ResourceNotFoundException;
-import com.localgo.repository.BookingRepository;
-import com.localgo.repository.ProviderProfileRepository;
-import com.localgo.repository.UserRepository;
+import com.localgo.model.BookingDoc;
+import com.localgo.model.ProviderDoc;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProviderDashboardService {
 
-    private final ProviderProfileRepository providerProfileRepository;
-    private final BookingRepository bookingRepository;
-    private final UserRepository userRepository;
+    private final Firestore firestore;
     private final BookingService bookingService;
-    private final NotificationService notificationService;
+    private final ProviderService providerService;
 
-    @Transactional(readOnly = true)
-    public ProviderDashboardResponse getDashboardStats(String providerEmail) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
+    public ProviderDashboardResponse getDashboardStats(String providerId) {
+        try {
+            var provSnap = firestore.collection("providers").document(providerId).get().get();
+            if (!provSnap.exists()) {
+                throw new ResourceNotFoundException("Provider not found: " + providerId);
+            }
+            ProviderDoc provider = provSnap.toObject(ProviderDoc.class);
+            if (provider == null) {
+                provider = new ProviderDoc();
+            }
 
-        List<Booking> pendingRequests = bookingRepository.findByProviderIdAndStatus(
-                profile.getId(), BookingStatus.REQUESTED, Pageable.unpaged()
-        ).getContent();
+            // 1. Fetch pending requests
+            var pendingSnap = firestore.collection("bookings")
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", BookingStatus.REQUESTED.name())
+                    .get().get();
 
-        List<Booking> activeJobs = bookingRepository.findByProviderId(profile.getId(), Pageable.unpaged())
-                .getContent().stream()
-                .filter(b -> b.getStatus() == BookingStatus.ACCEPTED || b.getStatus() == BookingStatus.ON_THE_WAY || b.getStatus() == BookingStatus.IN_PROGRESS)
-                .collect(Collectors.toList());
+            List<BookingResponse> pendingRequests = new ArrayList<>();
+            for (var doc : pendingSnap.getDocuments()) {
+                BookingDoc b = doc.toObject(BookingDoc.class);
+                if (b != null) {
+                    b.setId(doc.getId());
+                    pendingRequests.add(bookingService.mapToResponse(b, null));
+                }
+            }
 
-        BigDecimal totalEarnings = bookingRepository.calculateProviderRealizedEarnings(profile.getId());
+            // 2. Fetch active jobs
+            var activeSnap = firestore.collection("bookings")
+                    .whereEqualTo("providerId", providerId)
+                    .whereIn("status", List.of("ACCEPTED", "ON_THE_WAY", "ARRIVED", "IN_PROGRESS"))
+                    .get().get();
 
-        List<BookingResponse> pendingResponses = pendingRequests.stream()
-                .map(bookingService::mapToBookingResponse)
-                .collect(Collectors.toList());
+            List<BookingResponse> activeJobs = new ArrayList<>();
+            for (var doc : activeSnap.getDocuments()) {
+                BookingDoc b = doc.toObject(BookingDoc.class);
+                if (b != null) {
+                    b.setId(doc.getId());
+                    activeJobs.add(bookingService.mapToResponse(b, null));
+                }
+            }
 
-        List<BookingResponse> activeResponses = activeJobs.stream()
-                .map(bookingService::mapToBookingResponse)
-                .collect(Collectors.toList());
+            // 3. Calculate total realized earnings in integer paise
+            var completedSnap = firestore.collection("bookings")
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", BookingStatus.COMPLETED.name())
+                    .whereEqualTo("paymentStatus", "PAID")
+                    .get().get();
 
-        return ProviderDashboardResponse.builder()
-                .providerId(profile.getId())
-                .providerName(profile.getUser().getName())
-                .verificationStatus(profile.getVerificationStatus())
-                .available(profile.getAvailable())
-                .rating(profile.getRating())
-                .completedJobs(profile.getCompletedJobs())
-                .serviceRadiusKm(profile.getServiceRadiusKm())
-                .todayRequestsCount(pendingRequests.stream().filter(b -> b.getScheduledDate().equals(LocalDate.now())).count())
-                .activeJobsCount(activeJobs.size())
-                .totalCompletedJobs(profile.getCompletedJobs())
-                .totalRealizedEarnings(totalEarnings != null ? totalEarnings : BigDecimal.ZERO)
-                .pendingRequests(pendingResponses)
-                .activeJobs(activeResponses)
-                .build();
-    }
+            long totalPaise = 0L;
+            for (var doc : completedSnap.getDocuments()) {
+                Long amt = doc.getLong("amount");
+                if (amt != null) {
+                    totalPaise += amt;
+                }
+            }
 
-    @Transactional(readOnly = true)
-    public Page<BookingResponse> getPendingRequests(String providerEmail, Pageable pageable) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
-        return bookingRepository.findByProviderIdAndStatus(profile.getId(), BookingStatus.REQUESTED, pageable)
-                .map(bookingService::mapToBookingResponse);
-    }
+            BigDecimal realizedEarnings = BigDecimal.valueOf(totalPaise)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
-    @Transactional
-    public BookingResponse updateBookingStatus(Long bookingId, StatusUpdateRequest request, String providerEmail) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
-
-        if (!booking.getProvider().getId().equals(profile.getId())) {
-            throw new BadRequestException("You are not authorized to update this booking.");
+            return ProviderDashboardResponse.builder()
+                    .providerId(providerId)
+                    .providerName(provider.getName())
+                    .verificationStatus(provider.getVerificationStatus() != null ? provider.getVerificationStatus() : "PENDING")
+                    .available(provider.getAvailable() != null ? provider.getAvailable() : true)
+                    .rating(provider.getRating() != null ? provider.getRating() : 0.0)
+                    .completedJobs(provider.getCompletedJobs() != null ? provider.getCompletedJobs() : 0)
+                    .serviceRadiusKm(provider.getServiceRadiusKm())
+                    .todayRequestsCount(pendingRequests.size())
+                    .activeJobsCount(activeJobs.size())
+                    .totalCompletedJobs(completedSnap.size())
+                    .totalRealizedEarnings(realizedEarnings)
+                    .activeJobs(activeJobs)
+                    .pendingRequests(pendingRequests)
+                    .build();
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to build provider dashboard for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error fetching dashboard: " + e.getMessage());
         }
+    }
 
-        BookingStatus newStatus = request.getStatus();
-        BookingStatus currentStatus = booking.getStatus();
+    public List<BookingResponse> getPendingRequests(String providerId) {
+        try {
+            var snapshot = firestore.collection("bookings")
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", BookingStatus.REQUESTED.name())
+                    .get().get();
 
-        // Rules enforcement
-        if (newStatus == BookingStatus.ACCEPTED) {
-            if (currentStatus != BookingStatus.REQUESTED) {
-                throw new BadRequestException("Only REQUESTED bookings can be accepted.");
+            List<BookingResponse> list = new ArrayList<>();
+            for (var doc : snapshot.getDocuments()) {
+                BookingDoc b = doc.toObject(BookingDoc.class);
+                if (b != null) {
+                    b.setId(doc.getId());
+                    list.add(bookingService.mapToResponse(b, null));
+                }
             }
-            // Conflict check
-            long conflicts = bookingRepository.countConflictingBookings(
-                    profile.getId(), booking.getScheduledDate(), booking.getScheduledTime(), booking.getEstimatedDurationMins()
-            );
-            if (conflicts > 0) {
-                throw new BookingConflictException("You already have an active booking overlapping with this time slot!");
-            }
-            booking.setStatus(BookingStatus.ACCEPTED);
-            notificationService.createNotification(
-                    booking.getCustomer().getId(),
-                    NotificationType.BOOKING_ACCEPTED,
-                    "Booking Accepted! ✅",
-                    "Provider " + profile.getUser().getName() + " accepted your booking #" + booking.getId(),
-                    booking.getId()
-            );
-        } else if (newStatus == BookingStatus.REJECTED) {
-            if (currentStatus != BookingStatus.REQUESTED) {
-                throw new BadRequestException("Only REQUESTED bookings can be rejected.");
-            }
-            booking.setStatus(BookingStatus.REJECTED);
-            notificationService.createNotification(
-                    booking.getCustomer().getId(),
-                    NotificationType.BOOKING_REJECTED,
-                    "Booking Rejected ❌",
-                    "Provider " + profile.getUser().getName() + " rejected booking #" + booking.getId(),
-                    booking.getId()
-            );
-        } else if (newStatus == BookingStatus.ON_THE_WAY) {
-            if (currentStatus != BookingStatus.ACCEPTED) {
-                throw new BadRequestException("Booking must be ACCEPTED before marking ON_THE_WAY.");
-            }
-            booking.setStatus(BookingStatus.ON_THE_WAY);
-            notificationService.createNotification(
-                    booking.getCustomer().getId(),
-                    NotificationType.PROVIDER_ON_THE_WAY,
-                    "Provider On The Way! 🚗",
-                    profile.getUser().getName() + " is traveling to your doorstep.",
-                    booking.getId()
-            );
-        } else if (newStatus == BookingStatus.IN_PROGRESS) {
-            if (currentStatus != BookingStatus.ON_THE_WAY) {
-                throw new BadRequestException("Booking must be ON_THE_WAY before marking IN_PROGRESS.");
-            }
-            booking.setStatus(BookingStatus.IN_PROGRESS);
-            notificationService.createNotification(
-                    booking.getCustomer().getId(),
-                    NotificationType.SERVICE_STARTED,
-                    "Service Started 🛠️",
-                    profile.getUser().getName() + " has started working on your service.",
-                    booking.getId()
-            );
-        } else if (newStatus == BookingStatus.COMPLETED) {
-            if (currentStatus != BookingStatus.IN_PROGRESS) {
-                throw new BadRequestException("Booking must be IN_PROGRESS before marking COMPLETED.");
-            }
-            booking.setStatus(BookingStatus.COMPLETED);
-            booking.setPaymentStatus(PaymentStatus.PAID);
-            profile.setCompletedJobs(profile.getCompletedJobs() + 1);
-            providerProfileRepository.save(profile);
-
-            notificationService.createNotification(
-                    booking.getCustomer().getId(),
-                    NotificationType.SERVICE_COMPLETED,
-                    "Service Completed! 🎉",
-                    "Service #" + booking.getId() + " completed. Please rate your experience!",
-                    booking.getId()
-            );
-        } else if (newStatus == BookingStatus.CANCELLED) {
-            if (currentStatus == BookingStatus.IN_PROGRESS || currentStatus == BookingStatus.COMPLETED) {
-                throw new BadRequestException("Booking cannot be cancelled once service is IN_PROGRESS or COMPLETED.");
-            }
-            booking.setStatus(BookingStatus.CANCELLED);
-            booking.setCancelledBy("PROVIDER");
-            booking.setCancellationReason(request.getCancellationReason() != null ? request.getCancellationReason() : "Cancelled by provider");
-
-            notificationService.createNotification(
-                    booking.getCustomer().getId(),
-                    NotificationType.BOOKING_CANCELLED,
-                    "Booking Cancelled by Provider ⚠️",
-                    "Provider " + profile.getUser().getName() + " cancelled booking #" + booking.getId() + ". Reason: " + booking.getCancellationReason(),
-                    booking.getId()
-            );
+            return list;
+        } catch (Exception e) {
+            log.error("Failed to fetch pending requests for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error fetching requests: " + e.getMessage());
         }
-
-        bookingRepository.save(booking);
-        return bookingService.mapToBookingResponse(booking);
     }
 
-    @Transactional(readOnly = true)
-    public Page<BookingResponse> getProviderBookings(String providerEmail, BookingStatus status, Pageable pageable) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
-        if (status != null) {
-            return bookingRepository.findByProviderIdAndStatus(profile.getId(), status, pageable).map(bookingService::mapToBookingResponse);
+    public List<BookingResponse> getProviderBookings(String providerId, BookingStatus status) {
+        try {
+            var query = firestore.collection("bookings").whereEqualTo("providerId", providerId);
+            if (status != null) {
+                query = query.whereEqualTo("status", status.name());
+            }
+            var snapshot = query.get().get();
+
+            List<BookingResponse> list = new ArrayList<>();
+            for (var doc : snapshot.getDocuments()) {
+                BookingDoc b = doc.toObject(BookingDoc.class);
+                if (b != null) {
+                    b.setId(doc.getId());
+                    list.add(bookingService.mapToResponse(b, null));
+                }
+            }
+            list.sort((a, b) -> {
+                if (a.getCreatedAt() == null) return 1;
+                if (b.getCreatedAt() == null) return -1;
+                return b.getCreatedAt().compareTo(a.getCreatedAt());
+            });
+            return list;
+        } catch (Exception e) {
+            log.error("Failed to fetch bookings for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error fetching bookings: " + e.getMessage());
         }
-        return bookingRepository.findByProviderId(profile.getId(), pageable).map(bookingService::mapToBookingResponse);
     }
 
-    @Transactional(readOnly = true)
-    public BigDecimal getProviderEarnings(String providerEmail) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
-        BigDecimal earnings = bookingRepository.calculateProviderRealizedEarnings(profile.getId());
-        return earnings != null ? earnings : BigDecimal.ZERO;
+    public BookingResponse updateBookingStatus(String bookingId, StatusUpdateRequest request, String providerId) {
+        return bookingService.updateBookingStatus(bookingId, request, providerId);
     }
 
-    @Transactional
-    public ProviderProfile updateProviderProfile(String providerEmail, ProviderProfileUpdateRequest request) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
-        profile.setDescription(request.getDescription());
-        profile.setExperienceYears(request.getExperienceYears());
-        profile.setServiceArea(request.getServiceArea());
-        profile.setServiceRadiusKm(request.getServiceRadiusKm());
-        if (request.getAvailable() != null) profile.setAvailable(request.getAvailable());
-        if (request.getLatitude() != null) profile.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) profile.setLongitude(request.getLongitude());
-        return providerProfileRepository.save(profile);
+    public BigDecimal getProviderEarnings(String providerId) {
+        try {
+            var snapshot = firestore.collection("bookings")
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", BookingStatus.COMPLETED.name())
+                    .whereEqualTo("paymentStatus", "PAID")
+                    .get().get();
+
+            long totalPaise = 0L;
+            for (var doc : snapshot.getDocuments()) {
+                Long amt = doc.getLong("amount");
+                if (amt != null) {
+                    totalPaise += amt;
+                }
+            }
+            return BigDecimal.valueOf(totalPaise).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            log.error("Failed to calculate earnings for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error calculating earnings: " + e.getMessage());
+        }
     }
 
-    @Transactional
-    public boolean toggleAvailability(String providerEmail) {
-        ProviderProfile profile = getProfileByEmail(providerEmail);
-        profile.setAvailable(!profile.getAvailable());
-        providerProfileRepository.save(profile);
-        return profile.getAvailable();
-    }
-
-    @Transactional(readOnly = true)
-    public List<com.localgo.dto.response.EarningsTrendResponse> getProviderEarningsTrend(String providerEmail, int days) {
-        if (days <= 0 || days > 90) days = 7;
-        ProviderProfile profile = getProfileByEmail(providerEmail);
+    /**
+     * Problem 3c: Earnings aggregation with continuous zero-filling.
+     * 1. Query bookings where providerId == X, status == COMPLETED, paymentStatus == PAID within date range.
+     * 2. Sum amounts in integer paise and count completed jobs grouped by date in Java memory.
+     * 3. Continuous zero-fill: build a continuous date map for the requested range and fill in 0 for any day with no completed bookings.
+     */
+    public List<EarningsTrendResponse> getProviderEarningsTrend(String providerId, int days) {
+        int window = days > 0 ? days : 7;
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days - 1);
+        LocalDate startDate = endDate.minusDays(window - 1);
 
-        List<Object[]> rows = bookingRepository.findProviderDailyEarningsTrend(profile.getId(), startDate);
-        java.util.Map<LocalDate, Object[]> dataMap = new java.util.HashMap<>();
-        for (Object[] r : rows) {
-            if (r[0] != null) {
-                LocalDate date = (r[0] instanceof java.sql.Date) ? ((java.sql.Date) r[0]).toLocalDate() : (LocalDate) r[0];
-                dataMap.put(date, r);
-            }
+        // Continuous date map for zero-filling
+        Map<LocalDate, Long> dailyPaiseMap = new LinkedHashMap<>();
+        Map<LocalDate, Integer> dailyCountMap = new LinkedHashMap<>();
+
+        for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+            dailyPaiseMap.put(d, 0L);
+            dailyCountMap.put(d, 0);
         }
 
-        List<com.localgo.dto.response.EarningsTrendResponse> trend = new java.util.ArrayList<>();
-        for (int i = 0; i < days; i++) {
-            LocalDate current = startDate.plusDays(i);
-            Object[] r = dataMap.get(current);
-            BigDecimal earnings = (r != null && r[1] != null) ? (BigDecimal) r[1] : BigDecimal.ZERO;
-            int count = (r != null && r[2] != null) ? ((Number) r[2]).intValue() : 0;
+        try {
+            var snapshot = firestore.collection("bookings")
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", BookingStatus.COMPLETED.name())
+                    .whereEqualTo("paymentStatus", "PAID")
+                    .whereGreaterThanOrEqualTo("scheduledDate", startDate.toString())
+                    .whereLessThanOrEqualTo("scheduledDate", endDate.toString())
+                    .get().get();
 
-            trend.add(com.localgo.dto.response.EarningsTrendResponse.builder()
-                    .date(current)
-                    .earnings(earnings)
+            for (var doc : snapshot.getDocuments()) {
+                String dateStr = doc.getString("scheduledDate");
+                Long amountPaise = doc.getLong("amount");
+                if (dateStr != null) {
+                    try {
+                        LocalDate d = LocalDate.parse(dateStr);
+                        if (dailyPaiseMap.containsKey(d)) {
+                            dailyPaiseMap.put(d, dailyPaiseMap.get(d) + (amountPaise != null ? amountPaise : 0L));
+                            dailyCountMap.put(d, dailyCountMap.get(d) + 1);
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to query earnings trend for provider {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error querying earnings trend: " + e.getMessage());
+        }
+
+        List<EarningsTrendResponse> trend = new ArrayList<>();
+        for (Map.Entry<LocalDate, Long> entry : dailyPaiseMap.entrySet()) {
+            LocalDate date = entry.getKey();
+            Long paise = entry.getValue();
+            int count = dailyCountMap.getOrDefault(date, 0);
+
+            BigDecimal rupees = BigDecimal.valueOf(paise).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            trend.add(EarningsTrendResponse.builder()
+                    .date(date)
+                    .earnings(rupees)
                     .completedBookings(count)
                     .build());
         }
+
         return trend;
     }
 
-    private ProviderProfile getProfileByEmail(String email) {
-        Long userId = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found")).getId();
+    public boolean toggleAvailability(String providerId) {
+        try {
+            var docRef = firestore.collection("providers").document(providerId);
+            var snap = docRef.get().get();
+            if (!snap.exists()) {
+                throw new ResourceNotFoundException("Provider not found: " + providerId);
+            }
+            Boolean current = snap.getBoolean("available");
+            boolean next = current == null || !current;
+            docRef.update("available", next).get();
+            return next;
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to toggle availability for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error toggling availability: " + e.getMessage());
+        }
+    }
 
-        return providerProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Provider profile not found"));
+    public ProviderResponse getProviderProfile(String providerId) {
+        return providerService.getProviderById(providerId, null, null);
+    }
+
+    public void updateProviderProfile(String providerId, ProviderProfileUpdateRequest request) {
+        providerService.updateProviderProfile(providerId, request);
     }
 }

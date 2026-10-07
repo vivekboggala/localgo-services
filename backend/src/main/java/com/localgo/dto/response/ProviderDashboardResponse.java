@@ -1,6 +1,5 @@
 package com.localgo.dto.response;
 
-import com.localgo.enums.VerificationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,9 +13,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProviderDashboardResponse {
-    private Long providerId;
+    private String providerId;
     private String providerName;
-    private VerificationStatus verificationStatus;
+    private String verificationStatus;
     private Boolean available;
     private Double rating;
     private Integer completedJobs;

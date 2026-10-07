@@ -1,15 +1,16 @@
 import React from 'react';
-import { Check, XCircle, AlertCircle } from 'lucide-react';
+import { Check, XCircle } from 'lucide-react';
 
 const STEPS = [
   { key: 'REQUESTED', label: 'Requested', desc: 'Booking submitted' },
   { key: 'ACCEPTED', label: 'Accepted', desc: 'Accepted by provider' },
-  { key: 'ON_THE_WAY', label: 'On The Way', desc: 'Provider en route' },
+  { key: 'ON_THE_WAY', label: 'On The Way', desc: 'Provider is traveling to your address' },
+  { key: 'ARRIVED', label: 'Arrived', desc: 'Provider has arrived at your doorstep' },
   { key: 'IN_PROGRESS', label: 'In Progress', desc: 'Service execution active' },
-  { key: 'COMPLETED', label: 'Completed', desc: 'Service finished' },
+  { key: 'COMPLETED', label: 'Completed', desc: 'Service finished successfully' },
 ];
 
-export const StatusTimeline = ({ status, cancelledBy, cancellationReason }) => {
+export const StatusTimeline = ({ status, cancelledBy, cancellationReason, timestamps = {} }) => {
   if (status === 'REJECTED' || status === 'CANCELLED') {
     return (
       <div className="bg-slate-100 border border-slate-300 rounded-lg p-4 text-slate-800 space-y-1">
@@ -27,6 +28,28 @@ export const StatusTimeline = ({ status, cancelledBy, cancellationReason }) => {
   const getStepIndex = (st) => STEPS.findIndex((s) => s.key === st);
   const currentIndex = getStepIndex(status);
 
+  const getTimestampForStep = (key) => {
+    switch (key) {
+      case 'REQUESTED': return timestamps.createdAt;
+      case 'ACCEPTED': return timestamps.acceptedAt;
+      case 'ON_THE_WAY': return timestamps.onTheWayAt;
+      case 'ARRIVED': return timestamps.arrivedAt;
+      case 'IN_PROGRESS': return timestamps.inProgressAt;
+      case 'COMPLETED': return timestamps.completedAt;
+      default: return null;
+    }
+  };
+
+  const formatTime = (isoString) => {
+    if (!isoString) return null;
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+      return null;
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm space-y-4">
       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Timeline</h3>
@@ -35,6 +58,7 @@ export const StatusTimeline = ({ status, cancelledBy, cancellationReason }) => {
         {STEPS.map((step, idx) => {
           const isDone = idx <= currentIndex;
           const isCurrent = idx === currentIndex;
+          const timeStr = formatTime(getTimestampForStep(step.key));
 
           return (
             <div key={step.key} className="relative">
@@ -51,10 +75,15 @@ export const StatusTimeline = ({ status, cancelledBy, cancellationReason }) => {
               </div>
 
               <div>
-                <h4 className={`text-xs font-bold ${isCurrent ? 'text-slate-900 font-extrabold' : isDone ? 'text-slate-900' : 'text-slate-400'}`}>
-                  {step.label}
-                  {isCurrent && <span className="ml-2 text-[10px] bg-slate-100 border border-slate-300 text-slate-800 px-2 py-0.5 rounded font-bold uppercase">Active</span>}
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className={`text-xs font-bold ${isCurrent ? 'text-slate-900 font-extrabold' : isDone ? 'text-slate-900' : 'text-slate-400'}`}>
+                    {step.label}
+                    {isCurrent && <span className="ml-2 text-[10px] bg-slate-100 border border-slate-300 text-slate-800 px-2 py-0.5 rounded font-bold uppercase">Active</span>}
+                  </h4>
+                  {timeStr && isDone && (
+                    <span className="text-[11px] font-medium text-slate-400">{timeStr}</span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">{step.desc}</p>
               </div>
             </div>

@@ -1,45 +1,69 @@
 package com.localgo.service;
 
+import com.google.cloud.firestore.Firestore;
 import com.localgo.dto.response.ServiceResponse;
-import com.localgo.entity.ServiceEntity;
 import com.localgo.exception.ResourceNotFoundException;
-import com.localgo.repository.ServiceRepository;
+import com.localgo.model.ServiceDoc;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ServiceCategoryService {
 
-    private final ServiceRepository serviceRepository;
+    private final Firestore firestore;
 
-    @Transactional(readOnly = true)
     public List<ServiceResponse> getAllActiveServices() {
-        return serviceRepository.findByActiveTrue().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        try {
+            var snapshot = firestore.collection("services").get().get();
+            List<ServiceResponse> list = new ArrayList<>();
+            for (var doc : snapshot.getDocuments()) {
+                ServiceDoc s = doc.toObject(ServiceDoc.class);
+                if (s.getId() == null) {
+                    s.setId(doc.getId());
+                }
+                list.add(mapToResponse(s));
+            }
+            return list;
+        } catch (Exception e) {
+            log.error("Failed to get active services from Firestore", e);
+            throw new RuntimeException("Error fetching services: " + e.getMessage());
+        }
     }
 
-    @Transactional(readOnly = true)
-    public ServiceResponse getServiceById(Long id) {
-        ServiceEntity service = serviceRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Service category not found with ID: " + id));
-        return mapToResponse(service);
+    public ServiceResponse getServiceById(String id) {
+        try {
+            var doc = firestore.collection("services").document(id).get().get();
+            if (!doc.exists()) {
+                throw new ResourceNotFoundException("Service not found with id: " + id);
+            }
+            ServiceDoc s = doc.toObject(ServiceDoc.class);
+            if (s.getId() == null) {
+                s.setId(doc.getId());
+            }
+            return mapToResponse(s);
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to get service by id {}", id, e);
+            throw new RuntimeException("Error fetching service: " + e.getMessage());
+        }
     }
 
-    public ServiceResponse mapToResponse(ServiceEntity entity) {
+    private ServiceResponse mapToResponse(ServiceDoc s) {
         return ServiceResponse.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .icon(entity.getIcon())
-                .category(entity.getCategory())
-                .defaultDurationMins(entity.getDefaultDurationMins())
-                .active(entity.getActive())
+                .id(s.getId())
+                .name(s.getName())
+                .description(s.getDescription())
+                .icon(s.getIcon())
+                .category(s.getCategory())
+                .defaultDurationMins(s.getDefaultDurationMins())
+                .active(true)
                 .build();
     }
 }

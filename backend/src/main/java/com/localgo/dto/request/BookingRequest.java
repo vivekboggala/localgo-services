@@ -11,11 +11,11 @@ import java.time.LocalTime;
 @Data
 public class BookingRequest {
 
-    @NotNull(message = "Provider ID is required")
-    private Long providerId;
+    @NotBlank(message = "Provider ID is required")
+    private String providerId;
 
-    @NotNull(message = "Service category ID is required")
-    private Long serviceId;
+    @NotBlank(message = "Service category ID is required")
+    private String serviceId;
 
     @NotBlank(message = "Problem description is required")
     private String description;
@@ -29,6 +29,11 @@ public class BookingRequest {
     @NotBlank(message = "Full address is required")
     private String address;
 
+    private String city;
+    private String state;
+    private String country;
+    private String postalCode;
+
     @NotNull(message = "Scheduled date is required")
     @FutureOrPresent(message = "Scheduled date must be today or in the future")
     private LocalDate scheduledDate;
@@ -40,4 +45,6 @@ public class BookingRequest {
 
     @NotBlank(message = "Payment method is required (CASH or UPI)")
     private String paymentMethod;
+
+    private Double amount; // optional amount in Rupees
 }

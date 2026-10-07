@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { providerPortalService } from '../../services/providerPortalService';
 import { RequestCard } from '../../components/provider/RequestCard';
-import { Inbox } from 'lucide-react';
+import { Inbox, RotateCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const ProviderRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -22,26 +23,36 @@ export const ProviderRequests = () => {
   const handleAccept = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'ACCEPTED');
+      toast.success('Request accepted!');
       fetchRequests();
     } catch (err) {
-      alert(err.response?.data?.message || 'Accept request failed.');
+      toast.error(err.response?.data?.message || 'Accept request failed.');
     }
   };
 
   const handleReject = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'REJECTED');
+      toast.success('Request rejected.');
       fetchRequests();
     } catch (err) {
-      alert(err.response?.data?.message || 'Reject request failed.');
+      toast.error(err.response?.data?.message || 'Reject request failed.');
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Incoming Booking Requests</h1>
-        <p className="text-xs text-slate-500 mt-1">Review customer requests and accept or reject</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Incoming Booking Requests</h1>
+          <p className="text-xs text-slate-500 mt-1">Review customer requests and accept or reject</p>
+        </div>
+        <button
+          onClick={fetchRequests}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
+        >
+          <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        </button>
       </div>
 
       {loading ? (

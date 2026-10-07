@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation as useReactLocation, useSearchParam
 import { providerService } from '../../services/providerService';
 import { bookingService } from '../../services/bookingService';
 import { useLocation } from '../../hooks/useLocation';
+import { useAuth } from '../../hooks/useAuth';
 import { DollarSign, Smartphone, Calendar, MapPin, Clock, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,6 +13,7 @@ export const BookingFlow = () => {
   const routerLocation = useReactLocation();
   const [searchParams] = useSearchParams();
   const { location } = useLocation();
+  const { user } = useAuth();
 
   const prefillState = routerLocation.state || {};
   const queryServiceId = searchParams.get('serviceId');
@@ -24,7 +26,9 @@ export const BookingFlow = () => {
     return today;
   });
   const [scheduledTime, setScheduledTime] = useState('10:00');
-  const [address, setAddress] = useState(prefillState.prefillAddress || 'Door 4/12, CTM Road, Madanapalle Town');
+  const [address, setAddress] = useState(prefillState.prefillAddress || user?.address || '');
+  const [city, setCity] = useState(user?.city || location?.city || '');
+  const [postalCode, setPostalCode] = useState(user?.postalCode || '');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
 
   const [loading, setLoading] = useState(true);
@@ -57,6 +61,8 @@ export const BookingFlow = () => {
         latitude: location.lat,
         longitude: location.lng,
         address,
+        city,
+        postalCode,
         scheduledDate,
         scheduledTime: scheduledTime.length === 5 ? `${scheduledTime}:00` : scheduledTime,
         estimatedDurationMins: selectedService?.defaultDurationMins || 60,

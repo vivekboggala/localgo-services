@@ -18,6 +18,12 @@ public class ProviderProfileUpdateRequest {
     @NotNull(message = "Service radius is required")
     private Double serviceRadiusKm;
 
+    private String address;
+    private String city;
+    private String state;
+    private String country;
+    private String postalCode;
+
     private Boolean available;
     private Double latitude;
     private Double longitude;

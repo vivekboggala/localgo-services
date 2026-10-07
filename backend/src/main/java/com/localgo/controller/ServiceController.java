@@ -23,7 +23,7 @@ public class ServiceController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ServiceResponse>> getServiceById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ServiceResponse>> getServiceById(@PathVariable String id) {
         ServiceResponse service = serviceCategoryService.getServiceById(id);
         return ResponseEntity.ok(ApiResponse.success("Service details fetched", service));
     }

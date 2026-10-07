@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { providerPortalService } from '../../services/providerPortalService';
 import { ActiveJobCard } from '../../components/provider/ActiveJobCard';
-import { Wrench } from 'lucide-react';
+import { Wrench, RotateCw } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const ProviderActiveJob = () => {
   const [jobs, setJobs] = useState([]);
@@ -12,7 +13,7 @@ export const ProviderActiveJob = () => {
     providerPortalService.getProviderBookings()
       .then((data) => {
         const activeList = (data.content || []).filter(
-          (b) => b.status === 'ACCEPTED' || b.status === 'ON_THE_WAY' || b.status === 'IN_PROGRESS'
+          (b) => b.status === 'ACCEPTED' || b.status === 'ON_THE_WAY' || b.status === 'ARRIVED' || b.status === 'IN_PROGRESS'
         );
         setJobs(activeList);
       })
@@ -27,9 +28,10 @@ export const ProviderActiveJob = () => {
   const handleUpdateStatus = async (id, status) => {
     try {
       await providerPortalService.updateBookingStatus(id, status);
+      toast.success(`Booking status updated to ${status.replace('_', ' ')}!`);
       fetchJobs();
     } catch (err) {
-      alert(err.response?.data?.message || 'Status update failed.');
+      toast.error(err.response?.data?.message || 'Status update failed.');
     }
   };
 
@@ -38,17 +40,26 @@ export const ProviderActiveJob = () => {
     if (!reason) return;
     try {
       await providerPortalService.updateBookingStatus(id, 'CANCELLED', reason);
+      toast.success('Job cancelled successfully.');
       fetchJobs();
     } catch (err) {
-      alert(err.response?.data?.message || 'Cancellation failed.');
+      toast.error(err.response?.data?.message || 'Cancellation failed.');
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Active Jobs</h1>
-        <p className="text-xs text-slate-500 mt-1">Track and update active doorstep service progress</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Active Jobs</h1>
+          <p className="text-xs text-slate-500 mt-1">Track and update active doorstep service progress</p>
+        </div>
+        <button
+          onClick={fetchJobs}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
+        >
+          <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        </button>
       </div>
 
       {loading ? (

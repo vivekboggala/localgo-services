@@ -20,14 +20,14 @@ public class ProviderController {
     public ResponseEntity<ApiResponse<List<ProviderResponse>>> getNearbyProviders(
             @RequestParam("latitude") double latitude,
             @RequestParam("longitude") double longitude,
-            @RequestParam(value = "radius", defaultValue = "10") double radius,
-            @RequestParam(value = "serviceId", required = false) Long serviceId,
+            @RequestParam(value = "radius", defaultValue = "15") double radius,
+            @RequestParam(value = "serviceId", required = false) String serviceId,
             @RequestParam(value = "minRating", required = false) Double minRating,
             @RequestParam(value = "maxPrice", required = false) Double maxPrice,
-            @RequestParam(value = "available", required = false) String available,
+            @RequestParam(value = "available", required = false) Boolean available,
             @RequestParam(value = "sortBy", required = false) String sortBy) {
 
-        List<ProviderResponse> providers = providerService.getNearbyProviders(
+        List<ProviderResponse> providers = providerService.findNearbyProviders(
                 latitude, longitude, radius, serviceId, minRating, maxPrice, available, sortBy
         );
         return ResponseEntity.ok(ApiResponse.success("Nearby providers fetched", providers));
@@ -35,7 +35,7 @@ public class ProviderController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProviderResponse>> getProviderById(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestParam(value = "latitude", required = false) Double latitude,
             @RequestParam(value = "longitude", required = false) Double longitude) {
 

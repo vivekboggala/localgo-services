@@ -1,233 +1,213 @@
 package com.localgo.service;
 
-import com.localgo.dto.request.*;
+import ch.hsr.geohash.GeoHash;
+import com.google.cloud.firestore.Firestore;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.UserRecord;
+import com.localgo.dto.request.LoginRequest;
+import com.localgo.dto.request.ProviderRegisterRequest;
+import com.localgo.dto.request.RegisterRequest;
 import com.localgo.dto.response.AuthResponse;
 import com.localgo.dto.response.UserResponse;
-import com.localgo.entity.ProviderProfile;
-import com.localgo.entity.ProviderServiceEntity;
-import com.localgo.entity.ServiceEntity;
-import com.localgo.entity.User;
-import com.localgo.enums.OtpPurpose;
 import com.localgo.enums.Role;
-import com.localgo.enums.VerificationStatus;
 import com.localgo.exception.BadRequestException;
 import com.localgo.exception.ResourceNotFoundException;
-import com.localgo.repository.ProviderProfileRepository;
-import com.localgo.repository.ProviderServiceRepository;
-import com.localgo.repository.ServiceRepository;
-import com.localgo.repository.UserRepository;
-import com.localgo.security.JwtTokenProvider;
+import com.localgo.model.ProviderDoc;
+import com.localgo.model.ProviderServiceItem;
+import com.localgo.model.ServiceDoc;
+import com.localgo.model.UserDoc;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.Optional;
+import java.util.Date;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
 
-    private final UserRepository userRepository;
-    private final ProviderProfileRepository providerProfileRepository;
-    private final ServiceRepository serviceRepository;
-    private final ProviderServiceRepository providerServiceRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider tokenProvider;
-    private final OtpService otpService;
+    private final Firestore firestore;
+    private final FirebaseAuth firebaseAuth;
 
-    @Transactional
-    public AuthResponse registerCustomer(RegisterRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-        if (userRepository.existsByEmail(cleanEmail)) {
-            throw new BadRequestException("Email is already registered!");
+    public AuthResponse registerCustomer(RegisterRequest request, String authenticatedUid) {
+        String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
+        if (uid == null || uid.isBlank()) {
+            try {
+                // If UID not provided, create user in Firebase Auth
+                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                        .setEmail(request.getEmail())
+                        .setPassword(request.getPassword())
+                        .setDisplayName(request.getName())
+                        .setPhoneNumber(request.getPhone().startsWith("+") ? request.getPhone() : null);
+                UserRecord record = firebaseAuth.createUser(createRequest);
+                uid = record.getUid();
+            } catch (Exception e) {
+                log.error("Failed to create Firebase user: {}", e.getMessage());
+                throw new BadRequestException("Registration failed: " + e.getMessage());
+            }
         }
 
-        User user = User.builder()
-                .name(request.getName().trim())
-                .email(cleanEmail)
-                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.CUSTOMER)
-                .emailVerified(false)
+        UserDoc userDoc = UserDoc.builder()
+                .id(uid)
+                .name(request.getName())
+                .email(request.getEmail().toLowerCase())
+                .phone(request.getPhone())
+                .role(Role.CUSTOMER.name())
+                .createdAt(new Date())
                 .build();
 
-        userRepository.save(user);
+        try {
+            firestore.collection("users").document(uid).set(userDoc).get();
+        } catch (Exception e) {
+            log.error("Failed to save user doc in Firestore: {}", e.getMessage());
+            throw new RuntimeException("Error saving user profile: " + e.getMessage());
+        }
 
-        // Generate and send Email Verification OTP
-        otpService.generateAndSendOtp(cleanEmail, OtpPurpose.EMAIL_VERIFICATION);
-
-        UserResponse userResponse = mapToUserResponse(user);
-        return AuthResponse.builder().token(null).user(userResponse).build();
+        UserResponse userResponse = mapToUserResponse(userDoc);
+        return AuthResponse.builder()
+                .token(null) // Token managed by Firebase Auth on client
+                .user(userResponse)
+                .build();
     }
 
-    @Transactional
-    public AuthResponse registerProvider(ProviderRegisterRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-        if (userRepository.existsByEmail(cleanEmail)) {
-            throw new BadRequestException("Email is already registered!");
+    public AuthResponse registerProvider(ProviderRegisterRequest request, String authenticatedUid) {
+        String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
+        if (uid == null || uid.isBlank()) {
+            try {
+                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                        .setEmail(request.getEmail())
+                        .setPassword(request.getPassword())
+                        .setDisplayName(request.getName())
+                        .setPhoneNumber(request.getPhone().startsWith("+") ? request.getPhone() : null);
+                UserRecord record = firebaseAuth.createUser(createRequest);
+                uid = record.getUid();
+            } catch (Exception e) {
+                log.error("Failed to create Firebase provider user: {}", e.getMessage());
+                throw new BadRequestException("Provider registration failed: " + e.getMessage());
+            }
         }
 
-        ServiceEntity primaryService = serviceRepository.findById(request.getPrimaryServiceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Selected service category not found!"));
-
-        User user = User.builder()
-                .name(request.getName().trim())
-                .email(cleanEmail)
-                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.PROVIDER)
-                .emailVerified(false)
+        // Save User document
+        UserDoc userDoc = UserDoc.builder()
+                .id(uid)
+                .name(request.getName())
+                .email(request.getEmail().toLowerCase())
+                .phone(request.getPhone())
+                .role(Role.PROVIDER.name())
+                .createdAt(new Date())
                 .build();
 
-        userRepository.save(user);
+        // Determine service name
+        String serviceName = "General Service";
+        try {
+            var serviceDocSnap = firestore.collection("services").document(request.getPrimaryServiceId()).get().get();
+            if (serviceDocSnap.exists()) {
+                ServiceDoc s = serviceDocSnap.toObject(ServiceDoc.class);
+                if (s != null && s.getName() != null) {
+                    serviceName = s.getName();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not look up service name for {}: {}", request.getPrimaryServiceId(), e.getMessage());
+        }
 
-        ProviderProfile profile = ProviderProfile.builder()
-                .user(user)
+        // Compute 12-char base32 geohash
+        String geohash = GeoHash.withCharacterPrecision(request.getLatitude(), request.getLongitude(), 12).toBase32();
+
+        // Price in paise (smallest currency unit)
+        long priceInPaise = Math.round(request.getStartingPrice() * 100.0);
+
+        ProviderServiceItem serviceItem = ProviderServiceItem.builder()
+                .serviceId(request.getPrimaryServiceId())
+                .serviceName(serviceName)
+                .startingPrice(priceInPaise)
+                .build();
+
+        ProviderDoc providerDoc = ProviderDoc.builder()
+                .id(uid)
+                .name(request.getName())
+                .email(request.getEmail().toLowerCase())
+                .phone(request.getPhone())
                 .description(request.getDescription())
                 .experienceYears(request.getExperienceYears())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
-                .serviceArea(request.getServiceArea())
-                .serviceRadiusKm(request.getServiceRadiusKm())
-                .verificationStatus(VerificationStatus.PENDING)
+                .serviceRadiusKm(request.getServiceRadiusKm() != null ? request.getServiceRadiusKm() : 10.0)
+                .geohash(geohash)
+                .verificationStatus("PENDING")
+                .rating(0.0)
+                .completedJobs(0)
                 .available(true)
+                .services(List.of(serviceItem))
                 .build();
 
-        providerProfileRepository.save(profile);
+        try {
+            firestore.collection("users").document(uid).set(userDoc).get();
+            firestore.collection("providers").document(uid).set(providerDoc).get();
+        } catch (Exception e) {
+            log.error("Failed to save provider in Firestore: {}", e.getMessage());
+            throw new RuntimeException("Error saving provider profile: " + e.getMessage());
+        }
 
-        ProviderServiceEntity ps = ProviderServiceEntity.builder()
-                .provider(profile)
-                .service(primaryService)
-                .startingPrice(BigDecimal.valueOf(request.getStartingPrice()))
-                .active(true)
+        UserResponse userResponse = mapToUserResponse(userDoc);
+        userResponse.setProviderProfileId(uid);
+        return AuthResponse.builder()
+                .token(null)
+                .user(userResponse)
                 .build();
-
-        providerServiceRepository.save(ps);
-
-        // Generate and send Email Verification OTP
-        otpService.generateAndSendOtp(cleanEmail, OtpPurpose.EMAIL_VERIFICATION);
-
-        UserResponse userResponse = mapToUserResponse(user);
-        return AuthResponse.builder().token(null).user(userResponse).build();
     }
 
-    public AuthResponse login(LoginRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
+    public UserResponse getCurrentUser(String uid) {
+        try {
+            var userSnap = firestore.collection("users").document(uid).get().get();
+            if (userSnap.exists()) {
+                UserDoc userDoc = userSnap.toObject(UserDoc.class);
+                if (userDoc != null) {
+                    userDoc.setId(uid);
+                    UserResponse resp = mapToUserResponse(userDoc);
+                    if (Role.PROVIDER.name().equalsIgnoreCase(userDoc.getRole())) {
+                        resp.setProviderProfileId(uid);
+                    }
+                    return resp;
+                }
+            }
 
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new BadRequestException("Invalid email or password"));
-
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(cleanEmail, request.getPassword())
-        );
-
-        if (Boolean.FALSE.equals(user.getEmailVerified())) {
-            throw new BadRequestException("EMAIL_NOT_VERIFIED: Email is not verified. Please verify your email code.");
-        }
-
-        String token = tokenProvider.generateToken(authentication);
-        UserResponse userResponse = mapToUserResponse(user);
-
-        return AuthResponse.builder().token(token).user(userResponse).build();
-    }
-
-    @Transactional
-    public AuthResponse verifyEmail(VerifyOtpRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User account not found"));
-
-        otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.EMAIL_VERIFICATION);
-
-        user.setEmailVerified(true);
-        userRepository.save(user);
-
-        String token = tokenProvider.generateTokenFromEmail(cleanEmail);
-        UserResponse userResponse = mapToUserResponse(user);
-
-        return AuthResponse.builder().token(token).user(userResponse).build();
-    }
-
-    public void resendOtp(ResendOtpRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-        Optional<User> userOpt = userRepository.findByEmail(cleanEmail);
-        if (userOpt.isPresent()) {
-            otpService.generateAndSendOtp(cleanEmail, request.getPurpose());
-        } else {
-            log.info("Resend OTP requested for unknown email {}", cleanEmail);
+            // Fallback: look up in Firebase Auth
+            UserRecord record = firebaseAuth.getUser(uid);
+            UserDoc newUser = UserDoc.builder()
+                    .id(uid)
+                    .name(record.getDisplayName() != null ? record.getDisplayName() : "User")
+                    .email(record.getEmail())
+                    .phone(record.getPhoneNumber() != null ? record.getPhoneNumber() : "")
+                    .role(Role.CUSTOMER.name())
+                    .createdAt(new Date())
+                    .build();
+            firestore.collection("users").document(uid).set(newUser).get();
+            return mapToUserResponse(newUser);
+        } catch (Exception e) {
+            log.error("Failed to get current user for uid {}: {}", uid, e.getMessage());
+            throw new ResourceNotFoundException("User not found: " + e.getMessage());
         }
     }
 
-    public String forgotPassword(ForgotPasswordRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-        Optional<User> userOpt = userRepository.findByEmail(cleanEmail);
-        if (userOpt.isPresent()) {
-            otpService.generateAndSendOtp(cleanEmail, OtpPurpose.PASSWORD_RESET);
-        } else {
-            log.info("Forgot password requested for non-existent email {}", cleanEmail);
+    public UserResponse getUserById(String uid) {
+        return getCurrentUser(uid);
+    }
+
+    private UserResponse mapToUserResponse(UserDoc doc) {
+        Role r = Role.CUSTOMER;
+        if (doc.getRole() != null && doc.getRole().equalsIgnoreCase(Role.PROVIDER.name())) {
+            r = Role.PROVIDER;
         }
-        // Always return generic response for security/enumeration protection
-        return "If an account exists for this email, a verification code has been sent.";
-    }
-
-    @Transactional
-    public void resetPassword(ResetPasswordRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new BadRequestException("Account not found."));
-
-        otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.PASSWORD_RESET);
-
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
-    }
-
-    @Transactional
-    public void changePassword(String email, ChangePasswordRequest request) {
-        String cleanEmail = email.trim().toLowerCase();
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new BadRequestException("Current password does not match.");
-        }
-
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
-    }
-
-    @Transactional(readOnly = true)
-    public UserResponse getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return mapToUserResponse(user);
-    }
-
-    public UserResponse mapToUserResponse(User user) {
-        Long providerId = null;
-        if (user.getRole() == Role.PROVIDER) {
-            providerId = providerProfileRepository.findByUserId(user.getId())
-                    .map(ProviderProfile::getId)
-                    .orElse(null);
-        }
-
         return UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole())
-                .profileImage(user.getProfileImage())
-                .providerProfileId(providerId)
-                .emailVerified(user.getEmailVerified())
+                .id(doc.getId())
+                .name(doc.getName())
+                .email(doc.getEmail())
+                .phone(doc.getPhone())
+                .role(r)
+                .emailVerified(true)
                 .build();
     }
 }

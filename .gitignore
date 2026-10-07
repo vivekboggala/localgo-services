@@ -1,17 +1,32 @@
+# Logs
+*.log
+
 # Environment and secrets
 .env
 .env.*
 !.env.example
+*firebase-adminsdk*.json
+serviceAccount*.json
 application-local.properties
 application-prod.properties
 
 # Java / Maven
 backend/target/
+**/target/
 
 # Node / Vite
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+customer-app/node_modules/
+customer-app/dist/
+customer-app/.vite/
+provider-app/node_modules/
+provider-app/dist/
+provider-app/.vite/
+node_modules/
+dist/
+.vite/
 
 # IDE
 .idea/
@@ -21,3 +36,4 @@ frontend/.vite/
 # OS
 Thumbs.db
 Desktop.ini
+.DS_Store

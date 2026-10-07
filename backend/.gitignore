@@ -25,5 +25,9 @@ target/
 .DS_Store
 Thumbs.db
 
-### Env ###
+### Env & Secrets ###
 .env
+.env.*
+!.env.example
+*firebase-adminsdk*.json
+serviceAccount*.json

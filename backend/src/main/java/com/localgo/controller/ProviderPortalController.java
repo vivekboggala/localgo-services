@@ -4,14 +4,13 @@ import com.localgo.dto.request.ProviderProfileUpdateRequest;
 import com.localgo.dto.request.StatusUpdateRequest;
 import com.localgo.dto.response.ApiResponse;
 import com.localgo.dto.response.BookingResponse;
+import com.localgo.dto.response.EarningsTrendResponse;
 import com.localgo.dto.response.ProviderDashboardResponse;
+import com.localgo.dto.response.ProviderResponse;
 import com.localgo.enums.BookingStatus;
 import com.localgo.service.ProviderDashboardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -35,20 +34,14 @@ public class ProviderPortalController {
     }
 
     @GetMapping("/requests")
-    public ResponseEntity<ApiResponse<Page<BookingResponse>>> getPendingRequests(
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
-            Authentication authentication) {
-
-        Page<BookingResponse> requests = providerDashboardService.getPendingRequests(
-                authentication.getName(), PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getPendingRequests(Authentication authentication) {
+        List<BookingResponse> requests = providerDashboardService.getPendingRequests(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Pending requests fetched", requests));
     }
 
     @PutMapping("/bookings/{id}/status")
     public ResponseEntity<ApiResponse<BookingResponse>> updateBookingStatus(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody StatusUpdateRequest request,
             Authentication authentication) {
 
@@ -57,15 +50,11 @@ public class ProviderPortalController {
     }
 
     @GetMapping("/bookings")
-    public ResponseEntity<ApiResponse<Page<BookingResponse>>> getProviderBookings(
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getProviderBookings(
             @RequestParam(value = "status", required = false) BookingStatus status,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
             Authentication authentication) {
 
-        Page<BookingResponse> bookings = providerDashboardService.getProviderBookings(
-                authentication.getName(), status, PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+        List<BookingResponse> bookings = providerDashboardService.getProviderBookings(authentication.getName(), status);
         return ResponseEntity.ok(ApiResponse.success("Provider bookings fetched", bookings));
     }
 
@@ -73,6 +62,12 @@ public class ProviderPortalController {
     public ResponseEntity<ApiResponse<BigDecimal>> getEarnings(Authentication authentication) {
         BigDecimal earnings = providerDashboardService.getProviderEarnings(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Realized earnings fetched", earnings));
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<ApiResponse<ProviderResponse>> getProfile(Authentication authentication) {
+        ProviderResponse response = providerDashboardService.getProviderProfile(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Provider profile fetched", response));
     }
 
     @PutMapping("/profile")
@@ -91,12 +86,11 @@ public class ProviderPortalController {
     }
 
     @GetMapping("/analytics/earnings-trend")
-    public ResponseEntity<ApiResponse<List<com.localgo.dto.response.EarningsTrendResponse>>> getEarningsTrend(
+    public ResponseEntity<ApiResponse<List<EarningsTrendResponse>>> getEarningsTrend(
             @RequestParam(value = "days", defaultValue = "7") int days,
             Authentication authentication) {
 
-        List<com.localgo.dto.response.EarningsTrendResponse> trend = providerDashboardService.getProviderEarningsTrend(authentication.getName(), days);
+        List<EarningsTrendResponse> trend = providerDashboardService.getProviderEarningsTrend(authentication.getName(), days);
         return ResponseEntity.ok(ApiResponse.success("Earnings trend fetched", trend));
     }
 }
-

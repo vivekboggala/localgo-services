@@ -14,12 +14,15 @@ export const SignupPage = () => {
 
   const [description, setDescription] = useState('');
   const [experienceYears, setExperienceYears] = useState(3);
-  const [serviceArea, setServiceArea] = useState('Madanapalle Town');
-  const [serviceRadiusKm, setServiceRadiusKm] = useState(10);
+  const [serviceArea, setServiceArea] = useState('Central City Region');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [serviceRadiusKm, setServiceRadiusKm] = useState(15);
   const [primaryServiceId, setPrimaryServiceId] = useState('');
   const [startingPrice, setStartingPrice] = useState(300);
-  const [latitude, setLatitude] = useState(13.5500);
-  const [longitude, setLongitude] = useState(78.5000);
+  const [latitude, setLatitude] = useState(12.9716);
+  const [longitude, setLongitude] = useState(77.5946);
 
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState('');
@@ -61,6 +64,9 @@ export const SignupPage = () => {
           password,
           description,
           experienceYears: Number(experienceYears),
+          address,
+          city,
+          postalCode,
           latitude: Number(latitude),
           longitude: Number(longitude),
           serviceArea,

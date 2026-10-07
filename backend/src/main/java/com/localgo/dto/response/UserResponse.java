@@ -11,12 +11,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserResponse {
-    private Long id;
+    private String id; // Firebase Auth UID
     private String name;
     private String email;
     private String phone;
     private Role role;
     private String profileImage;
-    private Long providerProfileId;
+    private String address;
+    private String city;
+    private String state;
+    private String country;
+    private String postalCode;
+    private Double latitude;
+    private Double longitude;
+    private String providerProfileId;
     private Boolean emailVerified;
 }

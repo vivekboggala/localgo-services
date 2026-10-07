@@ -1,6 +1,6 @@
 # LocalGo Services — Local Service Booking Marketplace
 
-LocalGo Services is a full-stack, enterprise-grade local service booking marketplace application built using Java 21, Spring Boot 3, MySQL 8+, React 18, Vite, Tailwind CSS, Leaflet Maps, and Gmail SMTP OTP authentication. The platform enables customers to discover verified nearby service professionals (such as electricians, plumbers, AC repair technicians, and gadget repair experts) using real-time geolocation matching, Haversine formula distance calculations, and interactive map tracking.
+LocalGo Services is a full-stack, enterprise-grade local service booking marketplace application built using Java 21, Spring Boot 3, Google Cloud Firestore (Firebase Admin SDK), Firebase Authentication, React 18, Vite, Tailwind CSS, Leaflet Maps, and real-time Firestore synchronization. The platform enables customers to discover verified nearby service professionals (such as electricians, plumbers, AC repair technicians, and gadget repair experts) using real-time geolocation matching, geohash spatial indexing, Haversine formula distance calculations, and interactive map tracking.
 
 ---
 
@@ -19,7 +19,7 @@ LocalGo Services is a full-stack, enterprise-grade local service booking marketp
 11. [Authentication and Security](#authentication-and-security)
 12. [Booking Lifecycle](#booking-lifecycle)
 13. [Location-Based Provider Discovery](#location-based-provider-discovery)
-14. [Database Entities and Schema](#database-entities-and-schema)
+14. [Database Collections and Firestore Schema](#database-collections-and-firestore-schema)
 15. [API Overview](#api-overview)
 16. [Frontend Structure and Routing](#frontend-structure-and-routing)
 17. [Configuration and Environment Variables](#configuration-and-environment-variables)
@@ -36,7 +36,7 @@ LocalGo Services is a full-stack, enterprise-grade local service booking marketp
 
 ## Project Overview
 
-LocalGo Services connects households and business customers with qualified local service providers. Inspired by modern location-first marketplaces, the platform incorporates automatic browser geolocation detection, custom service coverage radius calculations, multi-step booking workflows, booking time slot conflict prevention, provider earnings tracking, admin moderation controls, and a secure Email OTP verification engine using standard Gmail SMTP.
+LocalGo Services connects households and business customers with qualified local service providers. Inspired by modern location-first marketplaces, the platform incorporates automatic browser geolocation detection, custom service coverage radius calculations, multi-step booking workflows, booking time slot conflict prevention, provider earnings tracking, admin moderation controls, and real-time Firestore listeners for instant status timeline and request updates.
 
 ---
 
@@ -47,17 +47,18 @@ Finding reliable, on-demand local service professionals in specific geographic l
 - **Unverified Listings**: Customers lack verified information regarding provider skills, service radii, and past performance ratings.
 - **Inaccurate Proximity**: Traditional directories fail to filter providers based on dynamic user location and service boundaries.
 - **Scheduling Conflicts**: Manual phone-based bookings lead to double-booking and unorganized appointment tracking.
-- **Security Vulnerabilities**: Legacy systems store raw access codes or lack two-factor verification during registration and credential recovery.
+- **Security Vulnerabilities**: Legacy systems store raw access codes or lack modern identity provider token verification.
 - **Lack of Platform Moderation**: Absence of administrative tools for provider verification and review moderation permits fraudulent activity.
 
 ---
 
 ## Project Objectives
 
-- **Geographic Precision**: Implement mathematical Haversine distance calculations at the database query level to surface nearby available service providers.
+- **Geographic Precision**: Implement mathematical Haversine distance calculations and geohash spatial indexing to surface nearby available service providers.
 - **Conflict Prevention**: Enforce database-backed time slot overlap validation before confirming bookings.
-- **Secure Authentication**: Provide a zero-cost Email OTP authentication pipeline using Spring Mail and Gmail SMTP with SHA-256 hashed OTP storage.
+- **Secure Authentication**: Enforce Firebase Authentication with ID token verification via the Firebase Admin SDK on Spring Boot.
 - **Role-Based Workflows**: Deliver dedicated user interfaces for Customers, Service Providers, and Administrators.
+- **Real-Time Reactive Updates**: Utilize Firestore `onSnapshot` listeners for live status timelines and provider request queues.
 - **Production-Ready Standards**: Maintain clean architecture, responsive UI components, RESTful API conventions, and strict state management.
 
 ---
@@ -70,20 +71,18 @@ Finding reliable, on-demand local service professionals in specific geographic l
 - **Interactive Leaflet Map**: Displays user coordinates alongside color-coded provider pins (Green = Available, Gray = Busy).
 - **Multi-Step Booking Wizard**: Select service, enter problem details, choose date and time slot, confirm doorstep address, and select payment method (Cash / UPI).
 - **Booking Conflict Prevention**: System blocks overlapping appointment bookings for the selected provider.
-- **Visual Status Timeline**: Real-time progress stepper (`REQUESTED -> ACCEPTED -> ON_THE_WAY -> IN_PROGRESS -> COMPLETED`) with cancellation tracking.
+- **Visual Status Timeline**: Real-time progress stepper (`REQUESTED -> ACCEPTED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`) driven live by Firestore listeners.
 - **Repeat Booking ("Book Again")**: One-click repeat booking pre-filling past booking details with fresh date/time selection.
 - **Customer Favorites**: Bookmark favorite providers with persistent DB storage.
 - **Direct Phone Contact**: Instant phone dialer button enabled upon booking acceptance.
 - **Reviews and Ratings**: Submit 1 to 5 star ratings and reviews for completed bookings.
-- **Account Security**: Email verification via 6-digit OTP, self-service password reset, and authenticated password changes.
 
 ### Service Provider
 - **Provider Studio & Profile**: Manage business description, experience years, service area, primary service starting prices, and coverage radius (km).
-- **Interactive Request Queue**: View incoming customer requests with one-click Accept or Reject.
-- **Active Job Lifecycle Management**: Step bookings through `ACCEPTED -> ON_THE_WAY -> IN_PROGRESS -> COMPLETED`.
+- **Interactive Request Queue**: View incoming customer requests with real-time `onSnapshot` updates and one-click Accept or Reject.
+- **Active Job Lifecycle Management**: Step bookings through `ACCEPTED -> ON_THE_WAY -> ARRIVED -> IN_PROGRESS -> COMPLETED`.
 - **One-Tap Availability Toggle**: Switch operational status between Online (Available) and Offline (Busy).
 - **Realized Earnings Analytics**: View summary metrics and interactive trend charts generated strictly from completed and paid bookings.
-- **Security & Settings**: Change account password with current BCrypt password verification.
 
 ### Administrator
 - **Platform Analytics Dashboard**: Overview metrics (total customers, total providers, pending verifications, active/completed bookings, total revenue) and interactive revenue trend charts.
@@ -99,10 +98,9 @@ Finding reliable, on-demand local service professionals in specific geographic l
 ### Backend
 - **Language**: Java 21 LTS
 - **Framework**: Spring Boot 3.2.5
-- **Security**: Spring Security 6, JWT (`jjwt 0.12.5`), BCrypt Password Encoder
-- **Email Infrastructure**: `spring-boot-starter-mail` via Gmail SMTP (`smtp.gmail.com:587`, STARTTLS)
-- **Persistence**: Spring Data JPA, Hibernate ORM
-- **Database**: MySQL 8.0+
+- **Security**: Spring Security 6, Firebase Authentication Token Verification (`FirebaseAuth`)
+- **Persistence & Cloud Database**: Google Cloud Firestore via Firebase Admin SDK (`google-cloud-firestore`)
+- **Spatial Calculations**: Geohashing (`ch.hsr.geohash`) & Haversine Distance Engine
 - **Build Tool**: Apache Maven
 
 ### Frontend
@@ -110,7 +108,8 @@ Finding reliable, on-demand local service professionals in specific geographic l
 - **Build Tool**: Vite 5.3
 - **Styling**: Tailwind CSS 3.4
 - **Routing**: React Router DOM 6.23
-- **HTTP Client**: Axios with request/response interceptors
+- **Real-Time Data**: Firebase Client SDK v10 (Firestore `onSnapshot`, Firebase Auth)
+- **HTTP Client**: Axios with Bearer ID Token request interceptors
 - **Mapping**: Leaflet 1.9 & React-Leaflet 4.2 (OpenStreetMap tiles)
 - **Data Visualization**: Recharts 3.10
 - **Iconography & UI**: Lucide React 1.14, React Hot Toast 2.6
@@ -120,28 +119,27 @@ Finding reliable, on-demand local service professionals in specific geographic l
 ## System Architecture
 
 ```
-[ Client Web Browser ]
+[ Client Web Browser / Apps ]
         |
-        |  HTTP/HTTPS (REST API + JWT Bearer Header)
+        |  HTTPS (REST API + Firebase Bearer Token)
+        |  AND WebSocket (Firestore onSnapshot Live Listeners)
         v
-[ React 18 / Vite SPA ]
+[ React 18 / Vite SPA (Customer & Provider Apps) ]
    ├── AuthContext & Custom Hooks (useAuth, useLocation, useNotifications)
-   ├── React Router Navigation & Protected Routes
-   └── Axios Service Modules
+   ├── Firebase Client SDK (Auth, Firestore Listeners)
+   └── Axios Service Modules (Bearer Token Interceptor)
         |
         v
 [ Spring Boot 3 REST Backend ]
-   ├── SecurityFilter (JwtAuthenticationFilter & SecurityConfig)
+   ├── FirebaseAuthenticationFilter & SecurityConfig
    ├── Controller Layer (REST Endpoints)
-   ├── Service Layer (Business Logic, OtpService, EmailService, Haversine Engine)
-   └── Repository Layer (Spring Data JPA & Native MySQL Queries)
+   ├── Service Layer (Business Logic, Conflict Checker, Haversine Engine)
+   └── Firestore Data Access Layer (Firebase Admin SDK)
         |
-        +-----------------------+-----------------------+
-        |                                               |
-        v                                               v
-[ MySQL Database ]                           [ Gmail SMTP Server ]
-  (Users, Profiles, Bookings,                  (TLS Port 587 -
-   OtpVerifications, Services)                  6-digit HTML OTP Delivery)
+        v
+[ Google Cloud Firestore ]
+   (users, providers, services, bookings, notifications, reviews, favorites)
+```              6-digit HTML OTP Delivery)
 ```
 
 ---
@@ -355,73 +353,52 @@ Offers administrative tools for verifying newly registered service providers, ma
 
 ## Location-Based Provider Discovery
 
-Provider discovery combines client-side geolocation detection with server-side spatial distance calculation:
+Provider discovery combines client-side geolocation detection with server-side spatial indexing and distance calculation:
 
 1. **Client Coordinate Capture**: The frontend `useLocation` hook invokes `navigator.geolocation.getCurrentPosition()` to retrieve user latitude and longitude coordinates, falling back to manual location selections if permission is denied.
-2. **Haversine Distance Query**: `ProviderProfileRepository` executes a MySQL native query filtering verified and available providers using the spherical law of cosines:
-
-```sql
-SELECT pp.*,
-  (6371 * ACOS(
-    COS(RADIANS(:lat)) * COS(RADIANS(pp.latitude)) *
-    COS(RADIANS(pp.longitude) - RADIANS(:lng)) +
-    SIN(RADIANS(:lat)) * SIN(RADIANS(pp.latitude))
-  )) AS distance_km
-FROM provider_profiles pp
-WHERE pp.verification_status = 'VERIFIED'
-  AND pp.available = true
-  AND pp.latitude BETWEEN :lat - (:radius / 111.0) AND :lat + (:radius / 111.0)
-  AND pp.longitude BETWEEN :lng - (:radius / (111.0 * COS(RADIANS(:lat))))
-                       AND :lng + (:radius / (111.0 * COS(RADIANS(:lat))))
-HAVING distance_km <= :radius
-   AND distance_km <= pp.service_radius_km
-ORDER BY distance_km ASC;
+2. **Geohash Spatial Indexing**: Every provider document stores a 12-character Base32 `geohash` computed from their geographic coordinates. The backend determines the appropriate geohash prefix precision matching the customer's search radius.
+3. **Firestore Bounding Range Query**: `ProviderService` queries the Firestore `providers` collection across geohash range slices:
+```java
+// Firestore geohash range query
+Query query = firestore.collection("providers")
+    .whereEqualTo("available", true)
+    .whereGreaterThanOrEqualTo("geohash", startHash)
+    .whereLessThanOrEqualTo("geohash", endHash);
 ```
-
-3. **Coverage Enforcement**: Results are filtered to ensure the calculated `distance_km` does not exceed the provider's defined `service_radius_km`.
+4. **Haversine Distance & Coverage Filtering**: Results are filtered in memory to compute the exact Haversine distance in kilometers and verify that:
+   - `distanceKm <= searchRadius`
+   - `distanceKm <= provider.getServiceRadiusKm()`
+   - `provider.getVerificationStatus() == "VERIFIED"` (for public customer searches)
 
 ---
 
-## Database Entities and Schema
+## Database Collections and Firestore Schema
+
+LocalGo Services uses Google Cloud Firestore as a NoSQL document store. Full field specifications, data types, and units are documented in [`docs/FIRESTORE_SCHEMA.md`](docs/FIRESTORE_SCHEMA.md).
 
 ```
-+------------------+         +-----------------------+         +-----------------------+
-|      User        | 1     1 |    ProviderProfile    | 1     * | ProviderServiceEntity |
-+------------------+---------+-----------------------+---------+-----------------------+
-| id (PK)          |         | id (PK)               |         | id (PK)               |
-| email (Unique)   |         | user_id (FK)          |         | provider_id (FK)      |
-| password         |         | verification_status   |         | service_id (FK)       |
-| role             |         | service_radius_km     |         | starting_price        |
-| email_verified   |         | latitude, longitude   |         +-----------------------+
-+------------------+         +-----------------------+
-         |                               |
-         | 1                             | 1
-         |                               |
-         v *                             v *
-+----------------------------------------------------+
-|                      Booking                       |
-+----------------------------------------------------+
-| id (PK)                                            |
-| customer_id (FK -> User)                           |
-| provider_id (FK -> ProviderProfile)                |
-| service_id (FK -> ServiceEntity)                   |
-| status (REQUESTED, ACCEPTED, IN_PROGRESS, etc.)    |
-| scheduled_date, scheduled_time, duration_mins      |
-| amount, payment_status, payment_method             |
-+----------------------------------------------------+
+Firestore Root
+├── users/                [UserDoc]
+│   └── {userId}          # Matches Firebase Auth UID; role, name, email, phone
+├── providers/            [ProviderDoc]
+│   └── {providerId}      # Matches Firebase Auth UID; geohash, coords, radius, verificationStatus, services[]
+├── services/             [ServiceDoc]
+│   └── {serviceId}       # Master service categories, default duration, icons
+├── bookings/             [BookingDoc]
+│   └── {bookingId}       # Core transactions; customerId, providerId, status, schedule, amount (in paise)
+├── notifications/        [NotificationDoc]
+│   └── {notifId}         # Real-time alerts; userId, title, message, read, createdAt
+├── reviews/              [ReviewDoc]
+│   └── {reviewId}        # Completed booking feedback; providerId, rating (1-5), comment
+└── favorites/            [FavoriteDoc]
+    └── {customerId_providerId} # Customer saved providers
 ```
 
-### Entity List
-- **`User`**: Base identity entity storing credentials, role (`CUSTOMER`, `PROVIDER`, `ADMIN`), and `emailVerified` boolean.
-- **`ProviderProfile`**: Extends provider users with business details, ratings, coordinates, and verification status.
-- **`ServiceEntity`**: Catalog of service categories (e.g., AC Repair, Electrician, Plumber) with default duration settings.
-- **`ProviderServiceEntity`**: Junction mapping providers to offered services and specific starting prices.
-- **`Booking`**: Central transaction entity linking customer, provider, service, schedule, address, status, and payment attributes.
-- **`Review`**: Customer reviews, ratings (1–5 stars), and admin moderation visibility flags (`hidden`).
-- **`Favorite`**: Junction tracking saved customer-provider pairs with unique constraint `uk_favorite_customer_provider`.
-- **`Notification`**: In-app notifications for booking updates and status changes.
-- **`OtpVerification`**: Stores SHA-256 hashed OTPs, expiration timestamps, attempt counters, and verification purposes (`EMAIL_VERIFICATION`, `PASSWORD_RESET`).
-- **`Address`**: Structured address details linked to users.
+### Core Data Integrity Rules
+- **Money in Paise**: All monetary amounts (`amount`, `startingPrice`) are stored as integers (`Long`) in paise (100 paise = ₹1.00) to eliminate floating-point rounding errors across analytics.
+- **Timestamps**: All creation and update timestamps are stored as native Firestore Timestamps.
+- **Verification Status**: Provider documents track `verificationStatus` (`"PENDING"`, `"VERIFIED"`, `"REJECTED"`). Registered providers default to `"PENDING"`.
+- **Security Rules**: Client direct access is default-deny. Live client listeners (`onSnapshot`) are permitted solely on `/bookings/{id}` (matching customer or assigned provider) and `/notifications/{id}` (matching owner user). All client writes are strictly denied (`allow write: if false;`). Backend operations execute securely through the Admin SDK.
 
 ---
 
@@ -532,9 +509,8 @@ Configuration parameters are managed through Spring Boot `application.properties
 
 | Variable Name | Description | Default Value (Development) |
 |---|---|---|
-| `DB_USERNAME` | MySQL Database User | `root` |
-| `DB_PASSWORD` | MySQL Database Password | `root` |
-| `JWT_SECRET` | Secret key for signing JWT tokens | Pre-configured dev key |
+| `APP_FIREBASE_CREDENTIAL_PATH` | Absolute path to Firebase Admin SDK JSON key file | **Required** |
+| `APP_FIREBASE_PROJECT_ID` | Firebase Project ID | `localgo-824dd` |
 | `MAIL_USERNAME` | Gmail address for SMTP dispatch | Empty (Triggers dev fallback if unconfigured) |
 | `MAIL_PASSWORD` | 16-character Gmail App Password | Empty |
 | `INITIAL_ADMIN_EMAIL` | Email for seeding initial Admin account | Empty |
@@ -547,7 +523,7 @@ Configuration parameters are managed through Spring Boot `application.properties
 
 - **Java Development Kit (JDK)**: Version 21 LTS
 - **Node.js**: Version 18.0.0 or 20.0.0+
-- **Database**: MySQL Server 8.0+
+- **Database / Cloud**: Firebase Project with Firestore enabled in Native Mode
 - **Build Tool**: Apache Maven 3.8+ (or included wrapper)
 - **Version Control**: Git
 
@@ -555,31 +531,40 @@ Configuration parameters are managed through Spring Boot `application.properties
 
 ## Local Installation and Setup
 
-### 1. Database Creation
-Launch MySQL CLI or MySQL Workbench and execute:
-
-```sql
-CREATE DATABASE localgo_db;
-```
+### 1. Firebase Service Account Key Setup (Important)
+The Spring Boot backend interacts with Firebase Firestore using the Firebase Admin SDK.
+- **Store the Key Securely Outside the Repository**: Download your Firebase Admin SDK service account JSON key from the Firebase Console (*Project Settings -> Service accounts -> Generate new private key*). Save this file in a secure location on your local machine outside the repository directory (e.g., `C:\secure-keys\firebase-service-account.json` or `/etc/secrets/firebase-service-account.json`).
+- **Never Commit the Key**: Do NOT place the service account key inside the source repository or commit it to version control.
+- **Set the Environment Variable**: Before launching the backend, export the path to your key file:
+  - **Windows (PowerShell)**:
+    ```powershell
+    $env:APP_FIREBASE_CREDENTIAL_PATH = "C:\path\to\your-service-account-key.json"
+    ```
+  - **Windows (CMD)**:
+    ```cmd
+    set APP_FIREBASE_CREDENTIAL_PATH=C:\path\to\your-service-account-key.json
+    ```
+  - **Linux / macOS**:
+    ```bash
+    export APP_FIREBASE_CREDENTIAL_PATH="/path/to/your-service-account-key.json"
+    ```
 
 ### 2. Backend Setup
 Navigate to the `backend` directory:
 
 ```cmd
 cd backend
-```
-
-Compile the project:
-
-```cmd
 mvn clean compile
 ```
 
 ### 3. Frontend Setup
-Navigate to the `frontend` directory:
+Navigate to either `customer-app` or `provider-app` directory:
 
 ```cmd
-cd frontend
+cd customer-app
+npm install
+
+cd ../provider-app
 npm install
 ```
 
@@ -588,37 +573,39 @@ npm install
 ## Running the Application
 
 ### 1. Launch Backend Service
-Set optional environment variables in your terminal prompt before launching:
+Set environment variables in your terminal prompt before launching:
 
-```cmd
-set MAIL_USERNAME=your-email@gmail.com
-set MAIL_PASSWORD=your-16-char-app-password
-set INITIAL_ADMIN_EMAIL=admin@localgo.com
-set INITIAL_ADMIN_PASSWORD=AdminPassword123!
-set DEV_OTP_LOGGING=true
+```powershell
+$env:APP_FIREBASE_CREDENTIAL_PATH = "C:\path\to\your-service-account-key.json"
+$env:APP_FIREBASE_PROJECT_ID = "localgo-824dd"
 
 cd backend
 mvn spring-boot:run
 ```
-The Spring Boot server will start on `http://localhost:8080`. Hibernate will initialize table schemas, and `DataSeeder` will populate the service category master catalog.
+The Spring Boot server will initialize on `http://localhost:8080`, authenticate against Firestore via the Admin SDK, and serve API requests.
 
 ### 2. Launch Frontend Dev Server
-In a separate terminal window, start Vite:
+In separate terminal windows, start Vite for customer and provider apps:
 
 ```cmd
-cd frontend
+# Customer App (port 5173)
+cd customer-app
+npm run dev
+
+# Provider App (port 5174)
+cd provider-app
 npm run dev
 ```
-The application interface will be accessible at `http://localhost:5173`. Vite proxy routes `/api` requests to `http://localhost:8080`.
 
 ---
 
 ## Production Deployment
 
 ### Recommended Architecture
-- **Backend Application**: Hosted as a standalone Web Service on platforms such as Render, Railway, or AWS Elastic Beanstalk using Java 21 containerized environments.
-- **Frontend Application**: Deployed to static hosting providers such as Vercel, Netlify, or AWS CloudFront pointing API requests to the backend URL.
-- **Database**: Hosted on managed MySQL instances (such as Aiven, PlanetScale, or AWS RDS MySQL).
+- **Backend Application**: Hosted as a standalone Web Service on platforms such as Render, Railway, or AWS Elastic Beanstalk using Java 21 containerized environments. Inject `APP_FIREBASE_CREDENTIAL_PATH` or Google Cloud application credentials.
+- **Frontend Applications**: Deployed to static hosting providers such as Firebase Hosting, Vercel, Netlify, or AWS CloudFront pointing API requests to the backend URL.
+- **Database**: Hosted on Google Cloud Firestore (Serverless NoSQL document store).
+- **Security Rules & Indexes**: Deployed using `firebase deploy --only firestore:rules,firestore:indexes`.
 - **Email Delivery**: Gmail SMTP using App Passwords for low-volume production, or dedicated transactional mail providers (SendGrid, Amazon SES) for high-volume environments.
 
 ---

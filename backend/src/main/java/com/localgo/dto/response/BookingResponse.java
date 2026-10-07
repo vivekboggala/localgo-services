@@ -17,19 +17,23 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BookingResponse {
-    private Long id;
+    private String id;
 
-    private Long customerId;
+    private String customerId;
     private String customerName;
     private String customerPhone;
     private String customerEmail;
 
-    private Long providerId;
-    private Long providerUserId;
+    private String providerId;
+    private String providerUserId;
     private String providerName;
     private String providerPhone;
+    private Double providerLatitude;
+    private Double providerLongitude;
+    private String providerServiceArea;
+    private Double distanceKm;
 
-    private Long serviceId;
+    private String serviceId;
     private String serviceName;
     private String serviceCategory;
     private String serviceIcon;
@@ -38,6 +42,10 @@ public class BookingResponse {
     private Double latitude;
     private Double longitude;
     private String address;
+    private String city;
+    private String state;
+    private String country;
+    private String postalCode;
 
     private LocalDate scheduledDate;
     private LocalTime scheduledTime;
@@ -47,7 +55,7 @@ public class BookingResponse {
     private String cancelledBy;
     private String cancellationReason;
 
-    private BigDecimal amount;
+    private BigDecimal amount; // in INR (converted from paise)
     private String paymentMethod;
     private PaymentStatus paymentStatus;
 

@@ -6,12 +6,11 @@ import com.localgo.dto.response.ReviewResponse;
 import com.localgo.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,14 +28,10 @@ public class ReviewController {
     }
 
     @GetMapping("/api/providers/{providerId}/reviews")
-    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getProviderReviews(
-            @PathVariable Long providerId,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size) {
+    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getProviderReviews(
+            @PathVariable String providerId) {
 
-        Page<ReviewResponse> reviews = reviewService.getProviderReviews(
-                providerId, PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+        List<ReviewResponse> reviews = reviewService.getProviderReviews(providerId);
         return ResponseEntity.ok(ApiResponse.success("Provider reviews fetched", reviews));
     }
 }

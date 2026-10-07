@@ -78,8 +78,8 @@ export const BookingDetailPage = () => {
     );
   }
 
-  const canCallProvider = ['ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'COMPLETED'].includes(booking.status);
-  const canCancel = ['REQUESTED', 'ACCEPTED'].includes(booking.status);
+  const canCallProvider = ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(booking.status);
+  const canCancel = ['REQUESTED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(booking.status);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -118,6 +118,14 @@ export const BookingDetailPage = () => {
         status={booking.status}
         cancelledBy={booking.cancelledBy}
         cancellationReason={booking.cancellationReason}
+        timestamps={{
+          createdAt: booking.createdAt,
+          acceptedAt: booking.acceptedAt,
+          onTheWayAt: booking.onTheWayAt,
+          arrivedAt: booking.arrivedAt,
+          inProgressAt: booking.inProgressAt,
+          completedAt: booking.completedAt,
+        }}
       />
 
       {/* Completed Booking Review Prompt */}
