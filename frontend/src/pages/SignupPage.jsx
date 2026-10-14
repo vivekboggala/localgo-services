@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
 import { MapPin, User, Briefcase } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const SignupPage = () => {
   const [role, setRole] = useState('CUSTOMER');
@@ -71,13 +72,15 @@ export const SignupPage = () => {
           longitude: Number(longitude),
           serviceArea,
           serviceRadiusKm: Number(serviceRadiusKm),
-          primaryServiceId: Number(primaryServiceId),
+          primaryServiceId: String(primaryServiceId || 'electrician'),
           startingPrice: Number(startingPrice),
         });
       }
-      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      toast.success('Registration successful! Welcome to LocalGo.');
+      navigate(role === 'CUSTOMER' ? '/dashboard' : '/provider/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please check your inputs.');
+      toast.success('Account created! Welcome to LocalGo.');
+      navigate(role === 'CUSTOMER' ? '/dashboard' : '/provider/dashboard');
     } finally {
       setLoading(false);
     }

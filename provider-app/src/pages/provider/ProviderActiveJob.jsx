@@ -69,7 +69,9 @@ export const ProviderActiveJob = () => {
           return tB - tA;
         });
 
-        setJobs(liveActive);
+        if (liveActive.length > 0) {
+          setJobs(liveActive);
+        }
         setLoading(false);
       },
       (err) => {

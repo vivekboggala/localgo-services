@@ -53,7 +53,9 @@ export const ProviderRequests = () => {
             amount: amountInRupees,
           };
         });
-        setRequests(liveRequests);
+        if (liveRequests.length > 0) {
+          setRequests(liveRequests);
+        }
         setLoading(false);
       },
       (err) => {

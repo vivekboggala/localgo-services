@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { MapPin, Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { MapPin, Lock, Mail, Eye, EyeOff, Zap, User, Shield } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -10,9 +11,21 @@ export const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, loginDemo } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleDemoClick = (role) => {
+    const demoUser = loginDemo(role);
+    toast.success(`Logged in as ${demoUser.name} (${role})`);
+    if (role === 'PROVIDER') {
+      navigate('/provider/dashboard');
+    } else if (role === 'ADMIN') {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,6 +34,7 @@ export const LoginPage = () => {
 
     try {
       const user = await login(email, password);
+      toast.success(`Welcome back, ${user.name || user.email}!`);
       const from = location.state?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
@@ -56,18 +70,43 @@ export const LoginPage = () => {
           <p className="text-xs text-slate-500">Access customer bookings or provider management</p>
         </div>
 
+        {/* 1-Click Quick Demo Login for Screenshots */}
+        <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200/80 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Quick Demo Login</span>
+            <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">Ready to Screenshot</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleDemoClick('CUSTOMER')}
+              className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <User className="w-3.5 h-3.5 text-blue-600" />
+              Customer
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDemoClick('PROVIDER')}
+              className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              Electrician
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDemoClick('ADMIN')}
+              className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-[11px] font-semibold text-slate-800 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Shield className="w-3.5 h-3.5 text-purple-600" />
+              Admin
+            </button>
+          </div>
+        </div>
+
         {error && (
           <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md font-medium space-y-2">
             <p>{error}</p>
-            {error.includes('EMAIL_NOT_VERIFIED') && (
-              <button
-                type="button"
-                onClick={() => navigate(`/verify-email?email=${encodeURIComponent(email)}`)}
-                className="w-full py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded font-semibold transition-colors"
-              >
-                Verify Email Code Now
-              </button>
-            )}
           </div>
         )}
 

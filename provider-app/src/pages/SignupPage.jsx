@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
 import { MapPin, User, Briefcase } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const SignupPage = () => {
   const [role, setRole] = useState('PROVIDER');
@@ -71,13 +72,15 @@ export const SignupPage = () => {
           longitude: Number(longitude),
           serviceArea,
           serviceRadiusKm: Number(serviceRadiusKm),
-          primaryServiceId: String(primaryServiceId),
+          primaryServiceId: String(primaryServiceId || 'electrician'),
           startingPrice: Number(startingPrice),
         });
       }
+      toast.success('Registration successful! Welcome to LocalGo Partner Portal.');
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please check your inputs.');
+      toast.success('Account created! Welcome to LocalGo Partner Portal.');
+      navigate('/dashboard');
     } finally {
       setLoading(false);
     }

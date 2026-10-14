@@ -65,7 +65,9 @@ export const MyBookingsPage = () => {
           return tB - tA;
         });
 
-        setAllBookings(liveList);
+        if (liveList.length > 0) {
+          setAllBookings(liveList);
+        }
         setLoading(false);
       },
       (err) => {

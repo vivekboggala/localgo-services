@@ -15,7 +15,10 @@ export const MyBookingsPage = () => {
     setLoading(true);
     const statusParam = activeTab === 'ALL' ? null : activeTab;
     bookingService.getMyBookings(statusParam)
-      .then((data) => setBookings(data.content || []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.content || []);
+        setBookings(list);
+      })
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
   }, [activeTab]);
