@@ -8,6 +8,8 @@ export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
+  const dashboardPath = user?.role === 'PROVIDER' ? '/provider/dashboard' : '/dashboard';
+
   const handleLogout = () => {
     logout();
     setDropdownOpen(false);
@@ -33,8 +35,10 @@ export const Navbar = () => {
           <Link to="/map" className="hover:text-slate-900 transition-colors">Map</Link>
           {isAuthenticated && (
             <>
-              <Link to="/dashboard" className="hover:text-slate-900 transition-colors">Dashboard</Link>
-              <Link to="/my-bookings" className="hover:text-slate-900 transition-colors">My Bookings</Link>
+              <Link to={dashboardPath} className="hover:text-slate-900 transition-colors">Dashboard</Link>
+              {user?.role !== 'PROVIDER' && (
+                <Link to="/my-bookings" className="hover:text-slate-900 transition-colors">My Bookings</Link>
+              )}
             </>
           )}
         </div>
@@ -68,7 +72,7 @@ export const Navbar = () => {
                     <p className="text-[10px] text-slate-400 uppercase font-bold">Signed in as</p>
                     <p className="font-semibold text-slate-900 truncate">{user?.email}</p>
                   </div>
-                  <Link to="/dashboard" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 font-medium">
+                  <Link to={dashboardPath} onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 font-medium">
                     <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" /> Dashboard
                   </Link>
                   <Link to="/my-bookings" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 font-medium">

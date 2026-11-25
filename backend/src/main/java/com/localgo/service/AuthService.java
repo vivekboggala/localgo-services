@@ -90,24 +90,7 @@ public class AuthService {
         String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
 
         if (uid == null || uid.isBlank()) {
-            if (request.getPassword() == null || request.getPassword().trim().length() < 6) {
-                throw new BadRequestException("Password must be at least 6 characters.");
-            }
-            try {
-                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                        .setEmail(cleanEmail)
-                        .setPassword(request.getPassword())
-                        .setDisplayName(request.getName().trim())
-                        .setEmailVerified(true);
-                if (request.getPhone() != null && request.getPhone().trim().startsWith("+")) {
-                    createRequest.setPhoneNumber(request.getPhone().trim());
-                }
-                UserRecord record = firebaseAuth.createUser(createRequest);
-                uid = record.getUid();
-            } catch (Exception e) {
-                log.error("Failed to create Firebase user: {}", e.getMessage());
-                throw new BadRequestException("Registration failed: " + e.getMessage());
-            }
+            uid = createOrUpdateFirebaseUser(cleanEmail, request.getPassword(), request.getName(), request.getPhone(), "Registration");
         }
 
         UserDoc userDoc = UserDoc.builder()
@@ -139,24 +122,7 @@ public class AuthService {
         String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
 
         if (uid == null || uid.isBlank()) {
-            if (request.getPassword() == null || request.getPassword().trim().length() < 6) {
-                throw new BadRequestException("Password must be at least 6 characters.");
-            }
-            try {
-                UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                        .setEmail(cleanEmail)
-                        .setPassword(request.getPassword())
-                        .setDisplayName(request.getName().trim())
-                        .setEmailVerified(true);
-                if (request.getPhone() != null && request.getPhone().trim().startsWith("+")) {
-                    createRequest.setPhoneNumber(request.getPhone().trim());
-                }
-                UserRecord record = firebaseAuth.createUser(createRequest);
-                uid = record.getUid();
-            } catch (Exception e) {
-                log.error("Failed to create Firebase provider user: {}", e.getMessage());
-                throw new BadRequestException("Provider registration failed: " + e.getMessage());
-            }
+            uid = createOrUpdateFirebaseUser(cleanEmail, request.getPassword(), request.getName(), request.getPhone(), "Provider registration");
         }
 
         UserDoc userDoc = UserDoc.builder()
@@ -317,6 +283,50 @@ public class AuthService {
         return firebaseExists && firebaseVerified;
     }
 
+    private String createOrUpdateFirebaseUser(String cleanEmail, String password, String name, String phone, String label) {
+        if (password == null || password.trim().length() < 6) {
+            throw new BadRequestException("Password must be at least 6 characters.");
+        }
+        String trimmedName = name != null ? name.trim() : "User";
+
+        try {
+            UserRecord existing = firebaseAuth.getUserByEmail(cleanEmail);
+            if (existing != null) {
+                var userSnap = firestore.collection("users").document(existing.getUid()).get().get();
+                if (userSnap.exists() && !Boolean.FALSE.equals(userSnap.getBoolean("emailVerified"))) {
+                    throw new BadRequestException("An account with this email already exists. Please sign in.");
+                }
+                UserRecord.UpdateRequest updateReq = new UserRecord.UpdateRequest(existing.getUid())
+                        .setPassword(password)
+                        .setDisplayName(trimmedName)
+                        .setEmailVerified(true);
+                firebaseAuth.updateUser(updateReq);
+                return existing.getUid();
+            }
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (FirebaseAuthException ignored) {
+        } catch (Exception e) {
+            log.warn("Error checking existing Firebase user for {}: {}", cleanEmail, e.getMessage());
+        }
+
+        try {
+            UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
+                    .setEmail(cleanEmail)
+                    .setPassword(password)
+                    .setDisplayName(trimmedName)
+                    .setEmailVerified(true);
+            if (phone != null && phone.trim().startsWith("+")) {
+                createRequest.setPhoneNumber(phone.trim());
+            }
+            UserRecord record = firebaseAuth.createUser(createRequest);
+            return record.getUid();
+        } catch (Exception e) {
+            log.error("Failed to create Firebase user ({}): {}", label, e.getMessage());
+            throw new BadRequestException(label + " failed: " + e.getMessage());
+        }
+    }
+
     private boolean markExistingUserEmailVerifiedIfPresent(String cleanEmail) {
         boolean updated = false;
         try {
@@ -324,8 +334,11 @@ public class AuthService {
             if (!record.isEmailVerified()) {
                 firebaseAuth.updateUser(new UserRecord.UpdateRequest(record.getUid()).setEmailVerified(true));
             }
-            firestore.collection("users").document(record.getUid()).update("emailVerified", true).get();
-            updated = true;
+            var userRef = firestore.collection("users").document(record.getUid());
+            if (userRef.get().get().exists()) {
+                userRef.update("emailVerified", true).get();
+                updated = true;
+            }
         } catch (FirebaseAuthException ignored) {
         } catch (Exception e) {
             log.warn("Error updating emailVerified on existing user {}: {}", cleanEmail, e.getMessage());

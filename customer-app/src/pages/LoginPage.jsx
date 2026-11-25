@@ -28,6 +28,8 @@ export const LoginPage = () => {
       const from = location.state?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
+      } else if (user.role === 'PROVIDER') {
+        navigate('/provider/dashboard');
       } else {
         navigate('/dashboard');
       }

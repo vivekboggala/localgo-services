@@ -34,6 +34,7 @@ const VerifyEmailPage = () => {
   const email = pendingRegistration?.payload?.email || queryEmail || '';
 
   const [otp, setOtp] = useState('');
+  const [verifiedToken, setVerifiedToken] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -53,18 +54,25 @@ const VerifyEmailPage = () => {
     setError(null);
 
     try {
-      const verifyRes = await api.post('/auth/verify-email', {
-        email: email.trim(),
-        otp: targetOtp,
-        purpose: 'EMAIL_VERIFICATION',
-      });
+      let verificationToken = verifiedToken?.otp === targetOtp ? verifiedToken.token : null;
+      let existingAccount = false;
 
-      const verificationToken = verifyRes.data?.data?.verificationToken;
-      if (!verifyRes.data?.success || !verificationToken) {
-        throw new Error(verifyRes.data?.message || 'OTP verification failed.');
+      if (!verificationToken) {
+        const verifyRes = await api.post('/auth/verify-email', {
+          email: email.trim(),
+          otp: targetOtp,
+          purpose: 'EMAIL_VERIFICATION',
+        });
+
+        verificationToken = verifyRes.data?.data?.verificationToken;
+        existingAccount = Boolean(verifyRes.data?.data?.existingAccount);
+        if (!verifyRes.data?.success || !verificationToken) {
+          throw new Error(verifyRes.data?.message || 'OTP verification failed.');
+        }
+        setVerifiedToken({ otp: targetOtp, token: verificationToken });
       }
 
-      if (isExistingVerification || verifyRes.data?.data?.existingAccount) {
+      if (isExistingVerification || existingAccount) {
         toast.success('Email verified successfully! Please sign in.');
         navigate('/login');
         return;
