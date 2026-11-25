@@ -8,8 +8,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -18,7 +21,9 @@ public class CorsConfig {
 
     private static final List<String> DEFAULT_ALLOWED_ORIGINS = List.of(
             "http://localhost:*",
-            "http://127.0.0.1:*"
+            "http://127.0.0.1:*",
+            "https://localgo-services.vercel.app",
+            "https://*.vercel.app"
     );
 
     @Bean
@@ -28,23 +33,25 @@ public class CorsConfig {
         config.setAllowCredentials(true);
 
         String allowedOriginsEnv = System.getenv("CORS_ALLOWED_ORIGINS");
-        List<String> origins;
+        Set<String> originSet = new LinkedHashSet<>(DEFAULT_ALLOWED_ORIGINS);
 
         if (allowedOriginsEnv != null && !allowedOriginsEnv.trim().isEmpty()) {
-            origins = Arrays.stream(allowedOriginsEnv.split(","))
+            List<String> envOrigins = Arrays.stream(allowedOriginsEnv.split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toList());
-            log.info("CORS allowed origins configured from CORS_ALLOWED_ORIGINS: {}", origins);
+            originSet.addAll(envOrigins);
+            log.info("CORS allowed origins configured (merged with defaults): {}", originSet);
         } else {
-            origins = DEFAULT_ALLOWED_ORIGINS;
-            log.info("CORS_ALLOWED_ORIGINS not set, using default allowed origins: {}", origins);
+            log.info("CORS_ALLOWED_ORIGINS not set, using default allowed origins: {}", originSet);
         }
 
+        List<String> origins = new ArrayList<>(originSet);
         config.setAllowedOriginPatterns(origins);
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        config.setMaxAge(3600L);
         source.registerCorsConfiguration("/**", config);
         return source;
     }
