@@ -12,7 +12,11 @@ import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.sun.net.httpserver.HttpServer;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -60,5 +64,53 @@ class EmailServiceTest {
                 () -> service.sendOtpEmail("user@example.com", "123456", OtpPurpose.EMAIL_VERIFICATION)
         );
         assertTrue(ex.getMessage().contains("SMTP authentication failed"));
+    }
+
+    @Test
+    void rejectsWebhookHtmlLoginPageEvenOnHttp200() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/exec", exchange -> {
+            byte[] body = "<!DOCTYPE html><html><body>Sign in - accounts.google.com</body></html>"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        server.start();
+        try {
+            EmailService service = createService(null);
+            ReflectionTestUtils.setField(service, "emailWebhookUrl",
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/exec");
+            BadRequestException ex = assertThrows(
+                    BadRequestException.class,
+                    () -> service.sendOtpEmail("user@example.com", "123456", OtpPurpose.EMAIL_VERIFICATION)
+            );
+            assertTrue(ex.getMessage().contains("Google sign-in"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void acceptsWebhookPlainOkResponse() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/exec", exchange -> {
+            byte[] body = "OK".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        server.start();
+        try {
+            EmailService service = createService(null);
+            ReflectionTestUtils.setField(service, "emailWebhookUrl",
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/exec");
+            assertDoesNotThrow(() ->
+                    service.sendOtpEmail("user@example.com", "123456", OtpPurpose.EMAIL_VERIFICATION));
+        } finally {
+            server.stop(0);
+        }
     }
 }

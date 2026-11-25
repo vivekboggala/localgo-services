@@ -220,10 +220,36 @@ public class EmailService {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            String body = response.body() != null ? response.body().trim() : "";
+            String finalUri = response.uri() != null ? response.uri().toString() : "";
+
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.error("Email webhook returned {}: {}", response.statusCode(), response.body());
+                log.error("Email webhook returned {}: {}", response.statusCode(), body);
                 throw new BadRequestException("Email webhook failed with HTTP " + response.statusCode());
             }
+
+            String lowerBody = body.toLowerCase();
+            if (finalUri.contains("accounts.google.com") || lowerBody.contains("accounts.google.com")
+                    || lowerBody.contains("servicelogin")) {
+                log.error("Email webhook redirected to Google sign-in page ({}): {}", finalUri, previewBody(body));
+                throw new BadRequestException(
+                        "Email webhook requires Google sign-in. In Google Apps Script, set 'Who has access' to 'Anyone' (not 'Only myself') and redeploy using the /exec URL."
+                );
+            }
+
+            if (lowerBody.startsWith("<!doctype") || lowerBody.startsWith("<html")
+                    || lowerBody.contains("<html") || lowerBody.contains("script function not found")) {
+                log.error("Email webhook returned HTML error page instead of OK: {}", previewBody(body));
+                throw new BadRequestException(
+                        "Email webhook returned an error page instead of sending email. Ensure your Apps Script defines doPost(e), is authorized, and is deployed as a Web App (/exec)."
+                );
+            }
+
+            if (!body.equalsIgnoreCase("ok") && !lowerBody.contains("\"success\":true") && !lowerBody.contains("\"ok\":true")) {
+                log.error("Unexpected email webhook response ({}): {}", response.statusCode(), previewBody(body));
+                throw new BadRequestException("Email webhook returned unexpected response: " + previewBody(body));
+            }
+
             log.info("OTP email successfully sent via webhook to {}", toEmail);
             if (devOtpLogging) {
                 log.info("[DEV_OTP_LOGGING] Target: {}, Purpose: {}, OTP: {}", toEmail, purpose, otpCode);
@@ -253,6 +279,14 @@ public class EmailService {
             return "SMTP connection timed out (Render Free Tier blocks outbound SMTP ports 25/465/587). Set BREVO_API_KEY or EMAIL_WEBHOOK_URL on Render for HTTPS email delivery.";
         }
         return "Failed to send verification email: " + (root.getMessage() != null ? root.getMessage() : e.getMessage());
+    }
+
+    private String previewBody(String body) {
+        if (body == null || body.isEmpty()) {
+            return "<empty>";
+        }
+        String singleLine = body.replaceAll("\\s+", " ").trim();
+        return singleLine.length() > 160 ? singleLine.substring(0, 160) + "..." : singleLine;
     }
 
     private String resolveSenderEmail() {
