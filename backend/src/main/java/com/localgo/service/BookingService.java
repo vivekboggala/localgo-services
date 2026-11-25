@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -37,6 +38,7 @@ import java.util.concurrent.ExecutionException;
 public class BookingService {
 
     private final Firestore firestore;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     /**
      * Problem 3b: Booking conflict detection inside a Firestore transaction.
@@ -138,7 +140,9 @@ public class BookingService {
                     }
                 } catch (Exception ignored) {}
 
-                // 5. Create new booking doc atomically
+                // 5. Create new booking doc atomically with 4-digit start & completion OTPs
+                String startOtp = String.valueOf(1000 + secureRandom.nextInt(9000));
+                String completionOtp = String.valueOf(1000 + secureRandom.nextInt(9000));
                 DocumentReference newDocRef = firestore.collection("bookings").document();
                 BookingDoc newBooking = BookingDoc.builder()
                         .id(newDocRef.getId())
@@ -161,11 +165,13 @@ public class BookingService {
                         .amount(amountInPaise)
                         .paymentMethod(request.getPaymentMethod())
                         .paymentStatus(PaymentStatus.PENDING.name())
+                        .startOtp(startOtp)
+                        .completionOtp(completionOtp)
                         .createdAt(new Date())
                         .build();
 
                 transaction.set(newDocRef, newBooking);
-                return mapToResponse(newBooking, customerEmail);
+                return mapToResponse(newBooking, customerEmail, true);
             }).get();
         } catch (ExecutionException e) {
             if (e.getCause() instanceof BookingConflictException bce) {
@@ -192,7 +198,8 @@ public class BookingService {
                 if (!userId.equals(doc.getCustomerId()) && !userId.equals(doc.getProviderId())) {
                     throw new UnauthorizedException("You are not authorized to view this booking.");
                 }
-                return mapToResponse(doc, null);
+                boolean isCustomer = userId.equals(doc.getCustomerId());
+                return mapToResponse(doc, null, isCustomer);
             }
             throw new ResourceNotFoundException("Booking not found with id: " + id);
         } catch (ResourceNotFoundException | UnauthorizedException e) {
@@ -215,7 +222,7 @@ public class BookingService {
                 BookingDoc b = doc.toObject(BookingDoc.class);
                 if (b != null) {
                     b.setId(doc.getId());
-                    list.add(mapToResponse(b, null));
+                    list.add(mapToResponse(b, null, true));
                 }
             }
             // Sort by createdAt descending
@@ -286,18 +293,39 @@ public class BookingService {
             // Validate status transitions
             validateStatusTransition(currentStatus, targetStatus);
 
+            // Enforce Service Start OTP & Completion OTP when present on the booking
+            if (targetStatus == BookingStatus.IN_PROGRESS && doc.getStartOtp() != null && !doc.getStartOtp().isBlank()) {
+                if (request.getOtp() == null || !request.getOtp().trim().equals(doc.getStartOtp().trim())) {
+                    throw new BadRequestException("Invalid Service Start OTP. Please ask the customer for the 4-digit Start OTP.");
+                }
+            } else if (targetStatus == BookingStatus.COMPLETED && doc.getCompletionOtp() != null && !doc.getCompletionOtp().isBlank()) {
+                if (request.getOtp() == null || !request.getOtp().trim().equals(doc.getCompletionOtp().trim())) {
+                    throw new BadRequestException("Invalid Service Completion OTP. Please ask the customer for the 4-digit Completion OTP.");
+                }
+            }
+
+            Date now = new Date();
             doc.setStatus(targetStatus.name());
-            if (targetStatus == BookingStatus.CANCELLED) {
+            if (targetStatus == BookingStatus.ACCEPTED) {
+                doc.setAcceptedAt(now);
+            } else if (targetStatus == BookingStatus.ON_THE_WAY) {
+                doc.setOnTheWayAt(now);
+            } else if (targetStatus == BookingStatus.ARRIVED) {
+                doc.setArrivedAt(now);
+            } else if (targetStatus == BookingStatus.IN_PROGRESS) {
+                doc.setInProgressAt(now);
+            } else if (targetStatus == BookingStatus.CANCELLED) {
                 doc.setCancelledBy(providerId);
                 doc.setCancellationReason(request.getCancellationReason());
             } else if (targetStatus == BookingStatus.COMPLETED) {
+                doc.setCompletedAt(now);
                 doc.setPaymentStatus(PaymentStatus.PAID.name());
                 // Increment completedJobs on provider
                 incrementProviderCompletedJobs(providerId);
             }
 
             docRef.set(doc).get();
-            return mapToResponse(doc, null);
+            return mapToResponse(doc, null, false);
         } catch (ResourceNotFoundException | UnauthorizedException | BadRequestException e) {
             throw e;
         } catch (Exception e) {
@@ -339,6 +367,10 @@ public class BookingService {
     }
 
     public BookingResponse mapToResponse(BookingDoc doc, String customerEmail) {
+        return mapToResponse(doc, customerEmail, false);
+    }
+
+    public BookingResponse mapToResponse(BookingDoc doc, String customerEmail, boolean includeOtps) {
         BigDecimal amountRupees = doc.getAmount() != null
                 ? BigDecimal.valueOf(doc.getAmount()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
@@ -351,11 +383,6 @@ public class BookingService {
         LocalTime sTime = null;
         if (doc.getScheduledTime() != null) {
             try { sTime = LocalTime.parse(doc.getScheduledTime()); } catch (Exception ignored) {}
-        }
-
-        LocalDateTime createdLdt = null;
-        if (doc.getCreatedAt() != null) {
-            createdLdt = doc.getCreatedAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         }
 
         return BookingResponse.builder()
@@ -382,7 +409,19 @@ public class BookingService {
                 .amount(amountRupees)
                 .paymentMethod(doc.getPaymentMethod())
                 .paymentStatus(doc.getPaymentStatus() != null ? PaymentStatus.valueOf(doc.getPaymentStatus()) : PaymentStatus.PENDING)
-                .createdAt(createdLdt)
+                .startOtp(includeOtps ? doc.getStartOtp() : null)
+                .completionOtp(includeOtps ? doc.getCompletionOtp() : null)
+                .acceptedAt(toLocalDateTime(doc.getAcceptedAt()))
+                .onTheWayAt(toLocalDateTime(doc.getOnTheWayAt()))
+                .arrivedAt(toLocalDateTime(doc.getArrivedAt()))
+                .inProgressAt(toLocalDateTime(doc.getInProgressAt()))
+                .completedAt(toLocalDateTime(doc.getCompletedAt()))
+                .createdAt(toLocalDateTime(doc.getCreatedAt()))
                 .build();
+    }
+
+    private LocalDateTime toLocalDateTime(Date date) {
+        if (date == null) return null;
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 }

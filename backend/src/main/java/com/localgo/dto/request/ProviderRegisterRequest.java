@@ -21,6 +21,8 @@ public class ProviderRegisterRequest {
 
     private String password;
 
+    private String otpVerificationToken;
+
     @NotBlank(message = "Business/Service description is required")
     private String description;
 

@@ -17,6 +17,7 @@ import { MyBookingsPage } from '../pages/customer/MyBookingsPage';
 import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
 import { NotificationsPage } from '../pages/customer/NotificationsPage';
 import ProfilePage from '../pages/customer/ProfilePage';
+import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
@@ -45,6 +46,7 @@ export const AppRoutes = () => {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
       <Route path="*" element={

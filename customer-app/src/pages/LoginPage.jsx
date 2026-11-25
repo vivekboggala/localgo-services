@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { MapPin, Lock, Mail, Eye, EyeOff, Zap, User, Shield } from 'lucide-react';
+import api from '../api/axios';
+import { MapPin, Lock, Mail, Eye, EyeOff, Zap, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const LoginPage = () => {
@@ -10,6 +11,7 @@ export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingVerifyOtp, setSendingVerifyOtp] = useState(false);
 
   const { login, loginDemo } = useAuth();
   const navigate = useNavigate();
@@ -40,9 +42,29 @@ export const LoginPage = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+      const msg = err.response?.data?.message || err.message || 'Invalid email or password. Please try again.';
+      setError(msg);
+      toast.error(msg.replace('EMAIL_NOT_VERIFIED: ', ''));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyExistingEmail = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
+    setSendingVerifyOtp(true);
+    try {
+      await api.post('/auth/send-otp', {
+        email: cleanEmail,
+        purpose: 'EMAIL_VERIFICATION',
+      });
+      toast.success('Verification code sent to your email!');
+      navigate(`/verify-email?email=${encodeURIComponent(cleanEmail)}&mode=verify-existing`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not send verification OTP.');
+    } finally {
+      setSendingVerifyOtp(false);
     }
   };
 
@@ -90,7 +112,17 @@ export const LoginPage = () => {
 
         {error && (
           <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md font-medium space-y-2">
-            <p>{error}</p>
+            <p>{error.replace('EMAIL_NOT_VERIFIED: ', '')}</p>
+            {error.includes('EMAIL_NOT_VERIFIED') && (
+              <button
+                type="button"
+                onClick={handleVerifyExistingEmail}
+                disabled={sendingVerifyOtp}
+                className="w-full py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded font-semibold transition-colors disabled:opacity-50"
+              >
+                {sendingVerifyOtp ? 'Sending OTP...' : 'Verify Email Code Now'}
+              </button>
+            )}
           </div>
         )}
 

@@ -9,10 +9,11 @@ export const providerPortalService = {
     const res = await api.get(`/provider/requests?page=${page}&size=${size}`);
     return res.data.data;
   },
-  updateBookingStatus: async (bookingId, status, cancellationReason = null) => {
+  updateBookingStatus: async (bookingId, status, cancellationReason = null, otp = null) => {
     const res = await api.put(`/provider/bookings/${bookingId}/status`, {
       status,
       cancellationReason,
+      otp,
     });
     return res.data.data;
   },

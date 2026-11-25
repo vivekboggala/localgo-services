@@ -16,7 +16,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 5000,
+  timeout: 20000,
 });
 
 // Helper: match mock data for endpoints when backend is unreachable or returns error
@@ -138,34 +138,10 @@ export const getMockResponse = (config) => {
     return { success: true, data: true };
   }
 
-  // 7. Auth endpoints
-  if (pathname === '/auth/me' && method === 'get') {
+  // 7. Auth endpoints (only /auth/me for active mock demo sessions)
+  if (pathname === '/auth/me' && method === 'get' && localStorage.getItem('localgo_token')?.startsWith('mock-')) {
     const savedUser = localStorage.getItem('localgo_user');
     return { success: true, data: savedUser ? JSON.parse(savedUser) : MOCK_DEMO_USERS.provider };
-  }
-  if (pathname === '/auth/login' && method === 'post') {
-    let payload = {};
-    try { payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data; } catch (e) {}
-    const isProv = payload.email?.includes('electrician') || payload.email?.includes('provider') || true;
-    const user = isProv ? MOCK_DEMO_USERS.provider : MOCK_DEMO_USERS.customer;
-    return { success: true, data: { token: user.token, user } };
-  }
-  if ((pathname === '/auth/register' || pathname === '/auth/register/provider') && method === 'post') {
-    let payload = {};
-    try { payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data; } catch (e) {}
-    const isProv = pathname.includes('provider');
-    const base = isProv ? MOCK_DEMO_USERS.provider : MOCK_DEMO_USERS.customer;
-    const user = { ...base, ...payload, id: (isProv ? 'prov-' : 'cust-') + Date.now() };
-    return { success: true, data: { token: 'mock-jwt-token', user } };
-  }
-  if (pathname === '/auth/forgot-password' && method === 'post') {
-    return { success: true, message: 'Verification code sent to your email. (Demo OTP: 123456)' };
-  }
-  if (pathname === '/auth/reset-password' && method === 'post') {
-    return { success: true, message: 'Password reset successfully!' };
-  }
-  if (pathname === '/auth/resend-otp' && method === 'post') {
-    return { success: true, message: 'A new verification code has been sent. (Demo OTP: 123456)' };
   }
 
   // Default fallback
@@ -196,11 +172,16 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Seamless Fallback to Mock Data on Failure
+// Response Interceptor: Seamless Fallback to Mock Data on Failure (never for auth/OTP endpoints)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (!error.response || error.code === 'ECONNABORTED' || error.response.status >= 400) {
+    const reqUrl = error.config?.url || '';
+    const isAuthRequest = reqUrl.includes('/auth/');
+    const isMockSession = localStorage.getItem('localgo_token')?.startsWith('mock-');
+
+    if ((!isAuthRequest || (isMockSession && reqUrl.includes('/auth/me'))) &&
+        (!error.response || error.code === 'ECONNABORTED' || error.response.status >= 400)) {
       const mockResult = getMockResponse(error.config || {});
       if (mockResult) {
         return Promise.resolve({
@@ -218,7 +199,7 @@ api.interceptors.response.use(
       if (token && !token.startsWith('mock-')) {
         localStorage.removeItem('localgo_token');
         localStorage.removeItem('localgo_user');
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/verify-email') {
           window.location.href = '/login';
         }
       }

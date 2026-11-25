@@ -36,5 +36,12 @@ public class BookingDoc {
     private Long amount; // stored in paise (100 paise = 1 INR)
     private String paymentMethod;
     private String paymentStatus;
+    private String startOtp;
+    private String completionOtp;
+    private Date acceptedAt;
+    private Date onTheWayAt;
+    private Date arrivedAt;
+    private Date inProgressAt;
+    private Date completedAt;
     private Date createdAt;
 }

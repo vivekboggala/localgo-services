@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Lock, ShieldCheck, KeyRound } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from '../../api/axios';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { auth } from '../../firebase';
 
 const ChangePasswordCard = () => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -25,21 +26,32 @@ const ChangePasswordCard = () => {
       return;
     }
 
+    const fbUser = auth.currentUser;
+    if (!fbUser || !fbUser.email) {
+      const msg = 'Password cannot be changed in Quick Demo mode. Please sign in with your registered account.';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
-      await api.post('/auth/change-password', {
-        currentPassword,
-        newPassword,
-      });
+      const credential = EmailAuthProvider.credential(fbUser.email, currentPassword);
+      await reauthenticateWithCredential(fbUser, credential);
+      await updatePassword(fbUser, newPassword);
 
       toast.success('Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to change password. Please verify your current password.';
+      const code = err?.code || '';
+      const msg =
+        code === 'auth/wrong-password' || code === 'auth/invalid-credential'
+          ? 'Current password is incorrect.'
+          : err?.message || 'Failed to change password. Please verify your current password.';
       setError(msg);
       toast.error(msg);
     } finally {

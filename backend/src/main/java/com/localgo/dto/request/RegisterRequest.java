@@ -21,5 +21,7 @@ public class RegisterRequest {
 
     private String password;
 
+    private String otpVerificationToken;
+
     private Role role = Role.CUSTOMER;
 }

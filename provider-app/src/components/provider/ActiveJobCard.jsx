@@ -1,7 +1,12 @@
-import React from 'react';
-import { Phone, Navigation, Wrench, CheckCircle2, Calendar, MapPin, ExternalLink, Clock, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, Navigation, Wrench, CheckCircle2, Calendar, MapPin, ExternalLink, Clock, User, ShieldCheck } from 'lucide-react';
 
 export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
+  const [otpTargetStatus, setOtpTargetStatus] = useState(null); // 'IN_PROGRESS' | 'COMPLETED' | null
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   const getGoogleMapsUrl = () => {
     if (job.latitude && job.longitude) {
       let url = `https://www.google.com/maps/dir/?api=1&destination=${job.latitude},${job.longitude}`;
@@ -13,15 +18,48 @@ export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address || '')}`;
   };
 
-  const handleStartTravel = () => {
+  const handleStartTravel = async () => {
     const mapsUrl = getGoogleMapsUrl();
     window.open(mapsUrl, '_blank', 'noopener,noreferrer');
-    onUpdateStatus(job.id, 'ON_THE_WAY');
+    setSubmitting(true);
+    try {
+      await onUpdateStatus(job.id, 'ON_THE_WAY');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleOpenMapsOnly = () => {
     const mapsUrl = getGoogleMapsUrl();
     window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSimpleStatus = async (nextStatus) => {
+    setSubmitting(true);
+    try {
+      await onUpdateStatus(job.id, nextStatus);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(otpCode.trim())) {
+      setOtpError('Please enter the 4-digit OTP shared by the customer.');
+      return;
+    }
+    setOtpError('');
+    setSubmitting(true);
+    try {
+      await onUpdateStatus(job.id, otpTargetStatus, otpCode.trim());
+      setOtpTargetStatus(null);
+      setOtpCode('');
+    } catch (err) {
+      setOtpError(err.response?.data?.message || 'Invalid OTP. Please ask the customer again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getStatusBadge = () => {
@@ -96,19 +134,70 @@ export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
         </div>
       </div>
 
+      {/* Inline OTP Verification Box for Start / Completion */}
+      {otpTargetStatus && (
+        <form onSubmit={handleOtpSubmit} className="bg-slate-50 border border-slate-300 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span>
+              {otpTargetStatus === 'IN_PROGRESS'
+                ? 'Enter Customer 4-Digit Service Start OTP'
+                : 'Enter Customer 4-Digit Service Completion OTP'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              value={otpCode}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setOtpCode(val);
+                if (otpError) setOtpError('');
+              }}
+              placeholder="4-digit OTP"
+              autoFocus
+              className="w-36 px-3 py-2 text-center font-mono text-base font-bold tracking-[0.3em] rounded-lg border border-slate-300 bg-white text-slate-900 outline-none focus:ring-2 focus:ring-slate-900"
+            />
+            <button
+              type="submit"
+              disabled={submitting || otpCode.length !== 4}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs transition-colors disabled:opacity-50"
+            >
+              {submitting ? 'Verifying...' : 'Verify & Confirm'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOtpTargetStatus(null);
+                setOtpCode('');
+                setOtpError('');
+              }}
+              className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-600 font-medium rounded-lg text-xs border border-slate-200"
+            >
+              Cancel
+            </button>
+          </div>
+          {otpError && <p className="text-xs font-medium text-red-600">{otpError}</p>}
+        </form>
+      )}
+
       {/* Action Bar */}
       <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
         {job.status === 'ACCEPTED' && (
           <>
             <button
               onClick={() => onCancelJob(job.id)}
+              disabled={submitting}
               className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-xs border border-slate-200 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleStartTravel}
-              className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs disabled:opacity-50"
             >
               <Navigation className="w-3.5 h-3.5 text-blue-400" /> Start Travel & Navigate
             </button>
@@ -125,20 +214,22 @@ export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
             </button>
             <button
               onClick={() => onCancelJob(job.id)}
+              disabled={submitting}
               className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-xs border border-slate-200 transition-colors"
             >
               Cancel
             </button>
             <button
-              onClick={() => onUpdateStatus(job.id, 'ARRIVED')}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
+              onClick={() => handleSimpleStatus('ARRIVED')}
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs disabled:opacity-50"
             >
               <MapPin className="w-3.5 h-3.5" /> I've Arrived
             </button>
           </>
         )}
 
-        {job.status === 'ARRIVED' && (
+        {job.status === 'ARRIVED' && !otpTargetStatus && (
           <>
             <button
               onClick={handleOpenMapsOnly}
@@ -147,20 +238,28 @@ export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
               <ExternalLink className="w-3.5 h-3.5 text-slate-500" /> Open Maps
             </button>
             <button
-              onClick={() => onUpdateStatus(job.id, 'IN_PROGRESS')}
+              onClick={() => {
+                setOtpTargetStatus('IN_PROGRESS');
+                setOtpCode('');
+                setOtpError('');
+              }}
               className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
             >
-              <Wrench className="w-3.5 h-3.5 text-amber-400" /> Start Service
+              <Wrench className="w-3.5 h-3.5 text-amber-400" /> Start Service (OTP)
             </button>
           </>
         )}
 
-        {job.status === 'IN_PROGRESS' && (
+        {job.status === 'IN_PROGRESS' && !otpTargetStatus && (
           <button
-            onClick={() => onUpdateStatus(job.id, 'COMPLETED')}
+            onClick={() => {
+              setOtpTargetStatus('COMPLETED');
+              setOtpCode('');
+              setOtpError('');
+            }}
             className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
           >
-            <CheckCircle2 className="w-3.5 h-3.5" /> Complete Service
+            <CheckCircle2 className="w-3.5 h-3.5" /> Complete Service (OTP)
           </button>
         )}
       </div>

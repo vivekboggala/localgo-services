@@ -1,6 +1,6 @@
-import React, { useState, useContext } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Mail, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
+import React, { useState, useContext, useMemo } from 'react';
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { Mail, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
@@ -8,9 +8,30 @@ import OtpInput from '../../components/common/OtpInput';
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
-  const email = searchParams.get('email') || '';
+  const location = useLocation();
   const navigate = useNavigate();
-  const { handleAuthSuccess } = useContext(AuthContext);
+  const { registerCustomer, registerProvider } = useContext(AuthContext);
+
+  const isExistingVerification = searchParams.get('mode') === 'verify-existing';
+  const queryEmail = searchParams.get('email') || '';
+
+  const pendingRegistration = useMemo(() => {
+    if (location.state?.pendingRegistration) {
+      return location.state.pendingRegistration;
+    }
+    try {
+      const saved = sessionStorage.getItem('localgo_pending_registration');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (!queryEmail || parsed?.payload?.email === queryEmail.trim().toLowerCase()) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }, [location.state, queryEmail]);
+
+  const email = pendingRegistration?.payload?.email || queryEmail || '';
 
   const [otp, setOtp] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -23,32 +44,51 @@ const VerifyEmailPage = () => {
       return;
     }
 
+    if (!email || (!isExistingVerification && !pendingRegistration)) {
+      setError('Registration details are missing. Please restart signup.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     try {
-      const res = await api.post('/auth/verify-email', {
-        email,
+      const verifyRes = await api.post('/auth/verify-email', {
+        email: email.trim(),
         otp: targetOtp,
         purpose: 'EMAIL_VERIFICATION',
       });
 
-      if (res.data.success) {
-        toast.success('Email verified successfully!');
-        if (handleAuthSuccess) {
-          handleAuthSuccess(res.data.data.token, res.data.data.user);
-        } else {
-          localStorage.setItem('localgo_token', res.data.data.token);
-          localStorage.setItem('localgo_user', JSON.stringify(res.data.data.user));
-        }
-
-        const role = res.data.data.user?.role;
-        if (role === 'ADMIN') navigate('/admin');
-        else if (role === 'PROVIDER') navigate('/provider');
-        else navigate('/');
+      const verificationToken = verifyRes.data?.data?.verificationToken;
+      if (!verifyRes.data?.success || !verificationToken) {
+        throw new Error(verifyRes.data?.message || 'OTP verification failed.');
       }
+
+      if (isExistingVerification || verifyRes.data?.data?.existingAccount) {
+        toast.success('Email verified successfully! Please sign in.');
+        navigate('/login');
+        return;
+      }
+
+      const registrationPayload = {
+        ...pendingRegistration.payload,
+        otpVerificationToken: verificationToken,
+      };
+
+      if (pendingRegistration.role === 'PROVIDER') {
+        await registerProvider(registrationPayload);
+      } else {
+        await registerCustomer(registrationPayload);
+      }
+
+      sessionStorage.removeItem('localgo_pending_registration');
+      toast.success('Email verified and account created! Welcome to LocalGo.');
+      navigate('/dashboard');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Verification failed. Please check the code and try again.';
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Verification failed. Please check the code and try again.';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -57,9 +97,13 @@ const VerifyEmailPage = () => {
   };
 
   const handleResend = async () => {
+    if (!email) {
+      toast.error('Email address is missing. Please restart signup.');
+      return;
+    }
     try {
       await api.post('/auth/resend-otp', {
-        email,
+        email: email.trim(),
         purpose: 'EMAIL_VERIFICATION',
       });
       toast.success('A new verification code has been sent to your email.');
@@ -68,6 +112,29 @@ const VerifyEmailPage = () => {
       toast.error(msg);
     }
   };
+
+  if (!email || (!isExistingVerification && !pendingRegistration)) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
+        <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-5 text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center mx-auto">
+            <Mail className="w-6 h-6" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Complete Signup First</h1>
+          <p className="text-sm text-slate-600">
+            Please fill out the registration form so we can send a 6-digit verification code to your email before creating your account.
+          </p>
+          <Link
+            to="/signup"
+            className="inline-flex w-full py-3 px-4 rounded-lg font-medium bg-slate-900 text-white hover:bg-slate-800 items-center justify-center gap-2 transition-all"
+          >
+            Go to Sign Up
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
@@ -81,7 +148,7 @@ const VerifyEmailPage = () => {
             We sent a 6-digit verification code to
           </p>
           <p className="text-sm font-semibold text-slate-900 bg-slate-100 py-1.5 px-3 rounded-md inline-block">
-            {email || 'your registered email'}
+            {email}
           </p>
         </div>
 
@@ -108,17 +175,19 @@ const VerifyEmailPage = () => {
               : 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm'
           }`}
         >
-          {submitting ? 'Verifying...' : 'Verify Email'}
+          {submitting
+            ? (isExistingVerification ? 'Verifying Email...' : 'Verifying & Creating Account...')
+            : (isExistingVerification ? 'Verify Email' : 'Verify Email & Create Account')}
           <ArrowRight className="w-4 h-4" />
         </button>
 
         <div className="text-center">
           <button
             type="button"
-            onClick={() => navigate('/login')}
+            onClick={() => navigate(isExistingVerification ? '/login' : '/signup')}
             className="text-xs text-slate-500 hover:text-slate-800 underline transition-colors"
           >
-            Back to Login
+            {isExistingVerification ? 'Back to Sign In' : 'Back to Sign Up'}
           </button>
         </div>
       </div>

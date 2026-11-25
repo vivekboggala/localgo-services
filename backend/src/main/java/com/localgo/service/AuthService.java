@@ -3,12 +3,17 @@ package com.localgo.service;
 import ch.hsr.geohash.GeoHash;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
-import com.localgo.dto.request.LoginRequest;
+import com.localgo.dto.request.ForgotPasswordRequest;
 import com.localgo.dto.request.ProviderRegisterRequest;
 import com.localgo.dto.request.RegisterRequest;
+import com.localgo.dto.request.ResendOtpRequest;
+import com.localgo.dto.request.ResetPasswordRequest;
+import com.localgo.dto.request.VerifyOtpRequest;
 import com.localgo.dto.response.AuthResponse;
 import com.localgo.dto.response.UserResponse;
+import com.localgo.enums.OtpPurpose;
 import com.localgo.enums.Role;
 import com.localgo.exception.BadRequestException;
 import com.localgo.exception.ResourceNotFoundException;
@@ -22,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -30,17 +36,72 @@ public class AuthService {
 
     private final Firestore firestore;
     private final FirebaseAuth firebaseAuth;
+    private final OtpService otpService;
+
+    public void sendOtp(ResendOtpRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        OtpPurpose purpose = request.getPurpose();
+
+        if (purpose == OtpPurpose.EMAIL_VERIFICATION) {
+            if (isEmailVerifiedAndRegistered(cleanEmail)) {
+                throw new BadRequestException("An account with this email already exists. Please sign in.");
+            }
+            otpService.generateAndSendOtp(cleanEmail, OtpPurpose.EMAIL_VERIFICATION);
+        } else {
+            if (isEmailRegistered(cleanEmail)) {
+                otpService.generateAndSendOtp(cleanEmail, OtpPurpose.PASSWORD_RESET);
+            } else {
+                log.info("Password reset OTP requested for unregistered email {}", cleanEmail);
+            }
+        }
+    }
+
+    public Map<String, Object> verifyEmailOtp(VerifyOtpRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        String verificationToken = otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.EMAIL_VERIFICATION);
+        boolean existingVerified = markExistingUserEmailVerifiedIfPresent(cleanEmail);
+        if (existingVerified) {
+            otpService.markRegistrationTokenUsed(cleanEmail);
+        }
+        return Map.of(
+                "verified", true,
+                "email", cleanEmail,
+                "existingAccount", existingVerified,
+                "verificationToken", verificationToken
+        );
+    }
+
+    public AuthResponse registerCustomerWithOtp(RegisterRequest request, String authenticatedUid) {
+        otpService.validateVerifiedRegistrationToken(request.getEmail(), request.getOtpVerificationToken());
+        AuthResponse response = registerCustomer(request, authenticatedUid);
+        otpService.markRegistrationTokenUsed(request.getEmail());
+        return response;
+    }
+
+    public AuthResponse registerProviderWithOtp(ProviderRegisterRequest request, String authenticatedUid) {
+        otpService.validateVerifiedRegistrationToken(request.getEmail(), request.getOtpVerificationToken());
+        AuthResponse response = registerProvider(request, authenticatedUid);
+        otpService.markRegistrationTokenUsed(request.getEmail());
+        return response;
+    }
 
     public AuthResponse registerCustomer(RegisterRequest request, String authenticatedUid) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
         String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
+
         if (uid == null || uid.isBlank()) {
+            if (request.getPassword() == null || request.getPassword().trim().length() < 6) {
+                throw new BadRequestException("Password must be at least 6 characters.");
+            }
             try {
-                // If UID not provided, create user in Firebase Auth
                 UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                        .setEmail(request.getEmail())
+                        .setEmail(cleanEmail)
                         .setPassword(request.getPassword())
-                        .setDisplayName(request.getName())
-                        .setPhoneNumber(request.getPhone().startsWith("+") ? request.getPhone() : null);
+                        .setDisplayName(request.getName().trim())
+                        .setEmailVerified(true);
+                if (request.getPhone() != null && request.getPhone().trim().startsWith("+")) {
+                    createRequest.setPhoneNumber(request.getPhone().trim());
+                }
                 UserRecord record = firebaseAuth.createUser(createRequest);
                 uid = record.getUid();
             } catch (Exception e) {
@@ -51,10 +112,11 @@ public class AuthService {
 
         UserDoc userDoc = UserDoc.builder()
                 .id(uid)
-                .name(request.getName())
-                .email(request.getEmail().toLowerCase())
-                .phone(request.getPhone())
+                .name(request.getName().trim())
+                .email(cleanEmail)
+                .phone(request.getPhone() != null ? request.getPhone().trim() : "")
                 .role(Role.CUSTOMER.name())
+                .emailVerified(true)
                 .createdAt(new Date())
                 .build();
 
@@ -73,14 +135,22 @@ public class AuthService {
     }
 
     public AuthResponse registerProvider(ProviderRegisterRequest request, String authenticatedUid) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
         String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
+
         if (uid == null || uid.isBlank()) {
+            if (request.getPassword() == null || request.getPassword().trim().length() < 6) {
+                throw new BadRequestException("Password must be at least 6 characters.");
+            }
             try {
                 UserRecord.CreateRequest createRequest = new UserRecord.CreateRequest()
-                        .setEmail(request.getEmail())
+                        .setEmail(cleanEmail)
                         .setPassword(request.getPassword())
-                        .setDisplayName(request.getName())
-                        .setPhoneNumber(request.getPhone().startsWith("+") ? request.getPhone() : null);
+                        .setDisplayName(request.getName().trim())
+                        .setEmailVerified(true);
+                if (request.getPhone() != null && request.getPhone().trim().startsWith("+")) {
+                    createRequest.setPhoneNumber(request.getPhone().trim());
+                }
                 UserRecord record = firebaseAuth.createUser(createRequest);
                 uid = record.getUid();
             } catch (Exception e) {
@@ -89,17 +159,16 @@ public class AuthService {
             }
         }
 
-        // Save User document
         UserDoc userDoc = UserDoc.builder()
                 .id(uid)
-                .name(request.getName())
-                .email(request.getEmail().toLowerCase())
-                .phone(request.getPhone())
+                .name(request.getName().trim())
+                .email(cleanEmail)
+                .phone(request.getPhone() != null ? request.getPhone().trim() : "")
                 .role(Role.PROVIDER.name())
+                .emailVerified(true)
                 .createdAt(new Date())
                 .build();
 
-        // Determine service name
         String serviceName = "General Service";
         try {
             var serviceDocSnap = firestore.collection("services").document(request.getPrimaryServiceId()).get().get();
@@ -113,10 +182,7 @@ public class AuthService {
             log.warn("Could not look up service name for {}: {}", request.getPrimaryServiceId(), e.getMessage());
         }
 
-        // Compute 12-char base32 geohash
         String geohash = GeoHash.withCharacterPrecision(request.getLatitude(), request.getLongitude(), 12).toBase32();
-
-        // Price in paise (smallest currency unit)
         long priceInPaise = Math.round(request.getStartingPrice() * 100.0);
 
         ProviderServiceItem serviceItem = ProviderServiceItem.builder()
@@ -127,9 +193,9 @@ public class AuthService {
 
         ProviderDoc providerDoc = ProviderDoc.builder()
                 .id(uid)
-                .name(request.getName())
-                .email(request.getEmail().toLowerCase())
-                .phone(request.getPhone())
+                .name(request.getName().trim())
+                .email(cleanEmail)
+                .phone(request.getPhone() != null ? request.getPhone().trim() : "")
                 .description(request.getDescription())
                 .experienceYears(request.getExperienceYears())
                 .latitude(request.getLatitude())
@@ -159,6 +225,31 @@ public class AuthService {
                 .build();
     }
 
+    public String forgotPassword(ForgotPasswordRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (isEmailRegistered(cleanEmail)) {
+            otpService.generateAndSendOtp(cleanEmail, OtpPurpose.PASSWORD_RESET);
+        } else {
+            log.info("Forgot password requested for non-existent email {}", cleanEmail);
+        }
+        return "If an account exists for this email, a verification code has been sent.";
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.PASSWORD_RESET);
+
+        try {
+            UserRecord record = firebaseAuth.getUserByEmail(cleanEmail);
+            firebaseAuth.updateUser(
+                    new UserRecord.UpdateRequest(record.getUid()).setPassword(request.getNewPassword())
+            );
+        } catch (FirebaseAuthException e) {
+            log.error("Failed to reset password in Firebase Auth for {}: {}", cleanEmail, e.getMessage());
+            throw new BadRequestException("Account not found for password reset.");
+        }
+    }
+
     public UserResponse getCurrentUser(String uid) {
         try {
             var userSnap = firestore.collection("users").document(uid).get().get();
@@ -174,7 +265,6 @@ public class AuthService {
                 }
             }
 
-            // Fallback: look up in Firebase Auth
             UserRecord record = firebaseAuth.getUser(uid);
             UserDoc newUser = UserDoc.builder()
                     .id(uid)
@@ -182,6 +272,7 @@ public class AuthService {
                     .email(record.getEmail())
                     .phone(record.getPhoneNumber() != null ? record.getPhoneNumber() : "")
                     .role(Role.CUSTOMER.name())
+                    .emailVerified(record.isEmailVerified())
                     .createdAt(new Date())
                     .build();
             firestore.collection("users").document(uid).set(newUser).get();
@@ -196,6 +287,88 @@ public class AuthService {
         return getCurrentUser(uid);
     }
 
+    private boolean isEmailVerifiedAndRegistered(String cleanEmail) {
+        boolean firebaseExists = false;
+        boolean firebaseVerified = false;
+        try {
+            UserRecord record = firebaseAuth.getUserByEmail(cleanEmail);
+            firebaseExists = true;
+            firebaseVerified = record.isEmailVerified();
+        } catch (FirebaseAuthException ignored) {
+        }
+
+        try {
+            var docs = firestore.collection("users")
+                    .whereEqualTo("email", cleanEmail)
+                    .limit(1)
+                    .get()
+                    .get()
+                    .getDocuments();
+            if (!docs.isEmpty()) {
+                Boolean verifiedField = docs.get(0).getBoolean("emailVerified");
+                if (Boolean.FALSE.equals(verifiedField)) {
+                    return false;
+                }
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("Error checking Firestore for email {}: {}", cleanEmail, e.getMessage());
+        }
+        return firebaseExists && firebaseVerified;
+    }
+
+    private boolean markExistingUserEmailVerifiedIfPresent(String cleanEmail) {
+        boolean updated = false;
+        try {
+            UserRecord record = firebaseAuth.getUserByEmail(cleanEmail);
+            if (!record.isEmailVerified()) {
+                firebaseAuth.updateUser(new UserRecord.UpdateRequest(record.getUid()).setEmailVerified(true));
+            }
+            firestore.collection("users").document(record.getUid()).update("emailVerified", true).get();
+            updated = true;
+        } catch (FirebaseAuthException ignored) {
+        } catch (Exception e) {
+            log.warn("Error updating emailVerified on existing user {}: {}", cleanEmail, e.getMessage());
+        }
+        if (!updated) {
+            try {
+                var docs = firestore.collection("users")
+                        .whereEqualTo("email", cleanEmail)
+                        .limit(1)
+                        .get()
+                        .get()
+                        .getDocuments();
+                if (!docs.isEmpty()) {
+                    docs.get(0).getReference().update("emailVerified", true).get();
+                    updated = true;
+                }
+            } catch (Exception e) {
+                log.warn("Error updating Firestore emailVerified for {}: {}", cleanEmail, e.getMessage());
+            }
+        }
+        return updated;
+    }
+
+    private boolean isEmailRegistered(String cleanEmail) {
+        try {
+            firebaseAuth.getUserByEmail(cleanEmail);
+            return true;
+        } catch (FirebaseAuthException ignored) {
+        }
+        try {
+            var docs = firestore.collection("users")
+                    .whereEqualTo("email", cleanEmail)
+                    .limit(1)
+                    .get()
+                    .get()
+                    .getDocuments();
+            return !docs.isEmpty();
+        } catch (Exception e) {
+            log.warn("Error checking Firestore for email {}: {}", cleanEmail, e.getMessage());
+            return false;
+        }
+    }
+
     private UserResponse mapToUserResponse(UserDoc doc) {
         Role r = Role.CUSTOMER;
         if (doc.getRole() != null && doc.getRole().equalsIgnoreCase(Role.PROVIDER.name())) {
@@ -207,7 +380,7 @@ public class AuthService {
                 .email(doc.getEmail())
                 .phone(doc.getPhone())
                 .role(r)
-                .emailVerified(true)
+                .emailVerified(!Boolean.FALSE.equals(doc.getEmailVerified()))
                 .build();
     }
 }

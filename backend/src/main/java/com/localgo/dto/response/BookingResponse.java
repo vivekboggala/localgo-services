@@ -59,6 +59,15 @@ public class BookingResponse {
     private String paymentMethod;
     private PaymentStatus paymentStatus;
 
+    private String startOtp;
+    private String completionOtp;
+
+    private LocalDateTime acceptedAt;
+    private LocalDateTime onTheWayAt;
+    private LocalDateTime arrivedAt;
+    private LocalDateTime inProgressAt;
+    private LocalDateTime completedAt;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

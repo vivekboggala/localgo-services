@@ -10,4 +10,6 @@ public class StatusUpdateRequest {
     private BookingStatus status;
 
     private String cancellationReason;
+
+    private String otp;
 }

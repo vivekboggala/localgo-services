@@ -40,10 +40,15 @@ export const StatusTimeline = ({ status, cancelledBy, cancellationReason, timest
     }
   };
 
-  const formatTime = (isoString) => {
-    if (!isoString) return null;
+  const formatTime = (val) => {
+    if (!val) return null;
     try {
-      const date = new Date(isoString);
+      const date = typeof val?.toDate === 'function'
+        ? val.toDate()
+        : val?.seconds != null
+        ? new Date(val.seconds * 1000)
+        : new Date(val);
+      if (isNaN(date.getTime())) return null;
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch (e) {
       return null;

@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -10,6 +9,22 @@ import api from '../api/axios';
 import { MOCK_DEMO_USERS } from '../utils/mockData';
 
 export const AuthContext = createContext(null);
+
+const mapFirebaseLoginError = (err) => {
+  const code = err?.code || '';
+  if (
+    code === 'auth/invalid-credential' ||
+    code === 'auth/wrong-password' ||
+    code === 'auth/user-not-found' ||
+    code === 'auth/invalid-email'
+  ) {
+    return 'Invalid email or password. Please try again.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Too many failed login attempts. Please reset your password or try again later.';
+  }
+  return err?.response?.data?.message || err?.message || 'Sign in failed. Please try again.';
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -36,7 +51,7 @@ export const AuthProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(false);
 
-  const fetchProfile = async (fbUser) => {
+  const fetchProfile = async () => {
     try {
       const res = await api.get('/auth/me');
       if (res.data?.success) {
@@ -60,7 +75,14 @@ export const AuthProvider = ({ children }) => {
         try {
           const idToken = await fbUser.getIdToken();
           localStorage.setItem('localgo_token', idToken);
-          await fetchProfile(fbUser);
+          const profile = await fetchProfile();
+          if (profile && profile.emailVerified === false) {
+            await signOut(auth);
+            setUser(null);
+            setFirebaseUser(null);
+            localStorage.removeItem('localgo_token');
+            localStorage.removeItem('localgo_user');
+          }
         } catch (e) {
           console.warn('Error fetching token:', e);
         }
@@ -78,76 +100,68 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const idToken = await cred.user.getIdToken();
       localStorage.setItem('localgo_token', idToken);
       setFirebaseUser(cred.user);
-      const profile = await fetchProfile(cred.user);
-      return profile || { uid: cred.user.uid, email: cred.user.email, role: 'PROVIDER' };
+
+      const profile = await fetchProfile();
+      if (profile && profile.emailVerified === false) {
+        await signOut(auth);
+        setUser(null);
+        setFirebaseUser(null);
+        localStorage.removeItem('localgo_token');
+        localStorage.removeItem('localgo_user');
+        throw new Error('EMAIL_NOT_VERIFIED: Your email is not verified. Please verify using the 6-digit OTP code.');
+      }
+
+      if (!profile && !cred.user.emailVerified) {
+        await signOut(auth);
+        setUser(null);
+        setFirebaseUser(null);
+        localStorage.removeItem('localgo_token');
+        localStorage.removeItem('localgo_user');
+        throw new Error('EMAIL_NOT_VERIFIED: Your email is not verified. Please verify using the 6-digit OTP code.');
+      }
+
+      return profile || { uid: cred.user.uid, email: cred.user.email, role: 'PROVIDER', emailVerified: true };
     } catch (fbErr) {
-      console.warn('Firebase login failed, activating smooth provider demo fallback:', fbErr.message);
-      const loggedUser = {
-        ...MOCK_DEMO_USERS.provider,
-        email: email || MOCK_DEMO_USERS.provider.email,
-      };
-
-      const mockToken = 'mock-jwt-provider-token';
-      localStorage.setItem('localgo_token', mockToken);
-      localStorage.setItem('localgo_user', JSON.stringify(loggedUser));
-
-      setUser(loggedUser);
-      setFirebaseUser({
-        uid: loggedUser.id,
-        email: loggedUser.email,
-        getIdToken: async () => mockToken,
-      });
-
-      return loggedUser;
+      throw new Error(mapFirebaseLoginError(fbErr));
     }
   };
 
-  const registerProvider = async (formData) => {
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const idToken = await cred.user.getIdToken();
-      localStorage.setItem('localgo_token', idToken);
-      setFirebaseUser(cred.user);
-
-      const res = await api.post('/auth/register/provider', {
-        ...formData,
-        uid: cred.user.uid,
-      });
-
-      if (res.data?.success) {
-        setUser(res.data.data.user);
-        localStorage.setItem('localgo_user', JSON.stringify(res.data.data.user));
-        return res.data.data.user;
-      }
-      return cred.user;
-    } catch (fbErr) {
-      console.warn('Firebase registration failed, activating smooth provider registration fallback:', fbErr.message);
-      const newProv = {
-        ...MOCK_DEMO_USERS.provider,
-        ...formData,
-        id: 'prov-' + Date.now(),
-        uid: 'prov-' + Date.now(),
-        name: formData.name || 'Rajesh Kumar (Electrician)',
-        role: 'PROVIDER',
-      };
-
-      const mockToken = 'mock-jwt-provider-token';
-      localStorage.setItem('localgo_token', mockToken);
-      localStorage.setItem('localgo_user', JSON.stringify(newProv));
-
-      setUser(newProv);
-      setFirebaseUser({
-        uid: newProv.id,
-        email: newProv.email,
-        getIdToken: async () => mockToken,
-      });
-
-      return newProv;
+  const registerCustomer = async (formData) => {
+    const res = await api.post('/auth/register', formData);
+    if (!res.data?.success || !res.data?.data?.user) {
+      throw new Error(res.data?.message || 'Registration failed.');
     }
+
+    const cred = await signInWithEmailAndPassword(auth, formData.email.trim(), formData.password);
+    const idToken = await cred.user.getIdToken();
+    localStorage.setItem('localgo_token', idToken);
+    setFirebaseUser(cred.user);
+
+    const createdUser = res.data.data.user;
+    setUser(createdUser);
+    localStorage.setItem('localgo_user', JSON.stringify(createdUser));
+    return createdUser;
+  };
+
+  const registerProvider = async (formData) => {
+    const res = await api.post('/auth/register/provider', formData);
+    if (!res.data?.success || !res.data?.data?.user) {
+      throw new Error(res.data?.message || 'Provider registration failed.');
+    }
+
+    const cred = await signInWithEmailAndPassword(auth, formData.email.trim(), formData.password);
+    const idToken = await cred.user.getIdToken();
+    localStorage.setItem('localgo_token', idToken);
+    setFirebaseUser(cred.user);
+
+    const createdUser = res.data.data.user;
+    setUser(createdUser);
+    localStorage.setItem('localgo_user', JSON.stringify(createdUser));
+    return createdUser;
   };
 
   const loginDemo = (role = 'PROVIDER') => {
@@ -194,7 +208,7 @@ export const AuthProvider = ({ children }) => {
         isProvider: user?.role === 'PROVIDER',
         isAdmin: user?.role === 'ADMIN',
         login,
-        registerCustomer: registerProvider,
+        registerCustomer,
         registerProvider,
         loginDemo,
         logout,

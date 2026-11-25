@@ -4,7 +4,7 @@ import { bookingService } from '../../services/bookingService';
 import { reviewService } from '../../services/reviewService';
 import { RatingStars } from '../../components/common/RatingStars';
 import { StatusTimeline } from '../../components/customer/StatusTimeline';
-import { CheckCircle2, Phone, Star, X, Calendar, Clock, MapPin, FileText } from 'lucide-react';
+import { CheckCircle2, Phone, Star, X, Calendar, Clock, MapPin, FileText, ShieldCheck } from 'lucide-react';
 
 export const BookingDetailPage = () => {
   const { id } = useParams();
@@ -127,6 +127,45 @@ export const BookingDetailPage = () => {
           completedAt: booking.completedAt,
         }}
       />
+
+      {/* Service Verification OTP Display */}
+      {['ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(booking.status) && booking.startOtp && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-blue-950">Service Start OTP</h4>
+              <p className="text-xs text-blue-800 mt-0.5">
+                Share this 4-digit OTP with your provider only when they arrive at your doorstep to start work.
+              </p>
+            </div>
+          </div>
+          <div className="bg-white border border-blue-300 rounded-lg px-4 py-2 font-mono text-2xl font-extrabold tracking-[0.35em] text-slate-900 shadow-2xs shrink-0">
+            {booking.startOtp}
+          </div>
+        </div>
+      )}
+
+      {booking.status === 'IN_PROGRESS' && booking.completionOtp && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-emerald-950">Service Completion OTP</h4>
+              <p className="text-xs text-emerald-800 mt-0.5">
+                Share this 4-digit OTP with your provider only after the service is completed to your satisfaction.
+              </p>
+            </div>
+          </div>
+          <div className="bg-white border border-emerald-300 rounded-lg px-4 py-2 font-mono text-2xl font-extrabold tracking-[0.35em] text-slate-900 shadow-2xs shrink-0">
+            {booking.completionOtp}
+          </div>
+        </div>
+      )}
 
       {/* Completed Booking Review Prompt */}
       {booking.status === 'COMPLETED' && (

@@ -13,6 +13,7 @@ import { ProviderEarnings } from '../pages/provider/ProviderEarnings';
 import { ProviderProfile } from '../pages/provider/ProviderProfile';
 
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
+import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
 export const AppRoutes = () => {
@@ -31,6 +32,7 @@ export const AppRoutes = () => {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
       <Route path="*" element={

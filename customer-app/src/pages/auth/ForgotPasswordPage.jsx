@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { KeyRound, Mail, ArrowRight, CheckCircle2, Lock, ShieldCheck } from 'lucide-react';
+import { KeyRound, Mail, ArrowRight, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../api/axios';
 import OtpInput from '../../components/common/OtpInput';
@@ -14,11 +14,11 @@ const ForgotPasswordPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
-    if (!email) {
+    if (!email.trim()) {
       setError('Please enter your email address.');
       return;
     }
@@ -27,14 +27,15 @@ const ForgotPasswordPage = () => {
     setError(null);
 
     try {
-      const res = await api.post('/auth/forgot-password', { email: email.trim() });
-      setMessage(res.data?.message || 'Verification code sent to your email.');
-      toast.success('Verification code sent! Use 123456 if testing offline.');
+      const res = await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
+      const msg = res.data?.message || 'If an account exists for this email, a verification code has been sent.';
+      setInfoMessage(msg);
+      toast.success(msg);
       setStep(2);
     } catch (err) {
-      setMessage('A 6-digit code has been prepared for your reset.');
-      toast.success('Verification code sent! (Use demo code: 123456)');
-      setStep(2);
+      const msg = err.response?.data?.message || err.message || 'Failed to send password reset code.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -60,7 +61,7 @@ const ForgotPasswordPage = () => {
 
     try {
       await api.post('/auth/reset-password', {
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         otp,
         newPassword,
       });
@@ -68,8 +69,9 @@ const ForgotPasswordPage = () => {
       toast.success('Password reset successfully! You can now log in.');
       navigate('/login');
     } catch (err) {
-      toast.success('Password reset successfully! You can now log in.');
-      navigate('/login');
+      const msg = err.response?.data?.message || err.message || 'Password reset failed. Please check your OTP and try again.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -78,12 +80,13 @@ const ForgotPasswordPage = () => {
   const handleResendOtp = async () => {
     try {
       await api.post('/auth/resend-otp', {
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         purpose: 'PASSWORD_RESET',
       });
-      toast.success('A new verification code has been sent (123456).');
+      toast.success('A new verification code has been sent to your email.');
     } catch (err) {
-      toast.success('A new verification code has been sent (123456).');
+      const msg = err.response?.data?.message || err.message || 'Failed to resend code. Please wait before trying again.';
+      toast.error(msg);
     }
   };
 
@@ -100,25 +103,19 @@ const ForgotPasswordPage = () => {
           <p className="text-sm text-slate-600">
             {step === 1
               ? "Enter your email address and we'll send you a 6-digit code to reset your password."
-              : `Enter the code sent to ${email} and choose a new password.`}
+              : `Enter the 6-digit code sent to ${email} and choose a new password.`}
           </p>
         </div>
+
+        {infoMessage && step === 2 && (
+          <div className="p-3 text-xs rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800">
+            {infoMessage}
+          </div>
+        )}
 
         {error && (
           <div className="p-3 text-xs rounded-lg bg-red-50 border border-red-200 text-red-700">
             {error}
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-xs flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>Demo OTP:</span>
-            </div>
-            <span className="font-mono font-bold tracking-widest text-sm bg-white px-2 py-0.5 rounded border border-blue-200 text-blue-900">
-              123456
-            </span>
           </div>
         )}
 
@@ -144,7 +141,7 @@ const ForgotPasswordPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition-all shadow-sm"
+              className="w-full py-3 px-4 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50"
             >
               {loading ? 'Sending Code...' : 'Send Verification Code'}
               <ArrowRight className="w-4 h-4" />
@@ -158,7 +155,10 @@ const ForgotPasswordPage = () => {
               </label>
               <OtpInput
                 onComplete={(code) => setOtp(code)}
-                onChange={(code) => setOtp(code)}
+                onChange={(code) => {
+                  setOtp(code);
+                  if (error) setError(null);
+                }}
                 onResend={handleResendOtp}
                 disabled={loading}
               />

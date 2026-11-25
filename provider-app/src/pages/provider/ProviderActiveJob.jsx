@@ -82,13 +82,14 @@ export const ProviderActiveJob = () => {
     return () => unsubscribe();
   }, [uid]);
 
-  const handleUpdateStatus = async (id, status) => {
+  const handleUpdateStatus = async (id, status, otp = null) => {
     try {
-      await providerPortalService.updateBookingStatus(id, status);
+      await providerPortalService.updateBookingStatus(id, status, null, otp);
       toast.success(`Booking status updated to ${status.replace('_', ' ')}!`);
       fetchJobs();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Status update failed.');
+      throw err;
     }
   };
 

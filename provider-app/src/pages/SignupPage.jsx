@@ -29,7 +29,6 @@ export const SignupPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { registerCustomer, registerProvider } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,6 +46,11 @@ export const SignupPage = () => {
     e.preventDefault();
     setError('');
 
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -54,33 +58,51 @@ export const SignupPage = () => {
 
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+    const pendingRegistration =
+      role === 'CUSTOMER'
+        ? {
+            role: 'CUSTOMER',
+            payload: { name: name.trim(), email: cleanEmail, phone: phone.trim(), password },
+          }
+        : {
+            role: 'PROVIDER',
+            payload: {
+              name: name.trim(),
+              email: cleanEmail,
+              phone: phone.trim(),
+              password,
+              description,
+              experienceYears: Number(experienceYears),
+              address,
+              city,
+              postalCode,
+              latitude: Number(latitude),
+              longitude: Number(longitude),
+              serviceArea,
+              serviceRadiusKm: Number(serviceRadiusKm),
+              primaryServiceId: String(primaryServiceId || 'electrician'),
+              startingPrice: Number(startingPrice),
+            },
+          };
+
     try {
-      if (role === 'CUSTOMER') {
-        await registerCustomer({ name, email, phone, password });
-      } else {
-        await registerProvider({
-          name,
-          email,
-          phone,
-          password,
-          description,
-          experienceYears: Number(experienceYears),
-          address,
-          city,
-          postalCode,
-          latitude: Number(latitude),
-          longitude: Number(longitude),
-          serviceArea,
-          serviceRadiusKm: Number(serviceRadiusKm),
-          primaryServiceId: String(primaryServiceId || 'electrician'),
-          startingPrice: Number(startingPrice),
-        });
-      }
-      toast.success('Registration successful! Welcome to LocalGo Partner Portal.');
-      navigate('/dashboard');
+      await api.post('/auth/send-otp', {
+        email: cleanEmail,
+        purpose: 'EMAIL_VERIFICATION',
+      });
+      sessionStorage.setItem('localgo_pending_registration', JSON.stringify(pendingRegistration));
+      toast.success('Verification code sent to your email!');
+      navigate(`/verify-email?email=${encodeURIComponent(cleanEmail)}`, {
+        state: { pendingRegistration },
+      });
     } catch (err) {
-      toast.success('Account created! Welcome to LocalGo Partner Portal.');
-      navigate('/dashboard');
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Could not send verification OTP. Please try again.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -209,7 +231,7 @@ export const SignupPage = () => {
                       {cat.name} ({cat.category})
                     </option>
                   ))}
-                  {categories.length === 0 && <option value="1">AC Repair & Service</option>}
+                  {categories.length === 0 && <option value="ac-repair">AC Repair & Service</option>}
                 </select>
               </div>
 

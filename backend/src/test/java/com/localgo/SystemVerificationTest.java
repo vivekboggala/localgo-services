@@ -277,4 +277,83 @@ public class SystemVerificationTest {
         assertFalse(favoriteService.isFavorite(customerId, providerId));
         System.out.println("Favorite successfully removed and verified.");
     }
+
+    @Test
+    @Order(5)
+    public void verifyBookingStartAndCompletionOtp() throws Exception {
+        System.out.println("\n=======================================================");
+        System.out.println("VERIFICATION 5: BOOKING START & COMPLETION OTP WORKFLOW");
+        System.out.println("=======================================================");
+
+        LocalDate otpTestDate = LocalDate.now().plusDays(25);
+        var existing = firestore.collection("bookings")
+                .whereEqualTo("providerId", TEST_PROVIDER_UID)
+                .whereEqualTo("scheduledDate", otpTestDate.toString())
+                .get().get();
+        for (var doc : existing.getDocuments()) {
+            firestore.collection("bookings").document(doc.getId()).delete().get();
+        }
+
+        BookingRequest req = new BookingRequest();
+        req.setProviderId(TEST_PROVIDER_UID);
+        req.setServiceId("ac-repair");
+        req.setDescription("OTP-verified AC servicing");
+        req.setLatitude(17.3860);
+        req.setLongitude(78.4870);
+        req.setAddress("Flat 101, Jubilee Hills");
+        req.setScheduledDate(otpTestDate);
+        req.setScheduledTime(LocalTime.of(16, 0));
+        req.setEstimatedDurationMins(60);
+        req.setPaymentMethod("CASH");
+        req.setAmount(499.0);
+
+        BookingResponse customerBooking = bookingService.createBooking(req, TEST_CUSTOMER_UID);
+        assertNotNull(customerBooking.getStartOtp());
+        assertEquals(4, customerBooking.getStartOtp().length());
+        assertNotNull(customerBooking.getCompletionOtp());
+        assertEquals(4, customerBooking.getCompletionOtp().length());
+
+        // Provider view must NOT expose customer OTPs
+        BookingResponse providerView = bookingService.getBookingById(customerBooking.getId(), TEST_PROVIDER_UID);
+        assertNull(providerView.getStartOtp(), "Provider must not see startOtp from API");
+        assertNull(providerView.getCompletionOtp(), "Provider must not see completionOtp from API");
+
+        // Transition ACCEPTED -> ON_THE_WAY -> ARRIVED
+        StatusUpdateRequest step = new StatusUpdateRequest();
+        step.setStatus(BookingStatus.ACCEPTED);
+        bookingService.updateBookingStatus(customerBooking.getId(), step, TEST_PROVIDER_UID);
+        step.setStatus(BookingStatus.ON_THE_WAY);
+        bookingService.updateBookingStatus(customerBooking.getId(), step, TEST_PROVIDER_UID);
+        step.setStatus(BookingStatus.ARRIVED);
+        bookingService.updateBookingStatus(customerBooking.getId(), step, TEST_PROVIDER_UID);
+
+        // Wrong Start OTP must be rejected
+        StatusUpdateRequest startWrong = new StatusUpdateRequest();
+        startWrong.setStatus(BookingStatus.IN_PROGRESS);
+        startWrong.setOtp("0000".equals(customerBooking.getStartOtp()) ? "1111" : "0000");
+        assertThrows(com.localgo.exception.BadRequestException.class,
+                () -> bookingService.updateBookingStatus(customerBooking.getId(), startWrong, TEST_PROVIDER_UID));
+
+        // Valid Start OTP succeeds
+        StatusUpdateRequest startValid = new StatusUpdateRequest();
+        startValid.setStatus(BookingStatus.IN_PROGRESS);
+        startValid.setOtp(customerBooking.getStartOtp());
+        BookingResponse inProgressResp = bookingService.updateBookingStatus(customerBooking.getId(), startValid, TEST_PROVIDER_UID);
+        assertEquals(BookingStatus.IN_PROGRESS, inProgressResp.getStatus());
+
+        // Wrong Completion OTP must be rejected
+        StatusUpdateRequest completeWrong = new StatusUpdateRequest();
+        completeWrong.setStatus(BookingStatus.COMPLETED);
+        completeWrong.setOtp("0000".equals(customerBooking.getCompletionOtp()) ? "1111" : "0000");
+        assertThrows(com.localgo.exception.BadRequestException.class,
+                () -> bookingService.updateBookingStatus(customerBooking.getId(), completeWrong, TEST_PROVIDER_UID));
+
+        // Valid Completion OTP succeeds
+        StatusUpdateRequest completeValid = new StatusUpdateRequest();
+        completeValid.setStatus(BookingStatus.COMPLETED);
+        completeValid.setOtp(customerBooking.getCompletionOtp());
+        BookingResponse completedResp = bookingService.updateBookingStatus(customerBooking.getId(), completeValid, TEST_PROVIDER_UID);
+        assertEquals(BookingStatus.COMPLETED, completedResp.getStatus());
+        System.out.println(">>> Booking Start & Completion OTP workflow verified end-to-end! <<<");
+    }
 }
