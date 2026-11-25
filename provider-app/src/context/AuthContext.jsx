@@ -134,7 +134,11 @@ export const AuthProvider = ({ children }) => {
         throw new Error('EMAIL_NOT_VERIFIED: Your email is not verified. Please verify using the 6-digit OTP code.');
       }
 
-      return profile || { uid: cred.user.uid, email: cred.user.email, role: 'PROVIDER', emailVerified: true };
+      const resolvedUser = profile || { uid: cred.user.uid, email: cred.user.email, role: 'PROVIDER', emailVerified: true };
+      if (resolvedUser.role === 'PROVIDER') {
+        api.put('/provider/presence', { online: true, forceOnline: true }).catch(() => {});
+      }
+      return resolvedUser;
     } catch (fbErr) {
       throw new Error(mapFirebaseLoginError(fbErr));
     }
@@ -175,6 +179,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    if (!user || user.role === 'PROVIDER') {
+      try {
+        await api.put('/provider/presence', { online: false }, { timeout: 4000 });
+      } catch (e) {}
+    }
     try {
       await signOut(auth);
     } catch (e) {}

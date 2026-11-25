@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { serviceService } from '../services/serviceService';
 import { providerService } from '../services/providerService';
+import { useLiveSync } from '../hooks/useLiveSync';
 import { ServiceCard } from '../components/customer/ServiceCard';
 import { Search, MapPin, ShieldCheck, Clock, ArrowRight, CheckCircle2, Activity, Zap, Star } from 'lucide-react';
 
@@ -12,16 +13,22 @@ export const LandingPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
+  const fetchFeaturedProviders = useCallback(() => {
+    providerService.getNearbyProviders(12.9716, 77.5946, 25)
+      .then((data) => setProviders(Array.isArray(data) ? data.slice(0, 3) : []))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     serviceService.getAllServices()
       .then((data) => setServices(data))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
 
-    providerService.getNearbyProviders(12.9716, 77.5946, 25)
-      .then((data) => setProviders(Array.isArray(data) ? data.slice(0, 3) : []))
-      .catch(() => setProviders([]));
-  }, []);
+    fetchFeaturedProviders();
+  }, [fetchFeaturedProviders]);
+
+  useLiveSync(fetchFeaturedProviders, { watchProviders: true });
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -130,7 +137,15 @@ export const LandingPage = () => {
                           {p.name ? p.name.charAt(0).toUpperCase() : 'P'}
                         </div>
                         <div>
-                          <div className="text-xs font-semibold text-white">{p.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-white">{p.name}</span>
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              p.available ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-700 text-slate-400'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-emerald-400' : 'bg-slate-400'}`}></span>
+                              {p.available ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
                           <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                             <MapPin className="w-3 h-3 text-slate-400" />
                             {p.distanceKm != null ? `${p.distanceKm} km away` : (p.serviceArea || 'Local Area')}

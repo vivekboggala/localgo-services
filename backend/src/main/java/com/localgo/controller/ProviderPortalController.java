@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/provider")
@@ -80,9 +81,24 @@ public class ProviderPortalController {
     }
 
     @PutMapping("/availability")
-    public ResponseEntity<ApiResponse<Boolean>> toggleAvailability(Authentication authentication) {
-        boolean available = providerDashboardService.toggleAvailability(authentication.getName());
+    public ResponseEntity<ApiResponse<Boolean>> toggleAvailability(
+            @RequestBody(required = false) Map<String, Boolean> body,
+            Authentication authentication) {
+        Boolean targetAvailable = body != null ? body.get("available") : null;
+        boolean available = targetAvailable != null
+                ? providerDashboardService.setAvailability(authentication.getName(), targetAvailable)
+                : providerDashboardService.toggleAvailability(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success("Availability updated", available));
+    }
+
+    @PutMapping("/presence")
+    public ResponseEntity<ApiResponse<Boolean>> updatePresence(
+            @RequestBody(required = false) Map<String, Object> body,
+            Authentication authentication) {
+        boolean online = body == null || !Boolean.FALSE.equals(body.get("online"));
+        boolean forceOnline = body != null && Boolean.TRUE.equals(body.get("forceOnline"));
+        boolean available = providerDashboardService.updatePresence(authentication.getName(), online, forceOnline);
+        return ResponseEntity.ok(ApiResponse.success("Presence updated", available));
     }
 
     @GetMapping("/analytics/earnings-trend")

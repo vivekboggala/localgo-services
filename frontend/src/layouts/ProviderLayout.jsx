@@ -1,10 +1,25 @@
 import React from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useProviderPresence } from '../hooks/useProviderPresence';
 import { MapPin, LayoutDashboard, Inbox, Wrench, DollarSign, User, LogOut } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const ProviderLayout = () => {
-  const { logout } = useAuth();
+  const { user, firebaseUser, logout } = useAuth();
+  const uid = firebaseUser?.uid || user?.id;
+  const { available, updating, toggleAvailability } = useProviderPresence(Boolean(uid));
+
+  const handleHeaderToggle = async () => {
+    try {
+      const next = await toggleAvailability();
+      if (typeof next === 'boolean') {
+        toast.success(next ? 'You are now Online and visible to customers' : 'You are now Offline');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update online status.');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 pb-16 md:pb-0">
@@ -30,9 +45,27 @@ export const ProviderLayout = () => {
             <NavLink to="/provider/profile" className={({ isActive }) => isActive ? 'text-white font-bold' : 'hover:text-white'}>Profile</NavLink>
           </div>
 
-          <button onClick={logout} className="text-xs text-red-400 hover:text-red-300 font-semibold px-3 py-1.5 rounded-md border border-red-900/60 flex items-center gap-1.5">
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
-          </button>
+          <div className="flex items-center gap-2.5">
+            {available !== null && (
+              <button
+                type="button"
+                onClick={handleHeaderToggle}
+                disabled={updating}
+                title="Toggle online availability"
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 ${
+                  available
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${available ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`}></span>
+                <span>{available ? 'Online' : 'Offline'}</span>
+              </button>
+            )}
+            <button onClick={logout} className="text-xs text-red-400 hover:text-red-300 font-semibold px-3 py-1.5 rounded-md border border-red-900/60 flex items-center gap-1.5 cursor-pointer">
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
+          </div>
         </div>
       </nav>
 

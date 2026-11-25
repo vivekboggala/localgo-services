@@ -17,6 +17,8 @@ public class ProviderDashboardResponse {
     private String providerName;
     private String verificationStatus;
     private Boolean available;
+    private Boolean manualOffline;
+    private Long lastSeenAt;
     private Double rating;
     private Integer completedJobs;
     private Double serviceRadiusKm;

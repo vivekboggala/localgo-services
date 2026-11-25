@@ -28,5 +28,7 @@ public class ProviderDoc {
     private Double rating;
     private Integer completedJobs;
     private Boolean available;
+    private Boolean manualOffline;
+    private Long lastSeenAt;
     private List<ProviderServiceItem> services;
 }

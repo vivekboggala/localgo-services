@@ -4,6 +4,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { providerPortalService } from '../../services/providerPortalService';
+import { PROVIDER_AVAILABILITY_EVENT, dispatchAvailabilityChange } from '../../hooks/useProviderPresence';
 import { RequestCard } from '../../components/provider/RequestCard';
 import { ShieldCheck, Clock, Inbox, Wrench, CheckCircle2, DollarSign, ArrowRight, Calendar, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,10 +19,25 @@ export const ProviderDashboard = () => {
 
   const refreshStats = () => {
     providerPortalService.getDashboardStats()
-      .then((data) => setStats(data))
+      .then((data) => {
+        setStats(data);
+        if (typeof data?.available === 'boolean') {
+          dispatchAvailabilityChange(data.available);
+        }
+      })
       .catch((err) => console.error('Failed to load dashboard stats:', err))
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    const handleAvailabilitySync = (e) => {
+      if (typeof e.detail?.available === 'boolean') {
+        setStats((prev) => (prev ? { ...prev, available: e.detail.available } : prev));
+      }
+    };
+    window.addEventListener(PROVIDER_AVAILABILITY_EVENT, handleAvailabilitySync);
+    return () => window.removeEventListener(PROVIDER_AVAILABILITY_EVENT, handleAvailabilitySync);
+  }, []);
 
   useEffect(() => {
     if (!uid) {
@@ -52,9 +68,14 @@ export const ProviderDashboard = () => {
 
   const handleToggleAvailability = async () => {
     try {
-      const available = await providerPortalService.toggleAvailability();
+      const target = typeof stats?.available === 'boolean' ? !stats.available : null;
+      const available = await providerPortalService.toggleAvailability(target);
       setStats((prev) => ({ ...prev, available }));
-    } catch (err) {}
+      dispatchAvailabilityChange(available);
+      toast.success(available ? 'You are now Online and accepting jobs' : 'You are now Offline');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update availability.');
+    }
   };
 
   const handleAcceptRequest = async (id) => {

@@ -70,7 +70,13 @@ export const ProviderMap = ({ customerLocation, providers = [], selectedProvider
             <Popup>
               <div className="p-2 min-w-[180px]">
                 <div className="font-semibold text-sm text-slate-900 mb-0.5">{p.name}</div>
-                <div className="text-xs text-slate-500 mb-2">Rating: {p.rating?.toFixed(1)} • {p.distanceKm} km away</div>
+                <div className="text-xs text-slate-500 mb-1.5">Rating: {p.rating?.toFixed(1)} • {p.distanceKm} km away</div>
+                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold mb-2 ${
+                  p.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                  {p.available ? 'Available' : 'Offline'}
+                </div>
                 <button
                   onClick={() => onSelectProvider && onSelectProvider(p)}
                   className="w-full py-1.5 bg-slate-900 text-white font-medium text-xs rounded-lg hover:bg-slate-800 transition-colors"

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../../hooks/useLocation';
+import { useLiveSync } from '../../hooks/useLiveSync';
 import { providerService } from '../../services/providerService';
 import { ProviderMap } from '../../components/map/ProviderMap';
 import { ProviderCard } from '../../components/customer/ProviderCard';
@@ -12,13 +13,21 @@ export const MapPage = () => {
   const [selectedProvider, setSelectedProvider] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (location?.lat && location?.lng) {
-      providerService.getNearbyProviders(location.lat, location.lng, radius)
-        .then((data) => setProviders(data))
-        .catch(() => setProviders([]));
-    }
+  const fetchNearbyProviders = useCallback(({ silent = false } = {}) => {
+    if (!location?.lat || !location?.lng) return;
+    providerService.getNearbyProviders(location.lat, location.lng, radius)
+      .then((data) => setProviders(data))
+      .catch(() => { if (!silent) setProviders([]); });
   }, [location, radius]);
+
+  useEffect(() => {
+    fetchNearbyProviders();
+  }, [fetchNearbyProviders]);
+
+  useLiveSync(() => fetchNearbyProviders({ silent: true }), {
+    enabled: Boolean(location?.lat && location?.lng),
+    watchProviders: true,
+  });
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col md:flex-row overflow-hidden bg-gray-50">

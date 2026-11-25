@@ -92,7 +92,9 @@ public class ProviderDashboardService {
                     .providerId(providerId)
                     .providerName(provider.getName())
                     .verificationStatus(provider.getVerificationStatus() != null ? provider.getVerificationStatus() : "PENDING")
-                    .available(provider.getAvailable() != null ? provider.getAvailable() : true)
+                    .available(providerService.isEffectivelyAvailable(provider))
+                    .manualOffline(Boolean.TRUE.equals(provider.getManualOffline()))
+                    .lastSeenAt(provider.getLastSeenAt())
                     .rating(provider.getRating() != null ? provider.getRating() : 0.0)
                     .completedJobs(provider.getCompletedJobs() != null ? provider.getCompletedJobs() : 0)
                     .serviceRadiusKm(provider.getServiceRadiusKm())
@@ -253,20 +255,78 @@ public class ProviderDashboardService {
 
     public boolean toggleAvailability(String providerId) {
         try {
-            var docRef = firestore.collection("providers").document(providerId);
-            var snap = docRef.get().get();
+            var snap = firestore.collection("providers").document(providerId).get().get();
             if (!snap.exists()) {
                 throw new ResourceNotFoundException("Provider not found: " + providerId);
             }
-            Boolean current = snap.getBoolean("available");
-            boolean next = current == null || !current;
-            docRef.update("available", next).get();
-            return next;
+            ProviderDoc provider = snap.toObject(ProviderDoc.class);
+            boolean current = providerService.isEffectivelyAvailable(provider);
+            return setAvailability(providerId, !current);
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to toggle availability for {}: {}", providerId, e.getMessage());
             throw new RuntimeException("Error toggling availability: " + e.getMessage());
+        }
+    }
+
+    public boolean setAvailability(String providerId, boolean next) {
+        try {
+            var docRef = firestore.collection("providers").document(providerId);
+            var snap = docRef.get().get();
+            if (!snap.exists()) {
+                throw new ResourceNotFoundException("Provider not found: " + providerId);
+            }
+            long now = System.currentTimeMillis();
+            docRef.update(Map.of(
+                    "available", next,
+                    "manualOffline", !next,
+                    "lastSeenAt", now
+            )).get();
+            return next;
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to update availability for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error updating availability: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Records active Provider Studio presence or explicit offline sign-out without overriding a manual offline pause.
+     */
+    public boolean updatePresence(String providerId, boolean online, boolean forceOnline) {
+        try {
+            var docRef = firestore.collection("providers").document(providerId);
+            var snap = docRef.get().get();
+            if (!snap.exists()) {
+                throw new ResourceNotFoundException("Provider not found: " + providerId);
+            }
+            long now = System.currentTimeMillis();
+            if (!online) {
+                docRef.update(Map.of(
+                        "available", false,
+                        "manualOffline", false,
+                        "lastSeenAt", now
+                )).get();
+                return false;
+            }
+            Boolean manualOffline = snap.getBoolean("manualOffline");
+            if (forceOnline || !Boolean.TRUE.equals(manualOffline)) {
+                docRef.update(Map.of(
+                        "available", true,
+                        "manualOffline", false,
+                        "lastSeenAt", now
+                )).get();
+                return true;
+            }
+            docRef.update("lastSeenAt", now).get();
+            return false;
+        } catch (ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to update presence for {}: {}", providerId, e.getMessage());
+            throw new RuntimeException("Error updating presence: " + e.getMessage());
         }
     }
 

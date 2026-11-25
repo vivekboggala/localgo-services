@@ -6,7 +6,9 @@ export const providerService = {
     if (serviceId) url += `&serviceId=${serviceId}`;
     if (minRating) url += `&minRating=${minRating}`;
     if (maxPrice) url += `&maxPrice=${maxPrice}`;
-    if (available) url += `&available=${available}`;
+    if (available !== null && available !== undefined && available !== 'all') {
+      url += `&available=${available}`;
+    }
     if (sortBy) url += `&sortBy=${sortBy}`;
     const res = await api.get(url);
     return res.data.data;

@@ -24,13 +24,27 @@ public class ProviderController {
             @RequestParam(value = "serviceId", required = false) String serviceId,
             @RequestParam(value = "minRating", required = false) Double minRating,
             @RequestParam(value = "maxPrice", required = false) Double maxPrice,
-            @RequestParam(value = "available", required = false) Boolean available,
+            @RequestParam(value = "available", required = false) String available,
             @RequestParam(value = "sortBy", required = false) String sortBy) {
 
+        Boolean availableFilter = parseAvailableFilter(available);
         List<ProviderResponse> providers = providerService.findNearbyProviders(
-                latitude, longitude, radius, serviceId, minRating, maxPrice, available, sortBy
+                latitude, longitude, radius, serviceId, minRating, maxPrice, availableFilter, sortBy
         );
         return ResponseEntity.ok(ApiResponse.success("Nearby providers fetched", providers));
+    }
+
+    private Boolean parseAvailableFilter(String raw) {
+        if (raw == null || raw.isBlank() || "all".equalsIgnoreCase(raw.trim())) {
+            return null;
+        }
+        if ("true".equalsIgnoreCase(raw.trim())) {
+            return Boolean.TRUE;
+        }
+        if ("false".equalsIgnoreCase(raw.trim())) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     @GetMapping("/{id}")

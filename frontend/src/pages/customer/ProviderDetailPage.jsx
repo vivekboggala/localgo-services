@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { providerService } from '../../services/providerService';
 import { reviewService } from '../../services/reviewService';
 import { RatingStars } from '../../components/common/RatingStars';
 import { useAuth } from '../../hooks/useAuth';
+import { useLiveSync } from '../../hooks/useLiveSync';
 import { ShieldCheck, MapPin, Calendar, Star, Wrench, Clock, ArrowRight } from 'lucide-react';
 
 export const ProviderDetailPage = () => {
@@ -15,11 +16,16 @@ export const ProviderDetailPage = () => {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const fetchProvider = useCallback(({ silent = false } = {}) => {
+    if (!id) return;
     providerService.getProviderById(id)
       .then((data) => setProvider(data))
       .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+      .finally(() => { if (!silent) setLoading(false); });
+  }, [id]);
+
+  useEffect(() => {
+    fetchProvider();
 
     setReviewsLoading(true);
     reviewService.getProviderReviews(id)
@@ -29,7 +35,12 @@ export const ProviderDetailPage = () => {
       })
       .catch((err) => console.error('Error fetching reviews:', err))
       .finally(() => setReviewsLoading(false));
-  }, [id]);
+  }, [id, fetchProvider]);
+
+  useLiveSync(() => fetchProvider({ silent: true }), {
+    enabled: Boolean(id),
+    providerId: id,
+  });
 
   if (loading) {
     return (
@@ -57,8 +68,16 @@ export const ProviderDetailPage = () => {
               {provider.name?.charAt(0)}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{provider.name}</h1>
+                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded border ${
+                  provider.available
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${provider.available ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                  {provider.available ? 'Online • Available' : 'Currently Offline'}
+                </span>
                 {provider.verificationStatus === 'VERIFIED' && (
                   <span className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-medium px-2 py-0.5 rounded border border-emerald-200">
                     <ShieldCheck className="w-3.5 h-3.5" /> Verified

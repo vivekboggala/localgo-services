@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
+import { useLiveSync } from '../../hooks/useLiveSync';
 import { providerService } from '../../services/providerService';
 import { serviceService } from '../../services/serviceService';
 import { LocationSelector } from '../../components/customer/LocationSelector';
@@ -25,15 +26,23 @@ export const CustomerDashboard = () => {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (location?.lat && location?.lng) {
-      setLoadingProviders(true);
-      providerService.getNearbyProviders(location.lat, location.lng, 15)
-        .then((data) => setNearbyProviders(data))
-        .catch(() => setNearbyProviders([]))
-        .finally(() => setLoadingProviders(false));
-    }
+  const fetchNearbyProviders = useCallback(({ silent = false } = {}) => {
+    if (!location?.lat || !location?.lng) return;
+    if (!silent) setLoadingProviders(true);
+    providerService.getNearbyProviders(location.lat, location.lng, 15)
+      .then((data) => setNearbyProviders(data))
+      .catch(() => { if (!silent) setNearbyProviders([]); })
+      .finally(() => { if (!silent) setLoadingProviders(false); });
   }, [location]);
+
+  useEffect(() => {
+    fetchNearbyProviders();
+  }, [fetchNearbyProviders]);
+
+  useLiveSync(() => fetchNearbyProviders({ silent: true }), {
+    enabled: Boolean(location?.lat && location?.lng),
+    watchProviders: true,
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

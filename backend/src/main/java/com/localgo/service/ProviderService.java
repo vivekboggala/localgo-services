@@ -92,7 +92,11 @@ public class ProviderService {
             }
 
             // Filter: availability
-            if (Boolean.TRUE.equals(availableOnly) && !Boolean.TRUE.equals(candidate.getAvailable())) {
+            boolean effectivelyAvailable = isEffectivelyAvailable(candidate);
+            if (Boolean.TRUE.equals(availableOnly) && !effectivelyAvailable) {
+                continue;
+            }
+            if (Boolean.FALSE.equals(availableOnly) && effectivelyAvailable) {
                 continue;
             }
 
@@ -198,7 +202,11 @@ public class ProviderService {
             if (request.getDescription() != null) doc.setDescription(request.getDescription());
             if (request.getExperienceYears() != null) doc.setExperienceYears(request.getExperienceYears());
             if (request.getServiceRadiusKm() != null) doc.setServiceRadiusKm(request.getServiceRadiusKm());
-            if (request.getAvailable() != null) doc.setAvailable(request.getAvailable());
+            if (request.getAvailable() != null) {
+                doc.setAvailable(request.getAvailable());
+                doc.setManualOffline(!request.getAvailable());
+                doc.setLastSeenAt(System.currentTimeMillis());
+            }
 
             if (request.getLatitude() != null && request.getLongitude() != null) {
                 doc.setLatitude(request.getLatitude());
@@ -214,6 +222,21 @@ public class ProviderService {
             log.error("Error updating provider profile {}: {}", providerId, e.getMessage());
             throw new RuntimeException("Failed to update provider profile: " + e.getMessage());
         }
+    }
+
+    public static final long PRESENCE_TIMEOUT_MS = 180_000L;
+
+    /**
+     * Resolves live availability combining explicit offline override, stored flag, and active heartbeat recency.
+     */
+    public boolean isEffectivelyAvailable(ProviderDoc doc) {
+        if (doc == null || Boolean.TRUE.equals(doc.getManualOffline()) || Boolean.FALSE.equals(doc.getAvailable())) {
+            return false;
+        }
+        if (doc.getLastSeenAt() != null && (System.currentTimeMillis() - doc.getLastSeenAt()) > PRESENCE_TIMEOUT_MS) {
+            return false;
+        }
+        return doc.getAvailable() != null ? doc.getAvailable() : true;
     }
 
     private ProviderResponse mapToResponse(ProviderDoc doc, Double distanceKm) {
@@ -254,7 +277,9 @@ public class ProviderService {
                 .longitude(doc.getLongitude())
                 .serviceRadiusKm(doc.getServiceRadiusKm())
                 .verificationStatus(doc.getVerificationStatus() != null ? doc.getVerificationStatus() : "PENDING")
-                .available(doc.getAvailable() != null ? doc.getAvailable() : true)
+                .available(isEffectivelyAvailable(doc))
+                .manualOffline(Boolean.TRUE.equals(doc.getManualOffline()))
+                .lastSeenAt(doc.getLastSeenAt())
                 .rating(doc.getRating() != null ? BigDecimal.valueOf(doc.getRating()).setScale(1, RoundingMode.HALF_UP).doubleValue() : 0.0)
                 .completedJobs(doc.getCompletedJobs() != null ? doc.getCompletedJobs() : 0)
                 .distanceKm(distanceKm != null ? roundedDistance : null)

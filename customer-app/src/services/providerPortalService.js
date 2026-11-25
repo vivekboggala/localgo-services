@@ -35,8 +35,12 @@ export const providerPortalService = {
     const res = await api.get(`/provider/analytics/earnings-trend?days=${days}`);
     return res.data.data;
   },
-  toggleAvailability: async () => {
-    const res = await api.put('/provider/availability');
+  toggleAvailability: async (available = null) => {
+    const res = await api.put('/provider/availability', available === null ? {} : { available });
+    return res.data.data;
+  },
+  updatePresence: async (online = true, forceOnline = false) => {
+    const res = await api.put('/provider/presence', { online, forceOnline });
     return res.data.data;
   },
   getProfile: async () => {

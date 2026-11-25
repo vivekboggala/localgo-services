@@ -132,12 +132,6 @@ export const getMockResponse = (config) => {
   if (pathname === '/provider/profile' && method === 'get') {
     return { success: true, data: MOCK_PROVIDERS[0] };
   }
-  if (pathname.includes('/provider/bookings/') && pathname.endsWith('/status')) {
-    return { success: true, message: 'Booking status updated successfully' };
-  }
-  if (pathname === '/provider/availability') {
-    return { success: true, data: true };
-  }
 
   // 7. Favorites
   if (pathname.startsWith('/favorites')) {
@@ -172,16 +166,16 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Seamless Fallback to Mock Data on Failure (never for auth/OTP endpoints)
+// Response Interceptor: Fallback to Mock Data only on unreachable read (GET) endpoints (never for auth/OTP or mutations)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const reqUrl = error.config?.url || '';
+    const method = (error.config?.method || 'get').toLowerCase();
     const isAuthRequest = reqUrl.includes('/auth/');
+    const isServerOrNetworkError = !error.response || error.code === 'ECONNABORTED' || error.response.status >= 500;
 
-    // Never swallow real errors on auth/OTP/registration endpoints
-    if (!isAuthRequest &&
-        (!error.response || error.code === 'ECONNABORTED' || error.response.status >= 400)) {
+    if (!isAuthRequest && method === 'get' && isServerOrNetworkError) {
       const mockResult = getMockResponse(error.config || {});
       if (mockResult) {
         return Promise.resolve({

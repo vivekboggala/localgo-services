@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLocation } from '../../hooks/useLocation';
+import { useLiveSync } from '../../hooks/useLiveSync';
 import { providerService } from '../../services/providerService';
 import { LocationSelector } from '../../components/customer/LocationSelector';
 import { ProviderCard } from '../../components/customer/ProviderCard';
@@ -23,24 +24,32 @@ export const NearbyProvidersPage = () => {
   const [maxPrice, setMaxPrice] = useState(2000);
   const [availableOnly, setAvailableOnly] = useState(true);
 
-  useEffect(() => {
-    if (location?.lat && location?.lng) {
-      setLoading(true);
-      providerService.getNearbyProviders(
-        location.lat,
-        location.lng,
-        radius,
-        serviceId,
-        minRating > 0 ? minRating : null,
-        maxPrice < 2000 ? maxPrice : null,
-        availableOnly ? 'true' : 'all',
-        sortBy
-      )
-        .then((data) => setProviders(data))
-        .catch(() => setProviders([]))
-        .finally(() => setLoading(false));
-    }
+  const fetchProviders = useCallback(({ silent = false } = {}) => {
+    if (!location?.lat || !location?.lng) return;
+    if (!silent) setLoading(true);
+    providerService.getNearbyProviders(
+      location.lat,
+      location.lng,
+      radius,
+      serviceId,
+      minRating > 0 ? minRating : null,
+      maxPrice < 2000 ? maxPrice : null,
+      availableOnly ? true : null,
+      sortBy
+    )
+      .then((data) => setProviders(data))
+      .catch(() => { if (!silent) setProviders([]); })
+      .finally(() => { if (!silent) setLoading(false); });
   }, [location, radius, serviceId, minRating, maxPrice, availableOnly, sortBy]);
+
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
+
+  useLiveSync(() => fetchProviders({ silent: true }), {
+    enabled: Boolean(location?.lat && location?.lng),
+    watchProviders: true,
+  });
 
   const processedProviders = providers;
 
