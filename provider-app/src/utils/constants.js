@@ -12,6 +12,7 @@ export const PREDEFINED_LOCATIONS = [
   { name: 'Hyderabad Hitec City', lat: 17.4435, lng: 78.3772 },
   { name: 'Chennai T. Nagar', lat: 13.0418, lng: 80.2341 },
   { name: 'Madanapalle Town', lat: 13.5500, lng: 78.5000 },
+  { name: 'Palamaner Town', lat: 13.2000, lng: 78.7500 },
   { name: 'Mumbai Bandra', lat: 19.0596, lng: 72.8295 },
   { name: 'Delhi Connaught Place', lat: 28.6315, lng: 77.2167 },
 ];

@@ -90,9 +90,9 @@ class DataSeederTest {
         DataSeeder seeder = new DataSeeder(firestore, firebaseAuth);
         seeder.seedDemoProviders();
 
-        assertEquals(14, providerStore.size());
-        assertEquals(14, userStore.size());
-        assertEquals(14, counter.get());
+        assertEquals(22, providerStore.size());
+        assertEquals(22, userStore.size());
+        assertEquals(22, counter.get());
 
         ProviderDoc blrElec = providerStore.get("demo-prov-blr-elec-1");
         assertNotNull(blrElec);
@@ -102,6 +102,11 @@ class DataSeederTest {
         assertEquals(12, blrElec.getGeohash().length());
         assertEquals(24900L, blrElec.getServices().get(0).getStartingPrice());
 
+        assertNotNull(providerStore.get("demo-prov-mpl-5"));
+        assertNotNull(providerStore.get("demo-prov-plmnr-1"));
+        assertNotNull(providerStore.get("demo-prov-plmnr-4"));
+        assertNotNull(userStore.get("demo-prov-plmnr-4"));
+
         UserDoc blrUser = userStore.get("demo-prov-blr-elec-1");
         assertNotNull(blrUser);
         assertEquals("PROVIDER", blrUser.getRole());
@@ -110,6 +115,6 @@ class DataSeederTest {
 
         // Second run is a no-op
         seeder.seedDemoProviders();
-        verify(firebaseAuth, times(14)).createUser(any(UserRecord.CreateRequest.class));
+        verify(firebaseAuth, times(22)).createUser(any(UserRecord.CreateRequest.class));
     }
 }

@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
 
-    private static final String DEMO_MARKER_PROVIDER_ID = "demo-prov-blr-elec-1";
+    private static final String DEMO_MARKER_PROVIDER_ID = "demo-prov-plmnr-4";
     private static final String DEFAULT_DEMO_PROVIDER_PASSWORD = "LocalGo@123";
 
     private final Firestore firestore;
@@ -82,11 +82,15 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         List<ProviderDoc> demoProviders = buildDemoProviders();
+        int seededCount = 0;
         for (ProviderDoc provider : demoProviders) {
-            if (!providersSeeded) {
+            boolean hasProviderDoc = providersCollection.document(provider.getId()).get().get().exists();
+            if (!hasProviderDoc) {
                 providersCollection.document(provider.getId()).set(provider).get();
             }
-            if (!accountsSeeded) {
+
+            boolean hasUserDoc = usersCollection.document(provider.getId()).get().get().exists();
+            if (!hasUserDoc) {
                 String uid = ensureFirebaseProviderAccount(provider);
                 UserDoc userDoc = UserDoc.builder()
                         .id(uid)
@@ -98,9 +102,10 @@ public class DataSeeder implements CommandLineRunner {
                         .createdAt(new Date())
                         .build();
                 usersCollection.document(uid).set(userDoc).get();
+                seededCount++;
             }
         }
-        log.info("Seeded {} verified demo providers and login accounts successfully.", demoProviders.size());
+        log.info("Seeded {} verified demo providers and {} new login accounts successfully.", demoProviders.size(), seededCount);
     }
 
     private String ensureFirebaseProviderAccount(ProviderDoc provider) {
@@ -284,6 +289,107 @@ public class DataSeeder implements CommandLineRunner {
                                 svc("electrician", "Electrician", 199),
                                 svc("plumber", "Plumber", 199),
                                 svc("ac-repair", "AC Repair & Service", 399)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-mpl-2",
+                        "Kiran Kumar - Madanapalle Cool & Appliances",
+                        "kiran.mpl@localgo.com",
+                        "+91 94402 77881",
+                        "Doorstep refrigerator gas refilling, washing machine drum service, and split AC diagnostics across Madanapalle.",
+                        8, 13.5535, 78.5042, 20.0, 4.8, 94,
+                        List.of(
+                                svc("refrigerator-repair", "Refrigerator Repair", 299),
+                                svc("washing-machine-repair", "Washing Machine Repair", 349),
+                                svc("ac-repair", "AC Repair & Service", 429)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-mpl-3",
+                        "Lakshmi Narayana - Horsley Home Cleaners & Painters",
+                        "lakshmi.mpl@localgo.com",
+                        "+91 94403 88992",
+                        "Full-house deep cleaning, bathroom sanitization, and interior/exterior wall painting in Madanapalle.",
+                        7, 13.5468, 78.4965, 20.0, 4.8, 106,
+                        List.of(
+                                svc("cleaning", "Home Cleaning", 699),
+                                svc("painting", "House Painting", 1299)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-mpl-4",
+                        "Harish Babu - QuickByte Mobile & Laptop Care",
+                        "harish.mpl@localgo.com",
+                        "+91 94404 99003",
+                        "On-site laptop troubleshooting, OS setup, and smartphone screen & battery replacements in Madanapalle.",
+                        6, 13.5560, 78.4985, 20.0, 4.9, 89,
+                        List.of(
+                                svc("mobile-repair", "Mobile Repair", 249),
+                                svc("computer-repair", "Computer Repair", 349)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-mpl-5",
+                        "Naveen Royal - Royal Auto Pitstop Madanapalle",
+                        "naveen.mpl@localgo.com",
+                        "+91 94405 11224",
+                        "Doorstep bike & car periodic maintenance, battery jump-starts, and residential electrical repairs.",
+                        10, 13.5440, 78.5070, 25.0, 4.7, 112,
+                        List.of(
+                                svc("vehicle-service", "Car & Bike Service", 449),
+                                svc("electrician", "Electrician", 199)
+                        )
+                ),
+
+                // Palamaner Town (13.2000, 78.7500)
+                buildProvider(
+                        "demo-prov-plmnr-1",
+                        "Srinath Reddy - Palamaner Power & Wiring",
+                        "srinath.plmnr@localgo.com",
+                        "+91 94901 33445",
+                        "Licensed electrician and AC service specialist serving Palamaner Town and surrounding mandals.",
+                        9, 13.2000, 78.7500, 20.0, 4.9, 102,
+                        List.of(
+                                svc("electrician", "Electrician", 199),
+                                svc("ac-repair", "AC Repair & Service", 399)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-plmnr-2",
+                        "Ramesh Babu - Sri Sai Plumbing & Waterworks",
+                        "ramesh.plmnr@localgo.com",
+                        "+91 94902 44556",
+                        "Pipeline leak detection, bathroom fittings, motor pumps, and washing machine or fridge servicing in Palamaner.",
+                        8, 13.2032, 78.7540, 20.0, 4.8, 87,
+                        List.of(
+                                svc("plumber", "Plumber", 199),
+                                svc("washing-machine-repair", "Washing Machine Repair", 329),
+                                svc("refrigerator-repair", "Refrigerator Repair", 299)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-plmnr-3",
+                        "Prasad Verma - Palamaner Tech & Gadget Fix",
+                        "prasad.plmnr@localgo.com",
+                        "+91 94903 55667",
+                        "Doorstep smartphone screen repair, laptop SSD upgrades, and OS recovery across Palamaner.",
+                        6, 13.1975, 78.7465, 20.0, 4.8, 76,
+                        List.of(
+                                svc("mobile-repair", "Mobile Repair", 249),
+                                svc("computer-repair", "Computer Repair", 349)
+                        )
+                ),
+                buildProvider(
+                        "demo-prov-plmnr-4",
+                        "Anitha Devi - Blossom Home Clean & Paint",
+                        "anitha.plmnr@localgo.com",
+                        "+91 94904 66778",
+                        "Residential deep cleaning, wall painting, and doorstep two-wheeler & car care in Palamaner.",
+                        7, 13.2045, 78.7490, 25.0, 4.9, 95,
+                        List.of(
+                                svc("cleaning", "Home Cleaning", 699),
+                                svc("painting", "House Painting", 1299),
+                                svc("vehicle-service", "Car & Bike Service", 449)
                         )
                 ),
 
