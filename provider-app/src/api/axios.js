@@ -15,7 +15,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 20000,
+  timeout: 60000,
 });
 
 // Helper: match mock data for endpoints when backend is unreachable or returns error
