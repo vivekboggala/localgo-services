@@ -6,9 +6,20 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import api from '../api/axios';
-import { MOCK_DEMO_USERS } from '../utils/mockData';
 
 export const AuthContext = createContext(null);
+
+const clearStaleMockSession = () => {
+  try {
+    const token = localStorage.getItem('localgo_token');
+    if (token && token.startsWith('mock-')) {
+      localStorage.removeItem('localgo_token');
+      localStorage.removeItem('localgo_user');
+    }
+  } catch (e) {
+    // ignore storage errors
+  }
+};
 
 const mapFirebaseLoginError = (err) => {
   const code = err?.code || '';
@@ -28,6 +39,7 @@ const mapFirebaseLoginError = (err) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
+    clearStaleMockSession();
     try {
       const saved = localStorage.getItem('localgo_user');
       return saved ? JSON.parse(saved) : null;
@@ -37,11 +49,12 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [firebaseUser, setFirebaseUser] = useState(() => {
+    clearStaleMockSession();
     try {
       const saved = localStorage.getItem('localgo_user');
       if (saved) {
         const u = JSON.parse(saved);
-        return { uid: u.id, email: u.email, getIdToken: async () => localStorage.getItem('localgo_token') || 'mock-jwt-token' };
+        return { uid: u.id, email: u.email, getIdToken: async () => localStorage.getItem('localgo_token') || '' };
       }
       return null;
     } catch (e) {
@@ -66,9 +79,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('localgo_token');
-    const isMock = token?.startsWith('mock-');
-
+    clearStaleMockSession();
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
@@ -86,12 +97,11 @@ export const AuthProvider = ({ children }) => {
         } catch (e) {
           console.warn('Error fetching token:', e);
         }
-      } else if (!isMock) {
-        const saved = localStorage.getItem('localgo_user');
-        if (!saved) {
-          setUser(null);
-          setFirebaseUser(null);
-        }
+      } else {
+        setUser(null);
+        setFirebaseUser(null);
+        localStorage.removeItem('localgo_token');
+        localStorage.removeItem('localgo_user');
       }
       setLoading(false);
     });
@@ -164,29 +174,6 @@ export const AuthProvider = ({ children }) => {
     return createdUser;
   };
 
-  const loginDemo = (role = 'PROVIDER') => {
-    let demoUser = MOCK_DEMO_USERS.provider;
-    let token = 'mock-jwt-provider-token';
-
-    if (role === 'CUSTOMER') {
-      demoUser = MOCK_DEMO_USERS.customer;
-      token = 'mock-jwt-customer-token';
-    } else if (role === 'ADMIN') {
-      demoUser = MOCK_DEMO_USERS.admin;
-      token = 'mock-jwt-admin-token';
-    }
-
-    localStorage.setItem('localgo_token', token);
-    localStorage.setItem('localgo_user', JSON.stringify(demoUser));
-    setUser(demoUser);
-    setFirebaseUser({
-      uid: demoUser.id,
-      email: demoUser.email,
-      getIdToken: async () => token,
-    });
-    return demoUser;
-  };
-
   const logout = async () => {
     try {
       await signOut(auth);
@@ -210,7 +197,6 @@ export const AuthProvider = ({ children }) => {
         login,
         registerCustomer,
         registerProvider,
-        loginDemo,
         logout,
       }}
     >

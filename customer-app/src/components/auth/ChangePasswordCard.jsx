@@ -28,7 +28,7 @@ const ChangePasswordCard = () => {
 
     const fbUser = auth.currentUser;
     if (!fbUser || !fbUser.email) {
-      const msg = 'Password cannot be changed in Quick Demo mode. Please sign in with your registered account.';
+      const msg = 'Please sign in with your email and password to change your password.';
       setError(msg);
       toast.error(msg);
       return;

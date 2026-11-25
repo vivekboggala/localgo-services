@@ -216,7 +216,21 @@ const ForgotPasswordPage = () => {
           </form>
         )}
 
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 flex items-center justify-center gap-4">
+          {step === 2 && (
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1);
+                setOtp('');
+                setError(null);
+                setInfoMessage('');
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 underline transition-colors"
+            >
+              Change Email
+            </button>
+          )}
           <Link
             to="/login"
             className="text-xs text-slate-500 hover:text-slate-800 underline transition-colors"

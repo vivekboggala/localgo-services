@@ -5,7 +5,6 @@ import {
   MOCK_PROVIDERS,
   MOCK_BOOKINGS,
   MOCK_REVIEWS,
-  MOCK_DEMO_USERS,
   MOCK_PROVIDER_STATS,
   MOCK_PROVIDER_REQUESTS,
   MOCK_PROVIDER_EARNINGS
@@ -140,13 +139,7 @@ export const getMockResponse = (config) => {
     return { success: true, data: true };
   }
 
-  // 7. Auth endpoints (only /auth/me for active mock demo sessions)
-  if (pathname === '/auth/me' && method === 'get' && localStorage.getItem('localgo_token')?.startsWith('mock-')) {
-    const savedUser = localStorage.getItem('localgo_user');
-    return { success: true, data: savedUser ? JSON.parse(savedUser) : MOCK_DEMO_USERS.customer };
-  }
-
-  // 8. Favorites
+  // 7. Favorites
   if (pathname.startsWith('/favorites')) {
     return { success: true, data: [] };
   }
@@ -185,10 +178,9 @@ api.interceptors.response.use(
   (error) => {
     const reqUrl = error.config?.url || '';
     const isAuthRequest = reqUrl.includes('/auth/');
-    const isMockSession = localStorage.getItem('localgo_token')?.startsWith('mock-');
 
     // Never swallow real errors on auth/OTP/registration endpoints
-    if ((!isAuthRequest || (isMockSession && reqUrl.includes('/auth/me'))) &&
+    if (!isAuthRequest &&
         (!error.response || error.code === 'ECONNABORTED' || error.response.status >= 400)) {
       const mockResult = getMockResponse(error.config || {});
       if (mockResult) {
@@ -204,11 +196,10 @@ api.interceptors.response.use(
 
     if (error.response && error.response.status === 401) {
       const token = localStorage.getItem('localgo_token');
-      // Do not clear mock logins
-      if (token && !token.startsWith('mock-')) {
+      if (token) {
         localStorage.removeItem('localgo_token');
         localStorage.removeItem('localgo_user');
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/verify-email') {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup' && window.location.pathname !== '/verify-email' && window.location.pathname !== '/forgot-password') {
           window.location.href = '/login';
         }
       }

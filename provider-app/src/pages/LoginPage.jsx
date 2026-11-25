@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api/axios';
-import { MapPin, Lock, Mail, Eye, EyeOff, Zap, User } from 'lucide-react';
+import { MapPin, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const LoginPage = () => {
@@ -13,15 +13,9 @@ export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [sendingVerifyOtp, setSendingVerifyOtp] = useState(false);
 
-  const { login, loginDemo } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const handleDemoClick = (role) => {
-    const demoUser = loginDemo(role);
-    toast.success(`Logged in as ${demoUser.name} (${role})`);
-    navigate('/dashboard');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,32 +74,6 @@ export const LoginPage = () => {
           <p className="text-xs text-slate-500">Access incoming bookings, active jobs & earnings</p>
         </div>
 
-        {/* 1-Click Quick Demo Login for Screenshots */}
-        <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200/80 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Quick Demo Login</span>
-            <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Instant Access</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoClick('PROVIDER')}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold text-slate-800 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              Electrician
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoClick('CUSTOMER')}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold text-slate-800 shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <User className="w-3.5 h-3.5 text-blue-600" />
-              Customer
-            </button>
-          </div>
-        </div>
-
         {error && (
           <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md font-medium space-y-2">
             <p>{error.replace('EMAIL_NOT_VERIFIED: ', '')}</p>
@@ -141,7 +109,7 @@ export const LoginPage = () => {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold text-slate-700">Password</label>
-              <Link to="/forgot-password" className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:underline">
+              <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline">
                 Forgot Password?
               </Link>
             </div>
@@ -174,11 +142,19 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100">
-          Want to register as a new partner?{' '}
-          <Link to="/signup" className="text-slate-900 font-bold hover:underline">
-            Register Here
-          </Link>
+        <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100 space-y-2">
+          <div>
+            Trouble signing in?{' '}
+            <Link to="/forgot-password" className="text-blue-600 font-semibold hover:underline">
+              Reset Password with OTP
+            </Link>
+          </div>
+          <div>
+            Want to register as a new partner?{' '}
+            <Link to="/signup" className="text-slate-900 font-bold hover:underline">
+              Register Here
+            </Link>
+          </div>
         </div>
       </div>
     </div>
