@@ -1,15 +1,22 @@
 package com.localgo.seed;
 
 import com.google.cloud.firestore.Firestore;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
+import com.localgo.enums.Role;
 import com.localgo.model.ProviderDoc;
 import com.localgo.model.ProviderServiceItem;
 import com.localgo.model.ServiceDoc;
+import com.localgo.model.UserDoc;
 import com.localgo.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.List;
 
 @Component
@@ -18,8 +25,13 @@ import java.util.List;
 public class DataSeeder implements CommandLineRunner {
 
     private static final String DEMO_MARKER_PROVIDER_ID = "demo-prov-blr-elec-1";
+    private static final String DEFAULT_DEMO_PROVIDER_PASSWORD = "LocalGo@123";
 
     private final Firestore firestore;
+    private final FirebaseAuth firebaseAuth;
+
+    @Value("${app.seed.demo-provider-password:LocalGo@123}")
+    private String demoProviderPassword;
 
     @Override
     public void run(String... args) throws Exception {
@@ -59,18 +71,74 @@ public class DataSeeder implements CommandLineRunner {
 
     public void seedDemoProviders() throws Exception {
         var providersCollection = firestore.collection("providers");
-        var markerSnap = providersCollection.document(DEMO_MARKER_PROVIDER_ID).get().get();
+        var usersCollection = firestore.collection("users");
 
-        if (markerSnap.exists()) {
-            log.info("Demo providers already seeded in Firestore.");
+        boolean providersSeeded = providersCollection.document(DEMO_MARKER_PROVIDER_ID).get().get().exists();
+        boolean accountsSeeded = usersCollection.document(DEMO_MARKER_PROVIDER_ID).get().get().exists();
+
+        if (providersSeeded && accountsSeeded) {
+            log.info("Demo providers and login accounts already seeded in Firestore.");
             return;
         }
 
         List<ProviderDoc> demoProviders = buildDemoProviders();
         for (ProviderDoc provider : demoProviders) {
-            providersCollection.document(provider.getId()).set(provider).get();
+            if (!providersSeeded) {
+                providersCollection.document(provider.getId()).set(provider).get();
+            }
+            if (!accountsSeeded) {
+                String uid = ensureFirebaseProviderAccount(provider);
+                UserDoc userDoc = UserDoc.builder()
+                        .id(uid)
+                        .name(provider.getName())
+                        .email(provider.getEmail())
+                        .phone(provider.getPhone())
+                        .role(Role.PROVIDER.name())
+                        .emailVerified(true)
+                        .createdAt(new Date())
+                        .build();
+                usersCollection.document(uid).set(userDoc).get();
+            }
         }
-        log.info("Seeded {} verified demo providers into Firestore successfully.", demoProviders.size());
+        log.info("Seeded {} verified demo providers and login accounts successfully.", demoProviders.size());
+    }
+
+    private String ensureFirebaseProviderAccount(ProviderDoc provider) {
+        String password = (demoProviderPassword != null && !demoProviderPassword.isBlank())
+                ? demoProviderPassword
+                : DEFAULT_DEMO_PROVIDER_PASSWORD;
+
+        try {
+            UserRecord existingById = firebaseAuth.getUser(provider.getId());
+            if (existingById != null) {
+                return existingById.getUid();
+            }
+        } catch (FirebaseAuthException ignored) {
+        }
+
+        try {
+            UserRecord existingByEmail = firebaseAuth.getUserByEmail(provider.getEmail());
+            if (existingByEmail != null) {
+                return existingByEmail.getUid();
+            }
+        } catch (FirebaseAuthException ignored) {
+        }
+
+        try {
+            UserRecord created = firebaseAuth.createUser(
+                    new UserRecord.CreateRequest()
+                            .setUid(provider.getId())
+                            .setEmail(provider.getEmail())
+                            .setPassword(password)
+                            .setDisplayName(provider.getName())
+                            .setEmailVerified(true)
+            );
+            return created != null && created.getUid() != null ? created.getUid() : provider.getId();
+        } catch (FirebaseAuthException e) {
+            log.warn("Could not create Firebase Auth account for demo provider {}: {}",
+                    provider.getEmail(), e.getMessage());
+            return provider.getId();
+        }
     }
 
     private List<ProviderDoc> buildDemoProviders() {
