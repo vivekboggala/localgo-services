@@ -21,6 +21,7 @@ import ProfilePage from '../pages/customer/ProfilePage';
 import { ProviderDashboard } from '../pages/provider/ProviderDashboard';
 import { ProviderRequests } from '../pages/provider/ProviderRequests';
 import { ProviderActiveJob } from '../pages/provider/ProviderActiveJob';
+import { ProviderJobDetailPage } from '../pages/provider/ProviderJobDetailPage';
 import { ProviderBookings } from '../pages/provider/ProviderBookings';
 import { ProviderEarnings } from '../pages/provider/ProviderEarnings';
 import { ProviderProfile } from '../pages/provider/ProviderProfile';
@@ -55,6 +56,7 @@ export const AppRoutes = () => {
         <Route path="/provider/dashboard" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderDashboard /></ProtectedRoute>} />
         <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderRequests /></ProtectedRoute>} />
         <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderActiveJob /></ProtectedRoute>} />
+        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderJobDetailPage /></ProtectedRoute>} />
         <Route path="/provider/bookings" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderBookings /></ProtectedRoute>} />
         <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderEarnings /></ProtectedRoute>} />
         <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderProfile /></ProtectedRoute>} />

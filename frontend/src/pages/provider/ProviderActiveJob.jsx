@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { providerPortalService } from '../../services/providerPortalService';
 import { ActiveJobCard } from '../../components/provider/ActiveJobCard';
 import { Wrench, RotateCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const ProviderActiveJob = () => {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -12,7 +14,8 @@ export const ProviderActiveJob = () => {
     setLoading(true);
     providerPortalService.getProviderBookings()
       .then((data) => {
-        const activeList = (data.content || []).filter(
+        const list = Array.isArray(data) ? data : (data?.content || []);
+        const activeList = list.filter(
           (b) => b.status === 'ACCEPTED' || b.status === 'ON_THE_WAY' || b.status === 'ARRIVED' || b.status === 'IN_PROGRESS'
         );
         setJobs(activeList);
@@ -78,12 +81,22 @@ export const ProviderActiveJob = () => {
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => (
-            <ActiveJobCard
-              key={job.id}
-              job={job}
-              onUpdateStatus={handleUpdateStatus}
-              onCancelJob={handleCancelJob}
-            />
+            <div key={job.id} className="space-y-2">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/provider/jobs/${job.id}`)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Open Step-by-Step Flow →
+                </button>
+              </div>
+              <ActiveJobCard
+                job={job}
+                onUpdateStatus={handleUpdateStatus}
+                onCancelJob={handleCancelJob}
+              />
+            </div>
           ))}
         </div>
       )}

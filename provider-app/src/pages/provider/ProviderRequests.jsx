@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,6 +11,7 @@ import toast from 'react-hot-toast';
 export const ProviderRequests = () => {
   const { user, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || user?.id;
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,9 +55,7 @@ export const ProviderRequests = () => {
             amount: amountInRupees,
           };
         });
-        if (liveRequests.length > 0) {
-          setRequests(liveRequests);
-        }
+        setRequests(liveRequests);
         setLoading(false);
       },
       (err) => {
@@ -69,11 +69,15 @@ export const ProviderRequests = () => {
     };
   }, [uid]);
 
+  const handleOpen = (id) => {
+    navigate(`/jobs/${id}`);
+  };
+
   const handleAccept = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'ACCEPTED');
-      toast.success('Request accepted!');
-      fetchRequests();
+      toast.success('Request accepted! Opening job flow...');
+      navigate(`/jobs/${id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Accept request failed.');
     }
@@ -122,6 +126,7 @@ export const ProviderRequests = () => {
             <RequestCard
               key={req.id}
               request={req}
+              onOpen={handleOpen}
               onAccept={handleAccept}
               onReject={handleReject}
             />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,6 +11,7 @@ import toast from 'react-hot-toast';
 export const ProviderActiveJob = () => {
   const { user, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || user?.id;
+  const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,9 +68,7 @@ export const ProviderActiveJob = () => {
           return tB - tA;
         });
 
-        if (liveActive.length > 0) {
-          setJobs(liveActive);
-        }
+        setJobs(liveActive);
         setLoading(false);
       },
       (err) => {
@@ -132,12 +132,22 @@ export const ProviderActiveJob = () => {
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => (
-            <ActiveJobCard
-              key={job.id}
-              job={job}
-              onUpdateStatus={handleUpdateStatus}
-              onCancelJob={handleCancelJob}
-            />
+            <div key={job.id} className="space-y-2">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/provider/jobs/${job.id}`)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Open Step-by-Step Flow →
+                </button>
+              </div>
+              <ActiveJobCard
+                job={job}
+                onUpdateStatus={handleUpdateStatus}
+                onCancelJob={handleCancelJob}
+              />
+            </div>
           ))}
         </div>
       )}

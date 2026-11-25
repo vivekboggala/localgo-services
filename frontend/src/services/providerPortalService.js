@@ -9,6 +9,10 @@ export const providerPortalService = {
     const res = await api.get(`/provider/requests?page=${page}&size=${size}`);
     return res.data.data;
   },
+  getBookingById: async (bookingId) => {
+    const res = await api.get(`/bookings/${bookingId}`);
+    return res.data.data;
+  },
   updateBookingStatus: async (bookingId, status, cancellationReason = null, otp = null) => {
     const res = await api.put(`/provider/bookings/${bookingId}/status`, {
       status,

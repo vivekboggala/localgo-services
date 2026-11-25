@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { providerPortalService } from '../../services/providerPortalService';
 import { RequestCard } from '../../components/provider/RequestCard';
 import { Inbox, RotateCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const ProviderRequests = () => {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = () => {
     setLoading(true);
     providerPortalService.getPendingRequests()
-      .then((data) => setRequests(data.content || []))
+      .then((data) => setRequests(Array.isArray(data) ? data : (data?.content || [])))
       .catch(() => setRequests([]))
       .finally(() => setLoading(false));
   };
@@ -20,11 +22,15 @@ export const ProviderRequests = () => {
     fetchRequests();
   }, []);
 
+  const handleOpen = (id) => {
+    navigate(`/provider/jobs/${id}`);
+  };
+
   const handleAccept = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'ACCEPTED');
-      toast.success('Request accepted!');
-      fetchRequests();
+      toast.success('Request accepted! Opening job flow...');
+      navigate(`/provider/jobs/${id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Accept request failed.');
     }
@@ -73,6 +79,7 @@ export const ProviderRequests = () => {
             <RequestCard
               key={req.id}
               request={req}
+              onOpen={handleOpen}
               onAccept={handleAccept}
               onReject={handleReject}
             />

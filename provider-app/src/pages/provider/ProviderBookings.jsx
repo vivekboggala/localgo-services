@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { providerPortalService } from '../../services/providerPortalService';
-import { RotateCw, Calendar, Clock, MapPin, User, CheckCircle2, XCircle } from 'lucide-react';
+import { RotateCw, Calendar, Clock, MapPin, User, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 
 const STATUS_TABS = [
   { key: 'ALL', label: 'All Jobs' },
@@ -19,6 +20,7 @@ const STATUS_TABS = [
 export const ProviderBookings = () => {
   const { user, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || user?.id;
+  const navigate = useNavigate();
 
   const [allBookings, setAllBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL');
@@ -130,7 +132,11 @@ export const ProviderBookings = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="divide-y divide-slate-100">
             {displayedBookings.map((b) => (
-              <div key={b.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+              <div
+                key={b.id}
+                onClick={() => navigate(`/jobs/${b.id}`)}
+                className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-400">#{b.id}</span>
@@ -148,9 +154,14 @@ export const ProviderBookings = () => {
                   </div>
                 </div>
 
-                <div className="text-right sm:self-center shrink-0">
-                  <div className="font-bold text-slate-900 text-sm">₹{b.amount}</div>
-                  <span className="text-[10px] font-medium text-slate-500 uppercase">{b.paymentMethod} • {b.paymentStatus}</span>
+                <div className="flex items-center gap-4 sm:self-center shrink-0">
+                  <div className="text-right">
+                    <div className="font-bold text-slate-900 text-sm">₹{b.amount}</div>
+                    <span className="text-[10px] font-medium text-slate-500 uppercase">{b.paymentMethod} • {b.paymentStatus}</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
+                    Open <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             ))}
