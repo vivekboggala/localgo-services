@@ -310,10 +310,9 @@ public class SystemVerificationTest {
         BookingResponse customerBooking = bookingService.createBooking(req, TEST_CUSTOMER_UID);
         assertNotNull(customerBooking.getStartOtp());
         assertEquals(4, customerBooking.getStartOtp().length());
-        assertNotNull(customerBooking.getCompletionOtp());
-        assertEquals(4, customerBooking.getCompletionOtp().length());
+        assertNull(customerBooking.getCompletionOtp());
 
-        // Provider view must NOT expose customer OTPs
+        // Provider view must NOT expose customer OTP
         BookingResponse providerView = bookingService.getBookingById(customerBooking.getId(), TEST_PROVIDER_UID);
         assertNull(providerView.getStartOtp(), "Provider must not see startOtp from API");
         assertNull(providerView.getCompletionOtp(), "Provider must not see completionOtp from API");
@@ -341,19 +340,11 @@ public class SystemVerificationTest {
         BookingResponse inProgressResp = bookingService.updateBookingStatus(customerBooking.getId(), startValid, TEST_PROVIDER_UID);
         assertEquals(BookingStatus.IN_PROGRESS, inProgressResp.getStatus());
 
-        // Wrong Completion OTP must be rejected
-        StatusUpdateRequest completeWrong = new StatusUpdateRequest();
-        completeWrong.setStatus(BookingStatus.COMPLETED);
-        completeWrong.setOtp("0000".equals(customerBooking.getCompletionOtp()) ? "1111" : "0000");
-        assertThrows(com.localgo.exception.BadRequestException.class,
-                () -> bookingService.updateBookingStatus(customerBooking.getId(), completeWrong, TEST_PROVIDER_UID));
-
-        // Valid Completion OTP succeeds
-        StatusUpdateRequest completeValid = new StatusUpdateRequest();
-        completeValid.setStatus(BookingStatus.COMPLETED);
-        completeValid.setOtp(customerBooking.getCompletionOtp());
-        BookingResponse completedResp = bookingService.updateBookingStatus(customerBooking.getId(), completeValid, TEST_PROVIDER_UID);
+        // Completion succeeds directly without a second OTP
+        StatusUpdateRequest completeDirect = new StatusUpdateRequest();
+        completeDirect.setStatus(BookingStatus.COMPLETED);
+        BookingResponse completedResp = bookingService.updateBookingStatus(customerBooking.getId(), completeDirect, TEST_PROVIDER_UID);
         assertEquals(BookingStatus.COMPLETED, completedResp.getStatus());
-        System.out.println(">>> Booking Start & Completion OTP workflow verified end-to-end! <<<");
+        System.out.println(">>> Booking single Start OTP workflow verified end-to-end! <<<");
     }
 }

@@ -1,6 +1,8 @@
 package com.localgo.service;
 
+import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.QuerySnapshot;
 import com.localgo.dto.request.ProviderProfileUpdateRequest;
 import com.localgo.dto.response.ProviderResponse;
 import com.localgo.dto.response.ServiceResponse;
@@ -46,14 +48,19 @@ public class ProviderService {
         List<GeoUtils.GeoRange> ranges = GeoUtils.getGeoHashQueryRanges(latitude, longitude, searchRadius);
         Map<String, ProviderDoc> candidatesMap = new HashMap<>();
 
+        List<ApiFuture<QuerySnapshot>> rangeFutures = new ArrayList<>(ranges.size());
         for (GeoUtils.GeoRange range : ranges) {
-            try {
-                var querySnapshot = firestore.collection("providers")
-                        .whereGreaterThanOrEqualTo("geohash", range.getStartHash())
-                        .whereLessThanOrEqualTo("geohash", range.getEndHash())
-                        .get()
-                        .get();
+            rangeFutures.add(
+                    firestore.collection("providers")
+                            .whereGreaterThanOrEqualTo("geohash", range.getStartHash())
+                            .whereLessThanOrEqualTo("geohash", range.getEndHash())
+                            .get()
+            );
+        }
 
+        for (int i = 0; i < ranges.size(); i++) {
+            try {
+                var querySnapshot = rangeFutures.get(i).get();
                 for (var doc : querySnapshot.getDocuments()) {
                     ProviderDoc provider = doc.toObject(ProviderDoc.class);
                     if (provider != null) {
@@ -62,6 +69,7 @@ public class ProviderService {
                     }
                 }
             } catch (Exception e) {
+                GeoUtils.GeoRange range = ranges.get(i);
                 log.error("Error executing geohash range query [{}-{}]: {}",
                         range.getStartHash(), range.getEndHash(), e.getMessage());
             }
@@ -224,7 +232,7 @@ public class ProviderService {
         }
     }
 
-    public static final long PRESENCE_TIMEOUT_MS = 180_000L;
+    public static final long PRESENCE_TIMEOUT_MS = 1_800_000L;
 
     /**
      * Resolves live availability combining explicit offline override, stored flag, and active heartbeat recency.

@@ -9,13 +9,23 @@ import { ProviderCard } from '../../components/customer/ProviderCard';
 export const MapPage = () => {
   const { location, requestGPSLocation, selectManualLocation, predefinedLocations } = useLocation();
   const [providers, setProviders] = useState([]);
-  const [radius, setRadius] = useState(10);
+  const [radius, setRadius] = useState(15);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const navigate = useNavigate();
 
   const fetchNearbyProviders = useCallback(({ silent = false } = {}) => {
     if (!location?.lat || !location?.lng) return;
-    providerService.getNearbyProviders(location.lat, location.lng, radius)
+    providerService.getNearbyProviders(
+      location.lat,
+      location.lng,
+      radius,
+      null,
+      null,
+      null,
+      null,
+      null,
+      silent ? { skipMockFallback: true } : {}
+    )
       .then((data) => setProviders(data))
       .catch(() => { if (!silent) setProviders([]); });
   }, [location, radius]);

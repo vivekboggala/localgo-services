@@ -8,7 +8,7 @@ import { db } from '../firebase';
  */
 export const useLiveSync = (
   onRefresh,
-  { enabled = true, intervalMs = 10000, providerId = null, watchProviders = false } = {}
+  { enabled = true, intervalMs = 30000, providerId = null, watchProviders = false } = {}
 ) => {
   const refreshRef = useRef(onRefresh);
   refreshRef.current = onRefresh;

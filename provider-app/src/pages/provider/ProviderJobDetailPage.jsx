@@ -116,7 +116,7 @@ export const ProviderJobDetailPage = () => {
       toast.success(`Job status updated to ${targetStatus.replace(/_/g, ' ')}`);
     } catch (err) {
       const msg = err.response?.data?.message || 'Could not update booking status.';
-      if (targetStatus === 'IN_PROGRESS' || targetStatus === 'COMPLETED') {
+      if (targetStatus === 'IN_PROGRESS') {
         setOtpError(msg);
       }
       toast.error(msg);
@@ -403,39 +403,27 @@ export const ProviderJobDetailPage = () => {
           )}
 
           {job.status === 'IN_PROGRESS' && (
-            <form onSubmit={(e) => handleOtpSubmit(e, 'COMPLETED')} className="space-y-4">
+            <div className="space-y-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Step 5 — Verify Completion OTP</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Step 5 — Complete Service</span>
                 <h2 className="text-lg font-bold mt-1 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Enter Customer's 4-Digit Completion OTP
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Finish & Close Job
                 </h2>
                 <p className="text-xs text-slate-300 mt-1">
-                  Once the work is finished, ask the customer for their 4-digit Completion OTP to close the job.
+                  Once the service work is finished to the customer's satisfaction, confirm below to complete the job.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={otpCode}
-                  onChange={(e) => {
-                    setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 4));
-                    if (otpError) setOtpError('');
-                  }}
-                  placeholder="0000"
-                  className="w-36 px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.35em] rounded-lg bg-white text-slate-900 outline-none"
-                />
                 <button
-                  type="submit"
-                  disabled={submitting || otpCode.length !== 4}
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => handleTransition('COMPLETED')}
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <CheckCircle2 className="w-4 h-4" /> {submitting ? 'Completing...' : 'Verify & Complete Job'}
+                  <CheckCircle2 className="w-4 h-4" /> {submitting ? 'Completing...' : 'Mark Work Completed'}
                 </button>
               </div>
-              {otpError && <p className="text-xs text-rose-400 font-medium">{otpError}</p>}
-            </form>
+            </div>
           )}
         </div>
       )}

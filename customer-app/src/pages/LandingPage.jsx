@@ -13,8 +13,18 @@ export const LandingPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
-  const fetchFeaturedProviders = useCallback(() => {
-    providerService.getNearbyProviders(12.9716, 77.5946, 25)
+  const fetchFeaturedProviders = useCallback(({ silent = false } = {}) => {
+    providerService.getNearbyProviders(
+      12.9716,
+      77.5946,
+      25,
+      null,
+      null,
+      null,
+      null,
+      null,
+      silent ? { skipMockFallback: true } : {}
+    )
       .then((data) => setProviders(Array.isArray(data) ? data.slice(0, 3) : []))
       .catch(() => {});
   }, []);
@@ -28,7 +38,7 @@ export const LandingPage = () => {
     fetchFeaturedProviders();
   }, [fetchFeaturedProviders]);
 
-  useLiveSync(fetchFeaturedProviders, { watchProviders: true });
+  useLiveSync(() => fetchFeaturedProviders({ silent: true }), { watchProviders: true });
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

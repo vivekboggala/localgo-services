@@ -175,7 +175,7 @@ api.interceptors.response.use(
     const isAuthRequest = reqUrl.includes('/auth/');
     const isServerOrNetworkError = !error.response || error.code === 'ECONNABORTED' || error.response.status >= 500;
 
-    if (!isAuthRequest && method === 'get' && isServerOrNetworkError) {
+    if (!isAuthRequest && method === 'get' && isServerOrNetworkError && !error.config?.skipMockFallback) {
       const mockResult = getMockResponse(error.config || {});
       if (mockResult) {
         return Promise.resolve({

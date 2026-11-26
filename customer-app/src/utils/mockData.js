@@ -314,7 +314,6 @@ export const MOCK_BOOKINGS = [
     paymentMethod: 'ONLINE',
     paymentStatus: 'PAID',
     startOtp: '4829',
-    completionOtp: '7315',
     createdAt: '2026-10-14T10:15:00',
   },
   {
@@ -340,7 +339,6 @@ export const MOCK_BOOKINGS = [
     paymentMethod: 'CASH',
     paymentStatus: 'PENDING',
     startOtp: '5912',
-    completionOtp: '8204',
     createdAt: '2026-10-14T09:30:00',
   },
   {

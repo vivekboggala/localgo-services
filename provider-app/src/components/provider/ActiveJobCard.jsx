@@ -139,11 +139,7 @@ export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
         <form onSubmit={handleOtpSubmit} className="bg-slate-50 border border-slate-300 rounded-lg p-4 space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
             <ShieldCheck className="w-4 h-4 text-blue-600" />
-            <span>
-              {otpTargetStatus === 'IN_PROGRESS'
-                ? 'Enter Customer 4-Digit Service Start OTP'
-                : 'Enter Customer 4-Digit Service Completion OTP'}
-            </span>
+            <span>Enter Customer 4-Digit Service Start OTP</span>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -252,14 +248,11 @@ export const ActiveJobCard = ({ job, onUpdateStatus, onCancelJob }) => {
 
         {job.status === 'IN_PROGRESS' && !otpTargetStatus && (
           <button
-            onClick={() => {
-              setOtpTargetStatus('COMPLETED');
-              setOtpCode('');
-              setOtpError('');
-            }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs"
+            onClick={() => handleSimpleStatus('COMPLETED')}
+            disabled={submitting}
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs disabled:opacity-50"
           >
-            <CheckCircle2 className="w-3.5 h-3.5" /> Complete Service (OTP)
+            <CheckCircle2 className="w-3.5 h-3.5" /> {submitting ? 'Completing...' : 'Mark Work Completed'}
           </button>
         )}
       </div>

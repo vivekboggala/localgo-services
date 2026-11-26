@@ -18,7 +18,7 @@ export const ProviderDetailPage = () => {
 
   const fetchProvider = useCallback(({ silent = false } = {}) => {
     if (!id) return;
-    providerService.getProviderById(id)
+    providerService.getProviderById(id, null, null, silent ? { skipMockFallback: true } : {})
       .then((data) => setProvider(data))
       .catch((err) => console.error(err))
       .finally(() => { if (!silent) setLoading(false); });

@@ -29,7 +29,17 @@ export const CustomerDashboard = () => {
   const fetchNearbyProviders = useCallback(({ silent = false } = {}) => {
     if (!location?.lat || !location?.lng) return;
     if (!silent) setLoadingProviders(true);
-    providerService.getNearbyProviders(location.lat, location.lng, 15)
+    providerService.getNearbyProviders(
+      location.lat,
+      location.lng,
+      15,
+      null,
+      null,
+      null,
+      null,
+      null,
+      silent ? { skipMockFallback: true } : {}
+    )
       .then((data) => setNearbyProviders(data))
       .catch(() => { if (!silent) setNearbyProviders([]); })
       .finally(() => { if (!silent) setLoadingProviders(false); });

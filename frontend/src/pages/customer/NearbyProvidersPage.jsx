@@ -14,7 +14,7 @@ export const NearbyProvidersPage = () => {
 
   const { location, error, loading: locLoading, usingGPS, requestGPSLocation, selectManualLocation, predefinedLocations } = useLocation();
 
-  const [radius, setRadius] = useState(10);
+  const [radius, setRadius] = useState(15);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +22,7 @@ export const NearbyProvidersPage = () => {
   const [sortBy, setSortBy] = useState('distance');
   const [minRating, setMinRating] = useState(0);
   const [maxPrice, setMaxPrice] = useState(2000);
-  const [availableOnly, setAvailableOnly] = useState(true);
+  const [availableOnly, setAvailableOnly] = useState(false);
 
   const fetchProviders = useCallback(({ silent = false } = {}) => {
     if (!location?.lat || !location?.lng) return;
@@ -35,7 +35,8 @@ export const NearbyProvidersPage = () => {
       minRating > 0 ? minRating : null,
       maxPrice < 2000 ? maxPrice : null,
       availableOnly ? true : null,
-      sortBy
+      sortBy,
+      silent ? { skipMockFallback: true } : {}
     )
       .then((data) => setProviders(data))
       .catch(() => { if (!silent) setProviders([]); })

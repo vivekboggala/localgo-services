@@ -140,9 +140,8 @@ public class BookingService {
                     }
                 } catch (Exception ignored) {}
 
-                // 5. Create new booking doc atomically with 4-digit start & completion OTPs
+                // 5. Create new booking doc atomically with 4-digit arrival start OTP
                 String startOtp = String.valueOf(1000 + secureRandom.nextInt(9000));
-                String completionOtp = String.valueOf(1000 + secureRandom.nextInt(9000));
                 DocumentReference newDocRef = firestore.collection("bookings").document();
                 BookingDoc newBooking = BookingDoc.builder()
                         .id(newDocRef.getId())
@@ -166,7 +165,7 @@ public class BookingService {
                         .paymentMethod(request.getPaymentMethod())
                         .paymentStatus(PaymentStatus.PENDING.name())
                         .startOtp(startOtp)
-                        .completionOtp(completionOtp)
+                        .completionOtp(null)
                         .createdAt(new Date())
                         .build();
 
@@ -293,14 +292,10 @@ public class BookingService {
             // Validate status transitions
             validateStatusTransition(currentStatus, targetStatus);
 
-            // Enforce Service Start OTP & Completion OTP when present on the booking
+            // Enforce Service Start OTP when transitioning to IN_PROGRESS after arrival
             if (targetStatus == BookingStatus.IN_PROGRESS && doc.getStartOtp() != null && !doc.getStartOtp().isBlank()) {
                 if (request.getOtp() == null || !request.getOtp().trim().equals(doc.getStartOtp().trim())) {
                     throw new BadRequestException("Invalid Service Start OTP. Please ask the customer for the 4-digit Start OTP.");
-                }
-            } else if (targetStatus == BookingStatus.COMPLETED && doc.getCompletionOtp() != null && !doc.getCompletionOtp().isBlank()) {
-                if (request.getOtp() == null || !request.getOtp().trim().equals(doc.getCompletionOtp().trim())) {
-                    throw new BadRequestException("Invalid Service Completion OTP. Please ask the customer for the 4-digit Completion OTP.");
                 }
             }
 
@@ -410,7 +405,7 @@ public class BookingService {
                 .paymentMethod(doc.getPaymentMethod())
                 .paymentStatus(doc.getPaymentStatus() != null ? PaymentStatus.valueOf(doc.getPaymentStatus()) : PaymentStatus.PENDING)
                 .startOtp(includeOtps ? doc.getStartOtp() : null)
-                .completionOtp(includeOtps ? doc.getCompletionOtp() : null)
+                .completionOtp(null)
                 .acceptedAt(toLocalDateTime(doc.getAcceptedAt()))
                 .onTheWayAt(toLocalDateTime(doc.getOnTheWayAt()))
                 .arrivedAt(toLocalDateTime(doc.getArrivedAt()))
