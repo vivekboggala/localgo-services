@@ -1,20 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services/adminService';
+import PaginationBar from '../../components/common/PaginationBar';
 import { Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [cursorStack, setCursorStack] = useState([null]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const currentCursor = cursorStack[cursorStack.length - 1];
+
+  const loadBookings = useCallback(() => {
     setLoading(true);
-    adminService.getAllBookings(statusFilter)
-      .then((data) => setBookings(data?.content || []))
+    adminService.getAllBookings(statusFilter, 15, currentCursor)
+      .then((data) => {
+        setBookings(data?.content || []);
+        setNextCursor(data?.nextCursor || null);
+        setHasMore(Boolean(data?.hasMore));
+      })
       .catch((err) => toast.error(err.response?.data?.message || 'Failed to load bookings.'))
       .finally(() => setLoading(false));
-  }, [statusFilter]);
+  }, [statusFilter, currentCursor]);
+
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
+
+  const handleStatusChange = (nextStatus) => {
+    setStatusFilter(nextStatus);
+    setCursorStack([null]);
+  };
 
   return (
     <div className="space-y-6">
@@ -27,10 +46,10 @@ export const AdminBookings = () => {
 
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => handleStatusChange(e.target.value)}
           className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 outline-none"
         >
-          {['ALL', 'REQUESTED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED'].map((s) => (
+          {['ALL', 'REQUESTED', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'].map((s) => (
             <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
           ))}
         </select>
@@ -68,7 +87,7 @@ export const AdminBookings = () => {
                   <td className="p-4 text-slate-700">{b.customerName}</td>
                   <td className="p-4 text-slate-700">{b.providerName}</td>
                   <td className="p-4 text-slate-600">{b.scheduledDate} {b.scheduledTime}</td>
-                  <td className="p-4 font-bold text-slate-900">₹{b.amount}</td>
+                  <td className="p-4 font-bold text-slate-900">₹{b.amount} ({b.paymentMethod} • {b.paymentStatus})</td>
                   <td className="p-4">
                     <span className="px-2.5 py-1 rounded text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                       {b.status?.replace(/_/g, ' ')}
@@ -80,6 +99,16 @@ export const AdminBookings = () => {
           </table>
         </div>
       )}
+
+      <PaginationBar
+        pageIndex={cursorStack.length - 1}
+        hasPrev={cursorStack.length > 1}
+        hasNext={hasMore && Boolean(nextCursor)}
+        itemCount={bookings.length}
+        loading={loading}
+        onPrev={() => setCursorStack((prev) => prev.slice(0, -1))}
+        onNext={() => nextCursor && setCursorStack((prev) => [...prev, nextCursor])}
+      />
     </div>
   );
 };

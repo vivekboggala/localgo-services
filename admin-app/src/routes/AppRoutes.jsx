@@ -8,6 +8,7 @@ import { AdminUsers } from '../pages/admin/AdminUsers';
 import { AdminBookings } from '../pages/admin/AdminBookings';
 import { AdminReviews } from '../pages/admin/AdminReviews';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import { DesignPreviewPage } from '../pages/DesignPreviewPage';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 
 export const AppRoutes = () => {
@@ -27,6 +28,7 @@ export const AppRoutes = () => {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/design-preview" element={<DesignPreviewPage />} />
 
       <Route path="*" element={
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">

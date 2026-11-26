@@ -1,19 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services/adminService';
+import PaginationBar from '../../components/common/PaginationBar';
 import { Star, EyeOff, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const AdminReviews = () => {
   const [reviews, setReviews] = useState([]);
+  const [cursorStack, setCursorStack] = useState([null]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const currentCursor = cursorStack[cursorStack.length - 1];
 
   const loadReviews = useCallback(() => {
     setLoading(true);
-    adminService.getAllReviews()
-      .then((data) => setReviews(data?.content || []))
+    adminService.getAllReviews(12, currentCursor)
+      .then((data) => {
+        setReviews(data?.content || []);
+        setNextCursor(data?.nextCursor || null);
+        setHasMore(Boolean(data?.hasMore));
+      })
       .catch((err) => toast.error(err.response?.data?.message || 'Failed to load reviews.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [currentCursor]);
 
   useEffect(() => {
     loadReviews();
@@ -71,6 +81,16 @@ export const AdminReviews = () => {
           ))}
         </div>
       )}
+
+      <PaginationBar
+        pageIndex={cursorStack.length - 1}
+        hasPrev={cursorStack.length > 1}
+        hasNext={hasMore && Boolean(nextCursor)}
+        itemCount={reviews.length}
+        loading={loading}
+        onPrev={() => setCursorStack((prev) => prev.slice(0, -1))}
+        onNext={() => nextCursor && setCursorStack((prev) => [...prev, nextCursor])}
+      />
     </div>
   );
 };

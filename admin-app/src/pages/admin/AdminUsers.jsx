@@ -1,21 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services/adminService';
+import PaginationBar from '../../components/common/PaginationBar';
 import { Users, Mail, Phone, CheckCircle2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [cursorStack, setCursorStack] = useState([null]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    adminService.getAllCustomers()
-      .then((data) => setUsers(data?.content || []))
+  const currentCursor = cursorStack[cursorStack.length - 1];
+
+  const loadUsers = useCallback(() => {
+    setLoading(true);
+    adminService.getAllCustomers(roleFilter, 15, currentCursor)
+      .then((data) => {
+        setUsers(data?.content || []);
+        setNextCursor(data?.nextCursor || null);
+        setHasMore(Boolean(data?.hasMore));
+      })
       .catch((err) => toast.error(err.response?.data?.message || 'Failed to load users.'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [roleFilter, currentCursor]);
 
-  const filtered = users.filter((u) => roleFilter === 'ALL' || u.role === roleFilter);
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const handleRoleChange = (nextRole) => {
+    setRoleFilter(nextRole);
+    setCursorStack([null]);
+  };
 
   return (
     <div className="space-y-6">
@@ -23,7 +41,7 @@ export const AdminUsers = () => {
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block">Directory</span>
           <h1 className="font-display font-bold text-2xl text-slate-900 tracking-tight">Users & Accounts</h1>
-          <p className="text-xs text-slate-500 mt-1">All registered customers, service providers, and admins ({users.length} total).</p>
+          <p className="text-xs text-slate-500 mt-1">Browse registered customers, service providers, and admins.</p>
         </div>
 
         <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200 text-xs font-semibold">
@@ -31,7 +49,7 @@ export const AdminUsers = () => {
             <button
               key={role}
               type="button"
-              onClick={() => setRoleFilter(role)}
+              onClick={() => handleRoleChange(role)}
               className={`px-3 py-1.5 rounded-md transition-colors ${
                 roleFilter === role ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
@@ -46,7 +64,7 @@ export const AdminUsers = () => {
         <div className="text-center py-16">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto"></div>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : users.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <p className="text-sm font-semibold text-slate-800">No accounts found</p>
@@ -63,7 +81,7 @@ export const AdminUsers = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((u) => (
+              {users.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50/70">
                   <td className="p-4 font-bold text-slate-900">{u.name || 'Unnamed User'}</td>
                   <td className="p-4 space-y-0.5">
@@ -96,6 +114,16 @@ export const AdminUsers = () => {
           </table>
         </div>
       )}
+
+      <PaginationBar
+        pageIndex={cursorStack.length - 1}
+        hasPrev={cursorStack.length > 1}
+        hasNext={hasMore && Boolean(nextCursor)}
+        itemCount={users.length}
+        loading={loading}
+        onPrev={() => setCursorStack((prev) => prev.slice(0, -1))}
+        onNext={() => nextCursor && setCursorStack((prev) => [...prev, nextCursor])}
+      />
     </div>
   );
 };

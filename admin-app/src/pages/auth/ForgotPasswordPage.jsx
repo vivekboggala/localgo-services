@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { KeyRound, Mail, ArrowRight, Lock, ShieldCheck, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -18,6 +18,20 @@ const ForgotPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [infoMessage, setInfoMessage] = useState('');
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+    const t = setInterval(() => setCooldownLeft((p) => Math.max(0, p - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownLeft]);
+
+  const syncCooldownFromError = (err) => {
+    if (err.response?.status === 429) {
+      const retrySec = err.response?.data?.data?.retryAfterSeconds || Number(err.response?.headers?.['retry-after']) || 60;
+      setCooldownLeft(retrySec);
+    }
+  };
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
@@ -38,6 +52,7 @@ const ForgotPasswordPage = () => {
       setVerificationToken('');
       setStep(2);
     } catch (err) {
+      syncCooldownFromError(err);
       const msg = err.response?.data?.message || err.message || 'Failed to send password reset code.';
       setError(msg);
       toast.error(msg);
@@ -71,6 +86,7 @@ const ForgotPasswordPage = () => {
       toast.success('OTP verified! Please enter your new password.');
       setStep(3);
     } catch (err) {
+      syncCooldownFromError(err);
       const msg = err.response?.data?.message || err.message || 'Invalid verification code. Please try again.';
       setError(msg);
       toast.error(msg);
@@ -119,7 +135,9 @@ const ForgotPasswordPage = () => {
       });
       toast.success('A new verification code has been sent to your email.');
     } catch (err) {
+      syncCooldownFromError(err);
       const msg = err.response?.data?.message || err.message || 'Failed to resend code. Please wait before trying again.';
+      setError(msg);
       toast.error(msg);
     }
   };
@@ -193,10 +211,10 @@ const ForgotPasswordPage = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldownLeft > 0}
               className="w-full py-3 px-4 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50"
             >
-              {loading ? 'Sending Code...' : 'Send Verification Code'}
+              {loading ? 'Sending Code...' : cooldownLeft > 0 ? `Retry in ${cooldownLeft}s` : 'Send Verification Code'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -215,13 +233,19 @@ const ForgotPasswordPage = () => {
                   if (error) setError(null);
                 }}
                 onResend={handleResendOtp}
-                disabled={loading}
+                disabled={loading || cooldownLeft > 0}
+                externalCooldown={cooldownLeft}
               />
+              {cooldownLeft > 0 && (
+                <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3 text-center">
+                  Cooldown active: please wait {cooldownLeft}s before trying again.
+                </p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={loading || otp.length !== 6}
+              disabled={loading || otp.length !== 6 || cooldownLeft > 0}
               className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
                 loading || otp.length !== 6
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed'

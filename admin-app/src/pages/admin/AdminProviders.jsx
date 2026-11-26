@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminService } from '../../services/adminService';
+import PaginationBar from '../../components/common/PaginationBar';
 import {
   ShieldCheck, Clock, XCircle, Search, RefreshCw, Check, X,
   MapPin, Phone, Mail, Star, Briefcase, ExternalLink, RotateCcw
@@ -29,6 +30,10 @@ export const AdminProviders = () => {
   const [search, setSearch] = useState('');
   const [providers, setProviders] = useState([]);
   const [counts, setCounts] = useState({ ALL: 0, PENDING: 0, VERIFIED: 0, REJECTED: 0 });
+  const [cursorStack, setCursorStack] = useState([null]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const [selectedProvider, setSelectedProvider] = useState(null);
@@ -36,18 +41,23 @@ export const AdminProviders = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [submittingId, setSubmittingId] = useState(null);
 
+  const currentCursor = cursorStack[cursorStack.length - 1];
+
   const fetchProviders = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminService.getAllProviders(statusFilter, search);
+      const data = await adminService.getAllProviders(statusFilter, search, 15, currentCursor);
       setProviders(data?.content || []);
+      setNextCursor(data?.nextCursor || null);
+      setHasMore(Boolean(data?.hasMore));
+      setTotalElements(typeof data?.totalElements === 'number' ? data.totalElements : (data?.content || []).length);
       if (data?.counts) setCounts(data.counts);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load providers.');
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter, search, currentCursor]);
 
   useEffect(() => {
     fetchProviders();
@@ -55,6 +65,7 @@ export const AdminProviders = () => {
 
   const handleTabChange = (nextStatus) => {
     setStatusFilter(nextStatus);
+    setCursorStack([null]);
     if (nextStatus === 'ALL') {
       setSearchParams({});
     } else {
@@ -265,6 +276,17 @@ export const AdminProviders = () => {
           </table>
         </div>
       )}
+
+      <PaginationBar
+        pageIndex={cursorStack.length - 1}
+        hasPrev={cursorStack.length > 1}
+        hasNext={hasMore && Boolean(nextCursor)}
+        itemCount={providers.length}
+        totalElements={totalElements}
+        loading={loading}
+        onPrev={() => setCursorStack((prev) => prev.slice(0, -1))}
+        onNext={() => nextCursor && setCursorStack((prev) => [...prev, nextCursor])}
+      />
 
       {selectedProvider && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
