@@ -32,6 +32,7 @@ public class BookingDoc {
     private String scheduledTime; // string HH:mm
     private Integer estimatedDurationMins;
     private String status;
+    private Integer flowVersion; // 1 = legacy, 2 = new workflow
     private String cancelledBy;
     private String cancellationReason;
     private Long amount; // stored in paise (100 paise = 1 INR)
