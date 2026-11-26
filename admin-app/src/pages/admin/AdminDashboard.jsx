@@ -48,7 +48,7 @@ export const AdminDashboard = () => {
         </div>
 
         <Link
-          to="/admin/providers"
+          to="/providers"
           className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-2 shadow-xs"
         >
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -57,10 +57,9 @@ export const AdminDashboard = () => {
         </Link>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <Link
-          to="/admin/providers?status=PENDING"
+          to="/providers?status=PENDING"
           className="bg-amber-50/70 hover:bg-amber-50 p-6 rounded-xl border border-amber-200 shadow-xs flex items-center justify-between transition-colors"
         >
           <div>
@@ -129,7 +128,6 @@ export const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Bottom Split: Pending Queue Preview + Daily Booking Volume */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -137,7 +135,7 @@ export const AdminDashboard = () => {
               <Users className="w-4 h-4 text-amber-600" />
               Awaiting Verification ({pendingProviders.length})
             </h2>
-            <Link to="/admin/providers" className="text-xs font-semibold text-blue-600 hover:underline">
+            <Link to="/providers" className="text-xs font-semibold text-blue-600 hover:underline">
               Open Full Queue →
             </Link>
           </div>
@@ -157,7 +155,7 @@ export const AdminDashboard = () => {
                     </div>
                   </div>
                   <Link
-                    to="/admin/providers?status=PENDING"
+                    to="/providers?status=PENDING"
                     className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-[11px] font-semibold shrink-0"
                   >
                     Inspect

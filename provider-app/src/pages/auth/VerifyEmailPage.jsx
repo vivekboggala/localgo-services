@@ -83,11 +83,7 @@ const VerifyEmailPage = () => {
         otpVerificationToken: verificationToken,
       };
 
-      if (pendingRegistration.role === 'PROVIDER') {
-        await registerProvider(registrationPayload);
-      } else {
-        await registerCustomer(registrationPayload);
-      }
+      await registerProvider(registrationPayload);
 
       sessionStorage.removeItem('localgo_pending_registration');
       toast.success('Email verified and account created! Welcome to LocalGo Partner Portal.');

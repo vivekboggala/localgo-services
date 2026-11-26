@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { adminService } from '../services/adminService';
-import { MapPin, LayoutDashboard, ShieldCheck, Users, Calendar, Star, LogOut, Menu, X } from 'lucide-react';
+import { ShieldCheck, LayoutDashboard, Users, Calendar, Star, LogOut, Menu, X } from 'lucide-react';
 
 export const AdminLayout = () => {
   const { user, logout } = useAuth();
@@ -22,11 +22,11 @@ export const AdminLayout = () => {
   }, []);
 
   const links = [
-    { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-    { to: '/admin/providers', label: 'Verification Queue', icon: ShieldCheck, badge: pendingCount },
-    { to: '/admin/users', label: 'Users & Accounts', icon: Users },
-    { to: '/admin/bookings', label: 'All Bookings', icon: Calendar },
-    { to: '/admin/reviews', label: 'Review Moderation', icon: Star },
+    { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+    { to: '/providers', label: 'Verification Queue', icon: ShieldCheck, badge: pendingCount },
+    { to: '/users', label: 'Users & Accounts', icon: Users },
+    { to: '/bookings', label: 'All Bookings', icon: Calendar },
+    { to: '/reviews', label: 'Review Moderation', icon: Star },
   ];
 
   const renderLinks = (onNavigate) => (
@@ -63,11 +63,10 @@ export const AdminLayout = () => {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
-      {/* Mobile Header */}
       <header className="lg:hidden bg-slate-900 text-white px-4 h-14 flex items-center justify-between border-b border-slate-800 sticky top-0 z-40">
-        <Link to="/admin/dashboard" className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 bg-white/10 rounded-md flex items-center justify-center border border-white/10">
-            <MapPin className="w-4 h-4 text-blue-400" />
+            <ShieldCheck className="w-4 h-4 text-blue-400" />
           </div>
           <span className="font-display font-extrabold text-base">Local<span className="text-blue-400">Go</span></span>
           <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-1.5 py-0.5 rounded uppercase">Admin</span>
@@ -93,19 +92,18 @@ export const AdminLayout = () => {
         </div>
       )}
 
-      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-300 min-h-screen flex-col justify-between p-4 border-r border-slate-800 shrink-0 sticky top-0 h-screen">
         <div>
-          <Link to="/admin/dashboard" className="flex items-center gap-2.5 px-3 py-3 mb-6 border-b border-slate-800">
+          <Link to="/dashboard" className="flex items-center gap-2.5 px-3 py-3 mb-6 border-b border-slate-800">
             <div className="w-9 h-9 bg-white/10 text-white rounded-md flex items-center justify-center border border-white/10">
-              <MapPin className="w-4 h-4 text-blue-400" />
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
             </div>
             <div>
               <span className="font-display font-extrabold text-base tracking-tight text-white">
                 Local<span className="text-blue-400">Go</span>
               </span>
               <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded border border-slate-700/60 uppercase block mt-0.5">
-                Admin Studio
+                Admin Console
               </span>
             </div>
           </Link>

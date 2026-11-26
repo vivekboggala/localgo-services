@@ -28,10 +28,6 @@ export const LoginPage = () => {
       const from = location.state?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
-      } else if (user.role === 'ADMIN') {
-        navigate('/admin/dashboard');
-      } else if (user.role === 'PROVIDER') {
-        navigate('/provider/dashboard');
       } else {
         navigate('/dashboard');
       }
@@ -75,7 +71,7 @@ export const LoginPage = () => {
             </span>
           </Link>
           <h2 className="font-display font-bold text-xl text-slate-900 tracking-tight">Sign in to your account</h2>
-          <p className="text-xs text-slate-500">Access customer bookings or provider management</p>
+          <p className="text-xs text-slate-500">Book doorstep services and track your appointments</p>
         </div>
 
         {error && (

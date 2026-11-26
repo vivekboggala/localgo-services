@@ -135,9 +135,15 @@ export const AuthProvider = ({ children }) => {
       }
 
       const resolvedUser = profile || { uid: cred.user.uid, email: cred.user.email, role: 'PROVIDER', emailVerified: true };
-      if (resolvedUser.role === 'PROVIDER') {
-        api.put('/provider/presence', { online: true, forceOnline: true }).catch(() => {});
+      if (resolvedUser.role !== 'PROVIDER') {
+        await signOut(auth);
+        setUser(null);
+        setFirebaseUser(null);
+        localStorage.removeItem('localgo_token');
+        localStorage.removeItem('localgo_user');
+        throw new Error(`This portal is for Service Providers only. Please sign in on the ${resolvedUser.role === 'ADMIN' ? 'Admin Console' : 'Customer'} website.`);
       }
+      api.put('/provider/presence', { online: true, forceOnline: true }).catch(() => {});
       return resolvedUser;
     } catch (fbErr) {
       throw new Error(mapFirebaseLoginError(fbErr));

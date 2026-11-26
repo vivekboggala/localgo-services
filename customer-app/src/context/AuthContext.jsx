@@ -135,8 +135,13 @@ export const AuthProvider = ({ children }) => {
       }
 
       const resolvedUser = profile || { uid: cred.user.uid, email: cred.user.email, role: 'CUSTOMER', emailVerified: true };
-      if (resolvedUser.role === 'PROVIDER') {
-        api.put('/provider/presence', { online: true, forceOnline: true }).catch(() => {});
+      if (resolvedUser.role !== 'CUSTOMER') {
+        await signOut(auth);
+        setUser(null);
+        setFirebaseUser(null);
+        localStorage.removeItem('localgo_token');
+        localStorage.removeItem('localgo_user');
+        throw new Error(`This website is for Customers only. Please sign in on the ${resolvedUser.role === 'ADMIN' ? 'Admin Console' : 'Provider Partner'} website.`);
       }
       return resolvedUser;
     } catch (fbErr) {
@@ -179,11 +184,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    if (user?.role === 'PROVIDER') {
-      try {
-        await api.put('/provider/presence', { online: false }, { timeout: 4000 });
-      } catch (e) {}
-    }
     try {
       await signOut(auth);
     } catch (e) {}

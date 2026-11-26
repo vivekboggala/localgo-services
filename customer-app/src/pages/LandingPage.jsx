@@ -182,11 +182,11 @@ export const LandingPage = () => {
                 )}
               </div>
 
-              {/* Provider CTA Footer */}
+              {/* Customer Browse CTA Footer */}
               <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Looking to offer services?</span>
-                <Link to="/signup" className="text-white font-semibold hover:underline flex items-center gap-1">
-                  Join as Provider <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+                <span className="text-slate-400">Need a doorstep technician?</span>
+                <Link to="/providers" className="text-white font-semibold hover:underline flex items-center gap-1">
+                  Browse Nearby Pros <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
                 </Link>
               </div>
 

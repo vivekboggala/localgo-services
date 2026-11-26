@@ -2,8 +2,6 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
-import { ProviderLayout } from '../layouts/ProviderLayout';
-import { AdminLayout } from '../layouts/AdminLayout';
 
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -19,18 +17,6 @@ import { MyBookingsPage } from '../pages/customer/MyBookingsPage';
 import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
 import { NotificationsPage } from '../pages/customer/NotificationsPage';
 import ProfilePage from '../pages/customer/ProfilePage';
-import { ProviderDashboard } from '../pages/provider/ProviderDashboard';
-import { ProviderRequests } from '../pages/provider/ProviderRequests';
-import { ProviderActiveJob } from '../pages/provider/ProviderActiveJob';
-import { ProviderJobDetailPage } from '../pages/provider/ProviderJobDetailPage';
-import { ProviderBookings } from '../pages/provider/ProviderBookings';
-import { ProviderEarnings } from '../pages/provider/ProviderEarnings';
-import { ProviderProfile } from '../pages/provider/ProviderProfile';
-import { AdminDashboard } from '../pages/admin/AdminDashboard';
-import { AdminProviders } from '../pages/admin/AdminProviders';
-import { AdminUsers } from '../pages/admin/AdminUsers';
-import { AdminBookings } from '../pages/admin/AdminBookings';
-import { AdminReviews } from '../pages/admin/AdminReviews';
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
@@ -46,7 +32,7 @@ export const AppRoutes = () => {
 
       <Route element={<CustomerLayout />}>
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerDashboard /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><ProfilePage /></ProtectedRoute>} />
         <Route path="/providers" element={<NearbyProvidersPage />} />
         <Route path="/providers/nearby" element={<NearbyProvidersPage />} />
         <Route path="/providers/:id" element={<ProviderDetailPage />} />
@@ -54,26 +40,8 @@ export const AppRoutes = () => {
         <Route path="/book/:providerId" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingFlow /></ProtectedRoute>} />
         <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
-        <Route path="/bookings/:id" element={<ProtectedRoute><BookingDetailPage /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-      </Route>
-
-      <Route element={<ProviderLayout />}>
-        <Route path="/provider/dashboard" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderDashboard /></ProtectedRoute>} />
-        <Route path="/provider/requests" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderRequests /></ProtectedRoute>} />
-        <Route path="/provider/jobs" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderActiveJob /></ProtectedRoute>} />
-        <Route path="/provider/jobs/:id" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderJobDetailPage /></ProtectedRoute>} />
-        <Route path="/provider/bookings" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderBookings /></ProtectedRoute>} />
-        <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderEarnings /></ProtectedRoute>} />
-        <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderProfile /></ProtectedRoute>} />
-      </Route>
-
-      <Route element={<AdminLayout />}>
-        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/providers" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminProviders /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
-        <Route path="/admin/bookings" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminBookings /></ProtectedRoute>} />
-        <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReviews /></ProtectedRoute>} />
+        <Route path="/bookings/:id" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingDetailPage /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><NotificationsPage /></ProtectedRoute>} />
       </Route>
 
       <Route path="/login" element={<LoginPage />} />
@@ -85,7 +53,7 @@ export const AppRoutes = () => {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
           <p className="text-gray-500 mb-4">Page not found</p>
-          <a href="/" className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-xl">Go Home</a>
+          <a href="/" className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-xl text-xs">Go Home</a>
         </div>
       } />
     </Routes>

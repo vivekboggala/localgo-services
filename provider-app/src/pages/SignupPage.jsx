@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { MapPin, User, Briefcase } from 'lucide-react';
+import { MapPin, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const SignupPage = () => {
-  const [role, setRole] = useState('PROVIDER');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -41,6 +40,23 @@ export const SignupPage = () => {
       .catch(() => {});
   }, []);
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(Number(pos.coords.latitude.toFixed(6)));
+        setLongitude(Number(pos.coords.longitude.toFixed(6)));
+        toast.success('Business base location detected from GPS');
+      },
+      (err) => {
+        toast.error('Could not detect GPS location: ' + err.message);
+      }
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -58,32 +74,26 @@ export const SignupPage = () => {
     setLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
-    const pendingRegistration =
-      role === 'CUSTOMER'
-        ? {
-            role: 'CUSTOMER',
-            payload: { name: name.trim(), email: cleanEmail, phone: phone.trim(), password },
-          }
-        : {
-            role: 'PROVIDER',
-            payload: {
-              name: name.trim(),
-              email: cleanEmail,
-              phone: phone.trim(),
-              password,
-              description,
-              experienceYears: Number(experienceYears),
-              address,
-              city,
-              postalCode,
-              latitude: Number(latitude),
-              longitude: Number(longitude),
-              serviceArea,
-              serviceRadiusKm: Number(serviceRadiusKm),
-              primaryServiceId: String(primaryServiceId || 'electrician'),
-              startingPrice: Number(startingPrice),
-            },
-          };
+    const pendingRegistration = {
+      role: 'PROVIDER',
+      payload: {
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone.trim(),
+        password,
+        description,
+        experienceYears: Number(experienceYears),
+        address,
+        city,
+        postalCode,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        serviceArea,
+        serviceRadiusKm: Number(serviceRadiusKm),
+        primaryServiceId: String(primaryServiceId || 'electrician'),
+        startingPrice: Number(startingPrice),
+      },
+    };
 
     try {
       await api.post('/auth/send-otp', {
@@ -118,31 +128,12 @@ export const SignupPage = () => {
             <span className="font-display font-extrabold text-xl tracking-tight text-slate-900">
               Local<span className="text-blue-600">Go</span>
             </span>
+            <span className="text-[10px] font-bold bg-slate-900 text-white px-2 py-0.5 rounded uppercase">Partner</span>
           </Link>
-          <h2 className="font-display font-bold text-xl text-slate-900 tracking-tight">Create an Account</h2>
-          <p className="text-xs text-slate-500">Register as a customer or service professional</p>
-        </div>
-
-        {/* Role Toggle */}
-        <div className="flex bg-slate-100 p-1 rounded-md border border-slate-200/80">
-          <button
-            type="button"
-            onClick={() => setRole('CUSTOMER')}
-            className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-2 ${
-              role === 'CUSTOMER' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" /> Customer Account
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole('PROVIDER')}
-            className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors flex items-center justify-center gap-2 ${
-              role === 'PROVIDER' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Briefcase className="w-3.5 h-3.5" /> Service Provider
-          </button>
+          <h2 className="font-display font-bold text-xl text-slate-900 tracking-tight flex items-center justify-center gap-2">
+            <Briefcase className="w-5 h-5 text-blue-600" /> Partner Registration
+          </h2>
+          <p className="text-xs text-slate-500">Join LocalGo as a verified doorstep service professional</p>
         </div>
 
         {error && (
@@ -153,13 +144,13 @@ export const SignupPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Full Name</label>
+            <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Full Name / Business Name</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Rahul Sharma"
+              placeholder="e.g. Rajesh Kumar - Master Electrician"
               className="w-full px-3 py-2 rounded-md border border-slate-300 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none text-xs text-slate-900 shadow-xs font-medium"
             />
           </div>
@@ -172,7 +163,7 @@ export const SignupPage = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="rahul@example.com"
+                placeholder="partner@example.com"
                 className="w-full px-3 py-2 rounded-md border border-slate-300 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none text-xs text-slate-900 shadow-xs font-medium"
               />
             </div>
@@ -214,68 +205,77 @@ export const SignupPage = () => {
             </div>
           </div>
 
-          {role === 'PROVIDER' && (
-            <div className="pt-3 border-t border-slate-200 space-y-3">
-              <h3 className="font-bold text-slate-400 text-[10px] uppercase">Business Specifications</h3>
+          <div className="pt-3 border-t border-slate-200 space-y-3">
+            <h3 className="font-bold text-slate-400 text-[10px] uppercase">Business Specifications</h3>
 
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Primary Service Category</label>
+              <select
+                value={primaryServiceId}
+                onChange={(e) => setPrimaryServiceId(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 focus:border-slate-900 outline-none text-xs bg-white text-slate-900 font-medium shadow-xs"
+              >
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name} ({cat.category})
+                  </option>
+                ))}
+                {categories.length === 0 && <option value="ac-repair">AC Repair & Service</option>}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Experience Summary</label>
+              <textarea
+                required
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your expertise..."
+                className="w-full px-3 py-2 rounded-md border border-slate-300 focus:border-slate-900 outline-none text-xs text-slate-900 shadow-xs font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Primary Service Category</label>
-                <select
-                  value={primaryServiceId}
-                  onChange={(e) => setPrimaryServiceId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border border-slate-300 focus:border-slate-900 outline-none text-xs bg-white text-slate-900 font-medium shadow-xs"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name} ({cat.category})
-                    </option>
-                  ))}
-                  {categories.length === 0 && <option value="ac-repair">AC Repair & Service</option>}
-                </select>
+                <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Experience (Years)</label>
+                <input type="number" min="0" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
               </div>
-
               <div>
-                <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Experience Summary</label>
-                <textarea
-                  required
-                  rows={2}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe your expertise..."
-                  className="w-full px-3 py-2 rounded-md border border-slate-300 focus:border-slate-900 outline-none text-xs text-slate-900 shadow-xs font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Experience (Years)</label>
-                  <input type="number" min="0" value={experienceYears} onChange={(e) => setExperienceYears(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Starting Charge (₹)</label>
-                  <input type="number" min="50" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Coverage Area Name</label>
-                  <input type="text" value={serviceArea} onChange={(e) => setServiceArea(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Coverage Radius (km)</label>
-                  <input type="number" min="1" max="50" value={serviceRadiusKm} onChange={(e) => setServiceRadiusKm(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
-                </div>
+                <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Starting Charge (₹)</label>
+                <input type="number" min="50" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
               </div>
             </div>
-          )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Coverage Area Name</label>
+                <input type="text" value={serviceArea} onChange={(e) => setServiceArea(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1 uppercase text-[10px]">Coverage Radius (km)</label>
+                <input type="number" min="1" max="50" value={serviceRadiusKm} onChange={(e) => setServiceRadiusKm(e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-300 text-xs text-slate-900 font-medium shadow-xs" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-slate-500">Base GPS: {Number(latitude).toFixed(4)}, {Number(longitude).toFixed(4)}</span>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                className="text-[11px] font-semibold text-blue-600 hover:underline"
+              >
+                Use Current GPS Location
+              </button>
+            </div>
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-md transition-all duration-200 shadow-sm hover:shadow hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 flex items-center justify-center mt-4"
+            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-md transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 flex items-center justify-center mt-4"
           >
-            {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : `Register as ${role === 'CUSTOMER' ? 'Customer' : 'Provider'}`}
+            {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Register as Service Provider'}
           </button>
         </form>
 

@@ -8,12 +8,7 @@ export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
-  const dashboardPath =
-    user?.role === 'ADMIN'
-      ? '/admin/dashboard'
-      : user?.role === 'PROVIDER'
-        ? '/provider/dashboard'
-        : '/dashboard';
+  const dashboardPath = '/dashboard';
 
   const handleLogout = () => {
     logout();
@@ -41,9 +36,7 @@ export const Navbar = () => {
           {isAuthenticated && (
             <>
               <Link to={dashboardPath} className="hover:text-slate-900 transition-colors">Dashboard</Link>
-              {user?.role !== 'PROVIDER' && (
-                <Link to="/my-bookings" className="hover:text-slate-900 transition-colors">My Bookings</Link>
-              )}
+              <Link to="/my-bookings" className="hover:text-slate-900 transition-colors">My Bookings</Link>
             </>
           )}
         </div>

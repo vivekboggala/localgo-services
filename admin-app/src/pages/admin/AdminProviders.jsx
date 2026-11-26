@@ -121,7 +121,6 @@ export const AdminProviders = () => {
         </button>
       </div>
 
-      {/* Filter Tabs + Search */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
         <div className="flex flex-wrap items-center gap-2">
           {STATUS_TABS.map((tab) => (
@@ -157,7 +156,6 @@ export const AdminProviders = () => {
         </div>
       </div>
 
-      {/* Providers List */}
       {loading ? (
         <div className="text-center py-16">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto"></div>
@@ -185,17 +183,13 @@ export const AdminProviders = () => {
               {providers.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="p-4 align-top">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProvider(p)}
-                      className="text-left group"
-                    >
+                    <button type="button" onClick={() => setSelectedProvider(p)} className="text-left group">
                       <div className="font-bold text-slate-900 group-hover:text-blue-600">{p.name}</div>
                       <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
                         <span>{p.experienceYears ?? 0} yrs exp</span>
                         <span>•</span>
                         <span className={p.available ? 'text-emerald-600 font-semibold' : 'text-slate-400'}>
-                          {p.available ? 'Online' : 'Offline'}
+                          {p.available ? 'On Duty' : 'Offline'}
                         </span>
                       </div>
                     </button>
@@ -272,7 +266,6 @@ export const AdminProviders = () => {
         </div>
       )}
 
-      {/* Provider Inspection Modal */}
       {selectedProvider && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-xl overflow-hidden">
@@ -405,7 +398,6 @@ export const AdminProviders = () => {
         </div>
       )}
 
-      {/* Reject Reason Modal */}
       {rejectTarget && (
         <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-xl p-6 space-y-4">
@@ -416,11 +408,7 @@ export const AdminProviders = () => {
                   Explain why <strong className="text-slate-800">{rejectTarget.name}</strong> is being rejected.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setRejectTarget(null)}
-                className="text-slate-400 hover:text-slate-700"
-              >
+              <button type="button" onClick={() => setRejectTarget(null)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
               </button>
             </div>

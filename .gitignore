@@ -24,6 +24,9 @@ customer-app/.vite/
 provider-app/node_modules/
 provider-app/dist/
 provider-app/.vite/
+admin-app/node_modules/
+admin-app/dist/
+admin-app/.vite/
 node_modules/
 dist/
 .vite/
