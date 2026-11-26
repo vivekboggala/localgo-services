@@ -1,5 +1,6 @@
 package com.localgo.model;
 
+import com.google.cloud.firestore.annotation.Exclude;
 import com.google.cloud.firestore.annotation.IgnoreExtraProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,7 +37,9 @@ public class BookingDoc {
     private Long amount; // stored in paise (100 paise = 1 INR)
     private String paymentMethod;
     private String paymentStatus;
+    @Exclude
     private String startOtp;
+    @Exclude
     private String completionOtp;
     private Date acceptedAt;
     private Date onTheWayAt;

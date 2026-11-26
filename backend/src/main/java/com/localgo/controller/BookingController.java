@@ -49,7 +49,9 @@ public class BookingController {
             @RequestParam(value = "reason", required = false) String reason,
             Authentication authentication) {
 
-        BookingResponse booking = bookingService.cancelBooking(id, authentication.getName(), reason);
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        BookingResponse booking = bookingService.cancelBooking(id, authentication.getName(), reason, isAdmin);
         return ResponseEntity.ok(ApiResponse.success("Booking cancelled successfully", booking));
     }
 }

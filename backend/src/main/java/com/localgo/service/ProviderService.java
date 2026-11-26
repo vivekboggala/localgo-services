@@ -278,6 +278,43 @@ public class ProviderService {
         return doc.getLastSeenAt() != null && (System.currentTimeMillis() - doc.getLastSeenAt()) <= PRESENCE_TIMEOUT_MS;
     }
 
+    public ProviderResponse getProviderProfileWithContact(String id) {
+        ProviderResponse resp = getProviderById(id, null, null);
+        attachPrivateContact(id, resp);
+        return resp;
+    }
+
+    public ProviderResponse mapToResponseWithContact(ProviderDoc doc, Double distanceKm) {
+        ProviderResponse resp = mapToResponse(doc, distanceKm);
+        attachPrivateContact(doc != null ? doc.getId() : null, resp);
+        return resp;
+    }
+
+    private void attachPrivateContact(String providerId, ProviderResponse resp) {
+        if (providerId == null || resp == null) return;
+        try {
+            var privateCol = firestore.collection("provider_private");
+            if (privateCol != null) {
+                var privSnap = privateCol.document(providerId).get().get();
+                if (privSnap != null && privSnap.exists()) {
+                    resp.setEmail(privSnap.getString("email"));
+                    resp.setPhone(privSnap.getString("phone"));
+                    return;
+                }
+            }
+        } catch (Exception ignored) {}
+        try {
+            var usersCol = firestore.collection("users");
+            if (usersCol != null) {
+                var userSnap = usersCol.document(providerId).get().get();
+                if (userSnap != null && userSnap.exists()) {
+                    if (resp.getEmail() == null) resp.setEmail(userSnap.getString("email"));
+                    if (resp.getPhone() == null) resp.setPhone(userSnap.getString("phone"));
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
     public ProviderResponse mapToResponse(ProviderDoc doc, Double distanceKm) {
         List<ServiceResponse> serviceResponses = new ArrayList<>();
         BigDecimal lowestPrice = null;
@@ -308,8 +345,8 @@ public class ProviderService {
                 .id(doc.getId())
                 .userId(doc.getId())
                 .name(doc.getName())
-                .email(doc.getEmail())
-                .phone(doc.getPhone())
+                .email(null)
+                .phone(null)
                 .description(doc.getDescription())
                 .experienceYears(doc.getExperienceYears())
                 .latitude(doc.getLatitude())

@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -18,9 +18,12 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(Authentication authentication) {
-        List<NotificationResponse> notifications = notificationService.getNotificationsForUser(authentication.getName());
-        return ResponseEntity.ok(ApiResponse.success("Notifications fetched", notifications));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMyNotifications(
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor,
+            Authentication authentication) {
+        Map<String, Object> notificationsPage = notificationService.getNotificationsPaginated(authentication.getName(), limit, cursor);
+        return ResponseEntity.ok(ApiResponse.success("Notifications fetched", notificationsPage));
     }
 
     @GetMapping("/unread-count")

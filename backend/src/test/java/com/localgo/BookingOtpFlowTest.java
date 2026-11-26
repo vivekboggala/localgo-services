@@ -90,7 +90,10 @@ class BookingOtpFlowTest {
         completeDirect.setStatus(BookingStatus.COMPLETED);
         BookingResponse completed = bookingService.updateBookingStatus("book-1", completeDirect, "prov-1");
         assertEquals(BookingStatus.COMPLETED, completed.getStatus());
-        assertEquals(PaymentStatus.PAID, completed.getPaymentStatus());
+        assertEquals(PaymentStatus.PENDING, completed.getPaymentStatus());
         assertNull(completed.getCompletionOtp());
+
+        BookingResponse cashConfirmed = bookingService.confirmCashReceived("book-1", "prov-1");
+        assertEquals(PaymentStatus.PAID, cashConfirmed.getPaymentStatus());
     }
 }

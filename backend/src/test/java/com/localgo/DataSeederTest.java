@@ -88,6 +88,7 @@ class DataSeederTest {
         });
 
         DataSeeder seeder = new DataSeeder(firestore, firebaseAuth);
+        seeder.setDemoProviderPassword("TestEnvPass@999");
         seeder.seedDemoProviders();
 
         assertEquals(22, providerStore.size());

@@ -1,5 +1,6 @@
 package com.localgo.model;
 
+import com.google.cloud.firestore.annotation.Exclude;
 import com.google.cloud.firestore.annotation.IgnoreExtraProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +17,9 @@ import java.util.List;
 public class ProviderDoc {
     private String id; // matches Firebase Auth UID
     private String name;
+    @Exclude
     private String email;
+    @Exclude
     private String phone;
     private String description;
     private Integer experienceYears;

@@ -9,7 +9,10 @@ import com.localgo.dto.request.VerifyOtpRequest;
 import com.localgo.dto.response.ApiResponse;
 import com.localgo.dto.response.AuthResponse;
 import com.localgo.dto.response.UserResponse;
+import com.localgo.service.AuthRateLimiterService;
+import com.localgo.service.AuthRateLimiterService.LimitType;
 import com.localgo.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,21 +27,31 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthRateLimiterService authRateLimiterService;
 
     @PostMapping("/send-otp")
-    public ResponseEntity<ApiResponse<Void>> sendOtp(@Valid @RequestBody ResendOtpRequest request) {
+    public ResponseEntity<ApiResponse<Void>> sendOtp(
+            @Valid @RequestBody ResendOtpRequest request,
+            HttpServletRequest httpRequest) {
+        authRateLimiterService.checkLimit(httpRequest, request.getEmail(), LimitType.OTP_SEND);
         authService.sendOtp(request);
         return ResponseEntity.ok(ApiResponse.success("Verification code sent to your email."));
     }
 
     @PostMapping("/resend-otp")
-    public ResponseEntity<ApiResponse<Void>> resendOtp(@Valid @RequestBody ResendOtpRequest request) {
+    public ResponseEntity<ApiResponse<Void>> resendOtp(
+            @Valid @RequestBody ResendOtpRequest request,
+            HttpServletRequest httpRequest) {
+        authRateLimiterService.checkLimit(httpRequest, request.getEmail(), LimitType.OTP_SEND);
         authService.sendOtp(request);
         return ResponseEntity.ok(ApiResponse.success("A new verification code has been sent to your email."));
     }
 
-    @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(@Valid @RequestBody VerifyOtpRequest request) {
+    @PostMapping({"/verify-email", "/verify-otp"})
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(
+            @Valid @RequestBody VerifyOtpRequest request,
+            HttpServletRequest httpRequest) {
+        authRateLimiterService.checkLimit(httpRequest, request.getEmail(), LimitType.OTP_VERIFY);
         Map<String, Object> result = authService.verifyEmailOtp(request);
         return ResponseEntity.ok(ApiResponse.success("Email verified successfully", result));
     }
@@ -62,13 +75,19 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<ApiResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<ApiResponse<String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        authRateLimiterService.checkLimit(httpRequest, request.getEmail(), LimitType.OTP_SEND);
         String message = authService.forgotPassword(request);
         return ResponseEntity.ok(ApiResponse.success(message));
     }
 
     @PostMapping("/verify-reset-otp")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyResetOtp(@Valid @RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyResetOtp(
+            @Valid @RequestBody VerifyOtpRequest request,
+            HttpServletRequest httpRequest) {
+        authRateLimiterService.checkLimit(httpRequest, request.getEmail(), LimitType.OTP_VERIFY);
         Map<String, Object> result = authService.verifyPasswordResetOtp(request);
         return ResponseEntity.ok(ApiResponse.success("OTP verified successfully", result));
     }

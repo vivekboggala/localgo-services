@@ -16,6 +16,7 @@ import java.util.Date;
 public class NotificationDoc {
     private String id;
     private String userId;
+    private String bookingId;
     private String title;
     private String message;
     private String type;
