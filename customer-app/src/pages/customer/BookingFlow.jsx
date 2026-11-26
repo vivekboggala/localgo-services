@@ -329,7 +329,7 @@ export const BookingFlow = () => {
         return;
       }
     }
-    setStep((s) => Math.min(4, s + 1));
+    setStep((s) => Math.min(3, s + 1));
   };
 
   const handleSubmitBooking = async () => {
@@ -430,9 +430,9 @@ export const BookingFlow = () => {
               <span className="font-bold text-brand-ink">{scheduledDate} &bull; {scheduledTime}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Payment</span>
+              <span className="text-gray-600">Total</span>
               <span className="font-bold text-brand-ink">
-                {formatCurrency(confirmedBooking.amount ?? totalAmount)} (Pay after service)
+                {formatCurrency(confirmedBooking.amount ?? totalAmount)}
               </span>
             </div>
           </div>
@@ -722,29 +722,6 @@ export const BookingFlow = () => {
             </div>
           )}
 
-          {/* STEP 4: Review & Confirm */}
-          {step === 4 && (
-            <div className="bg-brand-white border border-gray-200 rounded-card p-6 space-y-4 shadow-card">
-              <h2 className="font-display font-bold text-ds-20 text-brand-ink">Review &amp; confirm booking</h2>
-              <div className="p-4 rounded-card border border-brand-yellow bg-brand-yellowSoft flex items-start gap-3">
-                <div className="w-10 h-10 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
-                  <Wallet className="w-5 h-5" strokeWidth={2} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-display font-bold text-ds-14 text-brand-ink">Pay After Service Completion</div>
-                  <div className="text-ds-12 text-gray-800 mt-0.5">
-                    You can choose <strong>UPI</strong> (QR / UTR) or <strong>Cash</strong> after the professional finishes the job.
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-ds-12 text-gray-600 pt-1">
-                <ShieldCheck className="w-4 h-4 text-status-success shrink-0" />
-                <span>Protected by 4-digit Start OTP arrival verification.</span>
-              </div>
-            </div>
-          )}
-
           {/* Desktop Action Buttons */}
           <div className="hidden lg:flex items-center justify-between gap-4 pt-1">
             {step > 1 ? (
@@ -760,7 +737,7 @@ export const BookingFlow = () => {
               <div />
             )}
 
-            {step < 4 ? (
+            {step < 3 ? (
               <Button
                 variant="accent"
                 size="lg"
@@ -821,10 +798,6 @@ export const BookingFlow = () => {
                   {address || 'Pending'}
                 </span>
               </div>
-              <div className="flex justify-between gap-2">
-                <span className="text-gray-600">Payment</span>
-                <span className="font-bold text-brand-ink">Pay after service</span>
-              </div>
             </div>
 
             <div className="space-y-2.5 text-ds-14 pt-1">
@@ -864,7 +837,7 @@ export const BookingFlow = () => {
             </Button>
           )}
 
-          {step < 4 ? (
+          {step < 3 ? (
             <Button
               variant="accent"
               size="lg"

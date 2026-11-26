@@ -89,34 +89,70 @@ export const ProviderEarnings = () => {
     return () => unsubscribe();
   }, [uid, fetchEarningsData]);
 
+  const getBookingTotal = (b) =>
+    b.totalAmount != null ? Number(b.totalAmount) : Number(b.amount || 0) + Number(b.extraAmount || 0);
+
+  const parseCompletedDate = (item) => {
+    const raw = item.completedAt || item.createdAt;
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+      const s = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw.trim()) ? raw.trim() : `${raw.trim()}Z`;
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof raw?.toDate === 'function') return raw.toDate();
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const getLocalIsoDate = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const formatTxDate = (item) => {
+    const d = parseCompletedDate(item);
+    if (d) {
+      return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    return item.scheduledDate || 'Recent';
+  };
+
+  const formatTxTime = (item) => {
+    const d = parseCompletedDate(item);
+    if (d) {
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+    return item.scheduledTime || '';
+  };
+
   const filteredTransactions = useMemo(() => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getLocalIsoDate(now);
     const cutoff = new Date(now);
     cutoff.setDate(now.getDate() - (days - 1));
     cutoff.setHours(0, 0, 0, 0);
 
     const list = completedBookings.filter((b) => {
-      const dateStr = b.scheduledDate || (b.completedAt ? String(b.completedAt).split('T')[0] : '');
+      const completedD = parseCompletedDate(b);
+      const dateStr = completedD ? getLocalIsoDate(completedD) : (b.scheduledDate || '');
       if (days === 1) return dateStr === todayStr;
       if (!dateStr) return true;
-      const d = new Date(dateStr);
+      const d = completedD || new Date(dateStr);
       return isNaN(d.getTime()) ? true : d >= cutoff;
     });
 
     return [...list].sort((a, b) => {
-      if (sortField === 'amount_desc') return (Number(b.amount) || 0) - (Number(a.amount) || 0);
-      if (sortField === 'amount_asc') return (Number(a.amount) || 0) - (Number(b.amount) || 0);
-      const da = `${a.scheduledDate || ''}T${a.scheduledTime || ''}`;
-      const dbStr = `${b.scheduledDate || ''}T${b.scheduledTime || ''}`;
-      return sortField === 'date_asc' ? da.localeCompare(dbStr) : dbStr.localeCompare(da);
+      if (sortField === 'amount_desc') return getBookingTotal(b) - getBookingTotal(a);
+      if (sortField === 'amount_asc') return getBookingTotal(a) - getBookingTotal(b);
+      const da = parseCompletedDate(a)?.getTime() || new Date(`${a.scheduledDate || ''}T${a.scheduledTime || '00:00:00'}`).getTime() || 0;
+      const dbMs = parseCompletedDate(b)?.getTime() || new Date(`${b.scheduledDate || ''}T${b.scheduledTime || '00:00:00'}`).getTime() || 0;
+      return sortField === 'date_asc' ? da - dbMs : dbMs - da;
     });
   }, [completedBookings, days, sortField]);
 
   const stats = useMemo(() => {
     const paidList = filteredTransactions.filter((b) => b.paymentStatus === 'PAID');
     const sourceList = paidList.length > 0 ? paidList : filteredTransactions;
-    const gross = sourceList.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+    const gross = sourceList.reduce((sum, b) => sum + getBookingTotal(b), 0);
     const jobsCount = filteredTransactions.length;
     const avgPerJob = jobsCount > 0 ? Math.round(gross / jobsCount) : 0;
     const platformFees = 0;
@@ -126,7 +162,7 @@ export const ProviderEarnings = () => {
 
   const chartBars = useMemo(() => {
     if (days === 1) {
-      const todayIso = new Date().toISOString().split('T')[0];
+      const todayIso = getLocalIsoDate(new Date());
       const todayPoint = trendData.find((d) => String(d.date || '').includes(todayIso));
       return todayPoint ? [todayPoint] : [{ date: 'Today', earnings: stats.gross }];
     }
@@ -136,11 +172,11 @@ export const ProviderEarnings = () => {
   const groupedByDate = useMemo(() => {
     const groups = new Map();
     filteredTransactions.forEach((b) => {
-      const dateKey = b.scheduledDate || 'Recent';
+      const dateKey = formatTxDate(b);
       if (!groups.has(dateKey)) groups.set(dateKey, []);
       groups.get(dateKey).push(b);
     });
-    return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+    return Array.from(groups.entries());
   }, [filteredTransactions]);
 
   return (
@@ -326,7 +362,7 @@ export const ProviderEarnings = () => {
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="font-display font-extrabold text-ds-16 text-brand-ink dark:text-brand-yellow">
-                            +{formatCurrency(item.amount)}
+                            +{formatCurrency(getBookingTotal(item))}
                           </span>
                           <ArrowUpRight className="w-4 h-4 text-gray-400" />
                         </div>
@@ -373,8 +409,8 @@ export const ProviderEarnings = () => {
                       className="hover:bg-gray-50 dark:hover:bg-brand-ink/50 cursor-pointer transition-colors"
                     >
                       <td className="py-4 px-5 whitespace-nowrap">
-                        <div className="font-semibold text-brand-ink dark:text-brand-white">{item.scheduledDate}</div>
-                        <div className="text-[11px] text-gray-400">{item.scheduledTime}</div>
+                        <div className="font-semibold text-brand-ink dark:text-brand-white">{formatTxDate(item)}</div>
+                        <div className="text-[11px] text-gray-400">{formatTxTime(item)}</div>
                       </td>
                       <td className="py-4 px-4 font-display font-bold text-brand-ink dark:text-brand-white">
                         {item.serviceName}
@@ -386,7 +422,7 @@ export const ProviderEarnings = () => {
                         </Badge>
                       </td>
                       <td className="py-4 px-5 text-right font-display font-extrabold text-brand-ink dark:text-brand-yellow whitespace-nowrap">
-                        +{formatCurrency(item.amount)}
+                        +{formatCurrency(getBookingTotal(item))}
                       </td>
                     </tr>
                   ))}

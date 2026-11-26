@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -28,6 +29,28 @@ public class ProviderDashboardService {
     private final Firestore firestore;
     private final BookingService bookingService;
     private final ProviderService providerService;
+
+    private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
+
+    private long extractBookingTotalPaise(com.google.cloud.firestore.DocumentSnapshot doc) {
+        Long amt = doc.getLong("amount");
+        Long extra = doc.getLong("extraAmountPaise");
+        return (amt != null ? amt : 0L) + (extra != null ? extra : 0L);
+    }
+
+    private LocalDate extractCompletedIstDate(com.google.cloud.firestore.DocumentSnapshot doc) {
+        Date completedAt = doc.getDate("completedAt");
+        if (completedAt != null) {
+            return completedAt.toInstant().atZone(IST_ZONE).toLocalDate();
+        }
+        String dateStr = doc.getString("scheduledDate");
+        if (dateStr != null && !dateStr.isBlank()) {
+            try {
+                return LocalDate.parse(dateStr);
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
 
     public ProviderDashboardResponse getDashboardStats(String providerId) {
         try {
@@ -79,10 +102,7 @@ public class ProviderDashboardService {
             long totalPaise = 0L;
             for (var doc : completedSnap.getDocuments()) {
                 if ("PAID".equalsIgnoreCase(doc.getString("paymentStatus"))) {
-                    Long amt = doc.getLong("amount");
-                    if (amt != null) {
-                        totalPaise += amt;
-                    }
+                    totalPaise += extractBookingTotalPaise(doc);
                 }
             }
 
@@ -190,10 +210,7 @@ public class ProviderDashboardService {
 
             long totalPaise = 0L;
             for (var doc : snapshot.getDocuments()) {
-                Long amt = doc.getLong("amount");
-                if (amt != null) {
-                    totalPaise += amt;
-                }
+                totalPaise += extractBookingTotalPaise(doc);
             }
             return BigDecimal.valueOf(totalPaise).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         } catch (Exception e) {
@@ -210,7 +227,7 @@ public class ProviderDashboardService {
      */
     public List<EarningsTrendResponse> getProviderEarningsTrend(String providerId, int days) {
         int window = days > 0 ? days : 7;
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now(IST_ZONE);
         LocalDate startDate = endDate.minusDays(window - 1);
 
         // Continuous date map for zero-filling
@@ -227,21 +244,14 @@ public class ProviderDashboardService {
                     .whereEqualTo("providerId", providerId)
                     .whereEqualTo("status", BookingStatus.COMPLETED.name())
                     .whereEqualTo("paymentStatus", "PAID")
-                    .whereGreaterThanOrEqualTo("scheduledDate", startDate.toString())
-                    .whereLessThanOrEqualTo("scheduledDate", endDate.toString())
                     .get().get();
 
             for (var doc : snapshot.getDocuments()) {
-                String dateStr = doc.getString("scheduledDate");
-                Long amountPaise = doc.getLong("amount");
-                if (dateStr != null) {
-                    try {
-                        LocalDate d = LocalDate.parse(dateStr);
-                        if (dailyPaiseMap.containsKey(d)) {
-                            dailyPaiseMap.put(d, dailyPaiseMap.get(d) + (amountPaise != null ? amountPaise : 0L));
-                            dailyCountMap.put(d, dailyCountMap.get(d) + 1);
-                        }
-                    } catch (Exception ignored) {}
+                LocalDate d = extractCompletedIstDate(doc);
+                long amountPaise = extractBookingTotalPaise(doc);
+                if (d != null && dailyPaiseMap.containsKey(d)) {
+                    dailyPaiseMap.put(d, dailyPaiseMap.get(d) + amountPaise);
+                    dailyCountMap.put(d, dailyCountMap.get(d) + 1);
                 }
             }
         } catch (Exception e) {

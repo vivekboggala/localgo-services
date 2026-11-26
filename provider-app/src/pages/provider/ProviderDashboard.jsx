@@ -252,19 +252,41 @@ export const ProviderDashboard = () => {
   };
 
   const summaryMetrics = useMemo(() => {
-    const todayIso = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const toLocalDateStr = (val) => {
+      if (!val) return '';
+      if (typeof val === 'string') {
+        const s = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(val.trim()) ? val.trim() : `${val.trim()}Z`;
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+      }
+      return '';
+    };
+    const getTotal = (b) =>
+      b.totalAmount != null ? Number(b.totalAmount) : Number(b.amount || 0) + Number(b.extraAmount || 0);
+
     const todayTrendEntry = trendData.find((d) => String(d.date || '').includes(todayIso));
+    const localTodayPaidEarnings = allBookings
+      .filter((b) => {
+        if (b.status !== 'COMPLETED' || b.paymentStatus !== 'PAID') return false;
+        const doneDate = toLocalDateStr(b.completedAt) || b.scheduledDate;
+        return doneDate === todayIso;
+      })
+      .reduce((acc, b) => acc + getTotal(b), 0);
+
     const todayEarnings =
       stats?.todayEarnings ??
-      todayTrendEntry?.earnings ??
-      allBookings
-        .filter((b) => b.status === 'COMPLETED' && b.scheduledDate === todayIso)
-        .reduce((acc, b) => acc + (Number(b.amount) || 0), 0);
+      (Number(todayTrendEntry?.earnings || 0) > 0 ? Number(todayTrendEntry.earnings) : localTodayPaidEarnings);
 
     const todayJobs =
       stats?.todayJobsCount ??
       allBookings.filter(
-        (b) => b.scheduledDate === todayIso && ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(b.status)
+        (b) =>
+          (toLocalDateStr(b.completedAt) === todayIso || b.scheduledDate === todayIso) &&
+          ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(b.status)
       ).length;
 
     const totalHandled = allBookings.filter((b) => b.status !== 'REQUESTED').length;
