@@ -236,8 +236,8 @@ export const LandingPage = () => {
   }, [providers, location?.city, predefinedLocations.length]);
 
   const isDev = import.meta.env.DEV;
-  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : '');
-  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : '';
+  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : 'https://localgo-provider.vercel.app/');
+  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : 'https://localgo-provider.vercel.app/';
 
   return (
     <div className="bg-brand-white">
