@@ -5,6 +5,7 @@ import { Logo } from '../ui';
 
 export const Footer = () => {
   const providerPortalUrl = import.meta.env.VITE_PROVIDER_APP_URL || 'http://localhost:5174';
+  const adminPortalUrl = import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5175';
 
   return (
     <footer className="bg-brand-ink text-gray-400 pt-14 pb-24 lg:pb-10 border-t border-gray-900">
@@ -25,6 +26,16 @@ export const Footer = () => {
                 className="text-brand-yellow font-semibold hover:underline"
               >
                 Partner With Us (Provider App) &rarr;
+              </a>
+            </li>
+            <li>
+              <a
+                href={adminPortalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-brand-yellow font-semibold hover:underline transition-colors"
+              >
+                Admin Console &rarr;
               </a>
             </li>
           </ul>

@@ -433,23 +433,31 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* 3. Trust Strip */}
-      <section className="bg-brand-yellow border-y border-brand-yellowHover">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {TRUST_PILLARS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className="flex items-center gap-3 justify-start lg:justify-center">
-                  <div className="w-10 h-10 rounded-pill bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5" strokeWidth={2.2} />
-                  </div>
-                  <span className="font-display font-bold text-ds-14 text-brand-ink">
-                    {item.label}
-                  </span>
-                </div>
-              );
-            })}
+      {/* 3. Trust Strip (Continuous Marquee) */}
+      <section className="bg-brand-yellow border-y border-brand-yellowHover overflow-hidden">
+        <div className="py-4">
+          <div className="animate-trust-marquee items-center">
+            {[0, 1].map((dupIdx) => (
+              <div
+                key={dupIdx}
+                aria-hidden={dupIdx === 1}
+                className="flex items-center shrink-0 gap-10 sm:gap-14 pr-10 sm:pr-14"
+              >
+                {[...TRUST_PILLARS, ...TRUST_PILLARS].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={`${dupIdx}-${idx}-${item.label}`} className="flex items-center gap-3 shrink-0 whitespace-nowrap">
+                      <div className="w-10 h-10 rounded-pill bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5" strokeWidth={2.2} />
+                      </div>
+                      <span className="font-display font-bold text-ds-14 text-brand-ink">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       </section>
