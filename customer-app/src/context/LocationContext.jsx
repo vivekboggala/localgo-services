@@ -27,17 +27,38 @@ export const LocationProvider = ({ children }) => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const initialCoords = {
+          lat,
+          lng,
           city: 'Your Location (GPS)',
         };
-        setLocation(coords);
+        setLocation(initialCoords);
         setUsingGPS(true);
         setLoading(false);
         try {
-          localStorage.setItem('localgo_custom_location', JSON.stringify(coords));
+          localStorage.setItem('localgo_custom_location', JSON.stringify(initialCoords));
         } catch {}
+
+        // Reverse-geocode GPS coordinates to show actual locality/town name
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            const addr = data?.address;
+            if (!addr) return;
+            const area = addr.village || addr.suburb || addr.town || addr.city_district || addr.city || addr.county;
+            const town = addr.town || addr.city || addr.state_district;
+            const label = area && town && area !== town ? `${area}, ${town}` : area || town;
+            if (label) {
+              const updated = { lat, lng, city: `${label} (GPS)` };
+              setLocation(updated);
+              try {
+                localStorage.setItem('localgo_custom_location', JSON.stringify(updated));
+              } catch {}
+            }
+          })
+          .catch(() => {});
       },
       (err) => {
         setLoading(false);
@@ -56,7 +77,7 @@ export const LocationProvider = ({ children }) => {
             setError('POSITION_UNAVAILABLE');
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }, []);
 

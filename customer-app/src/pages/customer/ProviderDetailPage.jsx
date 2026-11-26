@@ -18,6 +18,7 @@ import { providerService } from '../../services/providerService';
 import { reviewService } from '../../services/reviewService';
 import { favoriteService } from '../../services/favoriteService';
 import { bookingService } from '../../services/bookingService';
+import { ProviderMap } from '../../components/map/ProviderMap';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useLiveSync } from '../../hooks/useLiveSync';
@@ -46,6 +47,7 @@ export const ProviderDetailPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
   const [acceptedPhone, setAcceptedPhone] = useState('');
+  const [resolvedArea, setResolvedArea] = useState('');
 
   const [reviews, setReviews] = useState([]);
   const [reviewsNextCursor, setReviewsNextCursor] = useState(null);
@@ -74,6 +76,27 @@ export const ProviderDetailPage = () => {
         if (!silent) setLoading(false);
       });
   }, [id, location?.lat, location?.lng]);
+
+  useEffect(() => {
+    if (!provider || provider.serviceArea || provider.latitude == null || provider.longitude == null) {
+      return undefined;
+    }
+    let active = true;
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${provider.latitude}&lon=${provider.longitude}&zoom=14`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !data?.address) return;
+        const addr = data.address;
+        const area = addr.suburb || addr.village || addr.town || addr.city_district || addr.city;
+        const city = addr.city || addr.town || addr.state_district || addr.state;
+        const text = area && city && area !== city ? `${area}, ${city}` : area || city || '';
+        if (text) setResolvedArea(text);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [provider?.id, provider?.serviceArea, provider?.latitude, provider?.longitude]);
 
   useEffect(() => {
     fetchProvider();
@@ -258,7 +281,7 @@ export const ProviderDetailPage = () => {
                 <div className="flex flex-wrap items-center gap-4 text-ds-12 text-gray-300">
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="w-4 h-4 text-brand-yellow" />
-                    {provider.serviceArea || 'Local Area'}
+                    {provider.serviceArea || resolvedArea || 'Local Area'}
                     {provider.distanceKm != null ? ` • ${Number(provider.distanceKm).toFixed(1)} km away` : ''}
                   </span>
                 </div>
@@ -382,6 +405,34 @@ export const ProviderDetailPage = () => {
                 })}
               </div>
             </section>
+
+            {/* Service Location & Coverage Map */}
+            {provider.latitude != null && provider.longitude != null && (
+              <section className="bg-brand-white rounded-card border border-gray-200 shadow-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-display font-bold text-ds-18 text-brand-ink">Service Location &amp; Coverage</h2>
+                    <p className="text-ds-12 text-gray-600">
+                      {provider.serviceArea || resolvedArea || 'Verified provider pin'}
+                      {provider.serviceRadiusKm ? ` • Serves within ${provider.serviceRadiusKm} km` : ''}
+                      {provider.distanceKm != null ? ` • ${Number(provider.distanceKm).toFixed(1)} km from you` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="h-64 w-full">
+                  <ProviderMap
+                    customerLocation={
+                      location?.lat != null && location?.lng != null
+                        ? { lat: location.lat, lng: location.lng }
+                        : null
+                    }
+                    providers={[provider]}
+                    selectedProvider={provider}
+                    radiusKm={provider.serviceRadiusKm || 15}
+                  />
+                </div>
+              </section>
+            )}
 
             {/* Reviews Section */}
             <section className="bg-brand-white rounded-card border border-gray-200 shadow-card p-6 space-y-5">
