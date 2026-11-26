@@ -1,60 +1,101 @@
-import React from 'react';
-import { MapPin, Navigation, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Navigation, ChevronDown, AlertCircle } from 'lucide-react';
+import { Badge, Button } from '../ui';
+import { LocationSheet } from './LocationSheet';
 
-export const LocationSelector = ({ location, error, loading, usingGPS, onRequestGPS, onSelectManual, predefinedLocations }) => {
+export const LocationSelector = ({
+  location,
+  error,
+  loading,
+  usingGPS,
+  onRequestGPS,
+  onSelectManual,
+  predefinedLocations = [],
+}) => {
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   return (
-    <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-card mb-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200/80 shrink-0">
-            <MapPin className="w-4 h-4 text-slate-700" />
+    <>
+      <div className="bg-brand-white rounded-card p-4 border border-gray-200 shadow-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="flex items-center gap-3 text-left min-w-0 group cursor-pointer"
+        >
+          <div className="w-11 h-11 rounded-card bg-brand-yellowSoft border border-brand-yellow text-brand-ink flex items-center justify-center shrink-0">
+            <MapPin className="w-5 h-5" strokeWidth={2} />
           </div>
-          <div>
-            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Search Location</div>
-            <div className="text-xs font-semibold text-slate-900 flex items-center gap-2 mt-0.5">
-              {location.city || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-              {usingGPS && <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-sm font-semibold">GPS Active</span>}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600">
+                Service Location
+              </span>
+              {usingGPS && (
+                <Badge tone="success" dot className="py-0.5 px-2 text-[10px]">
+                  GPS
+                </Badge>
+              )}
+            </div>
+            <div className="font-display font-bold text-ds-16 text-brand-ink flex items-center gap-1.5 truncate">
+              <span className="truncate">
+                {location?.city || `${location?.lat?.toFixed(3)}, ${location?.lng?.toFixed(3)}`}
+              </span>
+              <ChevronDown className="w-4 h-4 text-gray-600 shrink-0 group-hover:translate-y-0.5 transition-transform" />
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            loading={loading}
             onClick={onRequestGPS}
-            disabled={loading}
-            className="flex-1 sm:flex-none px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-md transition-colors border border-slate-200/80 flex items-center justify-center gap-1.5 disabled:opacity-50"
+            leftIcon={<Navigation className="w-4 h-4" strokeWidth={2} />}
+            className="flex-1 sm:flex-none"
           >
-            <Navigation className="w-3.5 h-3.5 text-slate-600" />
             {loading ? 'Locating...' : 'Use GPS'}
-          </button>
-
-          <select
-            onChange={(e) => {
-              const selected = predefinedLocations.find((l) => l.name === e.target.value);
-              if (selected) {
-                onSelectManual({ lat: selected.lat, lng: selected.lng, city: selected.name });
-              }
-            }}
-            value={usingGPS ? '' : location.city}
-            className="flex-1 sm:flex-none px-3.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-semibold text-slate-700 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900/10 shadow-xs"
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => setSheetOpen(true)}
+            className="flex-1 sm:flex-none"
           >
-            <option value="" disabled>Fallback Area</option>
-            {predefinedLocations.map((loc) => (
-              <option key={loc.name} value={loc.name}>{loc.name}</option>
-            ))}
-          </select>
+            Change City
+          </Button>
         </div>
       </div>
 
       {error && (
-        <div className="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
-            {error === 'PERMISSION_DENIED' ? 'Location access disabled. Please select a fallback area above.' : 'Unable to acquire GPS coordinates.'}
+        <div className="mt-2 p-3 rounded-card bg-amber-50 border border-amber-200 text-ds-12 text-amber-900 flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2 font-medium">
+            <AlertCircle className="w-4 h-4 text-status-warning shrink-0" strokeWidth={2} />
+            {error === 'PERMISSION_DENIED'
+              ? 'GPS disabled. Tap Change City to pick your service zone.'
+              : 'Could not detect GPS location. Select a city manually.'}
           </span>
-          <button onClick={onRequestGPS} className="font-semibold underline text-slate-900 ml-2">Retry</button>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            className="font-bold underline text-brand-ink shrink-0"
+          >
+            Select City
+          </button>
         </div>
       )}
-    </div>
+
+      <LocationSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        location={location}
+        error={error}
+        loading={loading}
+        usingGPS={usingGPS}
+        onRequestGPS={onRequestGPS}
+        onSelectManual={onSelectManual}
+        predefinedLocations={predefinedLocations}
+      />
+    </>
   );
 };
+
+export default LocationSelector;

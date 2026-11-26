@@ -11,12 +11,18 @@ const STEPS = [
 ];
 
 export const StatusTimeline = ({ status, cancelledBy, cancellationReason, timestamps = {} }) => {
-  if (status === 'REJECTED' || status === 'CANCELLED') {
+  if (status === 'REJECTED' || status === 'CANCELLED' || status === 'EXPIRED') {
+    const title =
+      status === 'REJECTED'
+        ? 'Booking Rejected by Provider'
+        : status === 'EXPIRED'
+          ? 'Booking Request Expired'
+          : `Booking Cancelled by ${cancelledBy || 'User'}`;
     return (
       <div className="bg-slate-100 border border-slate-300 rounded-lg p-4 text-slate-800 space-y-1">
         <div className="flex items-center gap-2 font-bold text-xs text-red-700">
           <XCircle className="w-4 h-4" />
-          <span>{status === 'REJECTED' ? 'Booking Rejected by Provider' : `Booking Cancelled by ${cancelledBy || 'User'}`}</span>
+          <span>{title}</span>
         </div>
         {cancellationReason && (
           <p className="text-xs text-slate-600 pl-6">Reason: {cancellationReason}</p>

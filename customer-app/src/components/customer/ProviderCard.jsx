@@ -1,29 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, ShieldCheck, Heart } from 'lucide-react';
+import { Star, ShieldCheck, Heart, MapPin, Briefcase, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { favoriteService } from '../../services/favoriteService';
-import { getProviderAvatar } from '../../utils/helpers';
-import toast from 'react-hot-toast';
+import { getProviderAvatar, formatCurrency } from '../../utils/helpers';
+import { Avatar, Badge, Button, showToast } from '../ui';
 
-export const ProviderCard = ({ provider, isFavoriteInitial = false, onFavoriteToggle }) => {
+export const ProviderCard = ({
+  provider,
+  isFavoriteInitial = null,
+  onFavoriteToggle,
+  compact = false,
+}) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isFavorite, setIsFavorite] = useState(isFavoriteInitial);
+  const [isFavorite, setIsFavorite] = useState(Boolean(isFavoriteInitial));
   const [favLoading, setFavLoading] = useState(false);
 
   useEffect(() => {
+    if (isFavoriteInitial !== null) {
+      setIsFavorite(Boolean(isFavoriteInitial));
+      return;
+    }
     if (user && user.role === 'CUSTOMER' && provider?.id) {
       favoriteService.checkIsFavorite(provider.id)
-        .then((fav) => setIsFavorite(fav))
+        .then((fav) => setIsFavorite(Boolean(fav)))
         .catch(() => {});
     }
-  }, [user, provider?.id]);
+  }, [user, provider?.id, isFavoriteInitial]);
 
   const handleToggleFavorite = async (e) => {
     e.stopPropagation();
     if (!user || user.role !== 'CUSTOMER') {
-      toast.error('Please log in as a customer to favorite providers');
+      showToast.error('Sign in as a customer to save favorites');
       return;
     }
     setFavLoading(true);
@@ -31,107 +40,139 @@ export const ProviderCard = ({ provider, isFavoriteInitial = false, onFavoriteTo
       if (isFavorite) {
         await favoriteService.removeFavorite(provider.id);
         setIsFavorite(false);
-        toast.success(`Removed ${provider.name} from favorites`);
+        showToast.success(`Removed ${provider.name} from favorites`);
+        onFavoriteToggle?.(provider.id, false);
       } else {
         await favoriteService.addFavorite(provider.id);
         setIsFavorite(true);
-        toast.success(`Added ${provider.name} to favorites ❤️`);
+        showToast.success(`Saved ${provider.name} to favorites`);
+        onFavoriteToggle?.(provider.id, true);
       }
-      if (onFavoriteToggle) onFavoriteToggle(provider.id, !isFavorite);
-    } catch (err) {
-      toast.error('Failed to update favorite status');
+    } catch {
+      showToast.error('Failed to update favorite status');
     } finally {
       setFavLoading(false);
     }
   };
 
+  const handleBookClick = (e) => {
+    e.stopPropagation();
+    if (provider.available) {
+      navigate(`/book/${provider.id}`);
+    } else {
+      navigate(`/providers/${provider.id}`);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl p-5 border border-slate-200/80 shadow-card hover:shadow-card-hover hover:border-slate-300 transition-all duration-200 flex flex-col justify-between relative group">
-      <div>
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <img
-              src={getProviderAvatar(provider.name)}
-              alt={provider.name}
-              className="w-10 h-10 rounded-md bg-slate-100 object-cover border border-slate-200 shrink-0"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/providers/${provider.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigate(`/providers/${provider.id}`);
+        }
+      }}
+      className="bg-brand-white rounded-card p-4 sm:p-5 border border-gray-200 shadow-card hover:shadow-card-hover hover:border-gray-400 transition-all duration-150 flex flex-col justify-between gap-4 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink"
+    >
+      <div className="space-y-3.5">
+        {/* Top Row: Avatar, Identity & Favorite / Online Pill */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar
+              src={provider.avatarUrl || getProviderAvatar(provider.name)}
+              name={provider.name}
+              size="md"
+              status={provider.available ? 'online' : 'offline'}
+              verified={provider.verificationStatus === 'VERIFIED'}
             />
-            <div className="w-10 h-10 rounded-md bg-slate-900 text-white font-bold text-sm items-center justify-center shrink-0 hidden">
-              {provider.name?.charAt(0)}
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="font-semibold text-slate-900 text-sm tracking-tight">{provider.name}</h3>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3 className="font-display font-bold text-ds-16 text-brand-ink truncate group-hover:underline">
+                  {provider.name}
+                </h3>
                 {provider.verificationStatus === 'VERIFIED' && (
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" title="Verified Professional" />
+                  <ShieldCheck className="w-4 h-4 text-status-success shrink-0" strokeWidth={2.2} aria-label="Verified" />
                 )}
               </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                {provider.services?.[0]?.name || 'Service Professional'}
+              <p className="text-ds-12 text-gray-600 font-medium truncate">
+                {provider.services?.[0]?.name || 'Doorstep Specialist'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge
+              tone={provider.available ? 'success' : 'neutral'}
+              dot
+              className="px-2.5 py-0.5 text-[11px]"
+            >
+              {provider.available ? 'Online' : 'Offline'}
+            </Badge>
+
             {user?.role === 'CUSTOMER' && (
               <button
                 type="button"
                 onClick={handleToggleFavorite}
                 disabled={favLoading}
-                className="p-1.5 rounded-md hover:bg-slate-100 transition-colors text-slate-400 hover:text-rose-500"
-                title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={isFavorite ? `Remove ${provider.name} from favorites` : `Add ${provider.name} to favorites`}
+                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-pill flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all duration-150"
               >
-                <Heart className={`w-4 h-4 transition-colors ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
+                <Heart
+                  className={`w-5 h-5 transition-colors ${
+                    isFavorite ? 'fill-status-danger text-status-danger' : 'text-gray-400 hover:text-status-danger'
+                  }`}
+                  strokeWidth={2}
+                />
               </button>
             )}
-
-            <span className={`px-2 py-0.5 rounded-sm text-[11px] font-semibold border ${
-              provider.available ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
-            }`}>
-              {provider.available ? 'Available' : 'Offline'}
-            </span>
           </div>
         </div>
 
-        <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed font-normal">
-          {provider.description}
-        </p>
-
-        <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 mb-4 text-center text-xs">
-          <div>
-            <div className="text-[10px] font-medium text-slate-500 uppercase">Rating</div>
-            <div className="font-semibold text-slate-900 flex items-center justify-center gap-1 mt-0.5">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              {provider.rating > 0 ? provider.rating.toFixed(1) : 'New'}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] font-medium text-slate-500 uppercase">Jobs</div>
-            <div className="font-semibold text-slate-900 mt-0.5">{provider.completedJobs}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-medium text-slate-500 uppercase">Distance</div>
-            <div className="font-semibold text-slate-900 mt-0.5">
-              {provider.distanceKm != null ? `${provider.distanceKm} km` : provider.serviceArea}
-            </div>
-          </div>
+        {/* Metrics Pill Strip */}
+        <div className="flex flex-wrap items-center gap-2 text-ds-12 font-semibold text-brand-ink">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-brand-yellowSoft border border-brand-yellow/60">
+            <Star className="w-3.5 h-3.5 fill-brand-yellow text-brand-ink" strokeWidth={2} />
+            {provider.rating > 0 ? Number(provider.rating).toFixed(1) : 'New'}
+          </span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-gray-100 text-gray-900">
+            <Briefcase className="w-3.5 h-3.5 text-gray-600" strokeWidth={2} />
+            {provider.completedJobs ?? 0} jobs
+          </span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-gray-100 text-gray-900">
+            <MapPin className="w-3.5 h-3.5 text-gray-600" strokeWidth={2} />
+            {provider.distanceKm != null ? `${Number(provider.distanceKm).toFixed(1)} km` : (provider.serviceArea || 'Nearby')}
+          </span>
         </div>
+
+        {!compact && provider.description && (
+          <p className="text-ds-12 text-gray-600 line-clamp-2 leading-relaxed">
+            {provider.description}
+          </p>
+        )}
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+      {/* Bottom Bar: Price & Book CTA */}
+      <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
         <div>
-          <span className="text-[10px] text-slate-400 block font-medium uppercase">Starting Rate</span>
-          <span className="text-sm font-bold text-slate-900">₹{provider.startingPrice}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 block">
+            Starting at
+          </span>
+          <span className="font-display font-bold text-ds-20 text-brand-ink">
+            {formatCurrency(provider.startingPrice)}
+          </span>
         </div>
-        <button
-          onClick={() => navigate(`/providers/${provider.id}`)}
-          className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-md text-xs transition-all duration-200 shadow-sm hover:shadow hover:-translate-y-0.5 active:translate-y-0"
+
+        <Button
+          variant={provider.available ? 'accent' : 'secondary'}
+          onClick={handleBookClick}
+          rightIcon={<ArrowRight className="w-4 h-4" strokeWidth={2.2} />}
+          className="px-5"
         >
-          View Profile
-        </button>
+          {provider.available ? 'Book' : 'Profile'}
+        </Button>
       </div>
     </div>
   );

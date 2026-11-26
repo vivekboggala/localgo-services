@@ -6,6 +6,8 @@ import { CustomerLayout } from '../layouts/CustomerLayout';
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
 import { SignupPage } from '../pages/SignupPage';
+import { NotFoundPage } from '../pages/NotFoundPage';
+import { ErrorPage } from '../pages/ErrorPage';
 
 import { ServiceListPage } from '../pages/customer/ServiceListPage';
 import { CustomerDashboard } from '../pages/customer/CustomerDashboard';
@@ -16,9 +18,11 @@ import { BookingFlow } from '../pages/customer/BookingFlow';
 import { MyBookingsPage } from '../pages/customer/MyBookingsPage';
 import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
 import { NotificationsPage } from '../pages/customer/NotificationsPage';
+import { FavoritesPage } from '../pages/customer/FavoritesPage';
 import ProfilePage from '../pages/customer/ProfilePage';
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import { DesignPreviewPage } from '../pages/DesignPreviewPage';
 
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 
@@ -41,6 +45,7 @@ export const AppRoutes = () => {
         <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
         <Route path="/bookings/:id" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingDetailPage /></ProtectedRoute>} />
+        <Route path="/favorites" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><FavoritesPage /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><NotificationsPage /></ProtectedRoute>} />
       </Route>
 
@@ -48,14 +53,9 @@ export const AppRoutes = () => {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-      <Route path="*" element={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
-          <p className="text-gray-500 mb-4">Page not found</p>
-          <a href="/" className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-xl text-xs">Go Home</a>
-        </div>
-      } />
+      <Route path="/design-preview" element={<DesignPreviewPage />} />
+      <Route path="/error" element={<ErrorPage />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

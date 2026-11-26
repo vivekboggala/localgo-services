@@ -8,11 +8,18 @@ const OtpInput = ({
   onResend,
   disabled = false,
   error = null,
-  cooldownSeconds = 30
+  cooldownSeconds = 30,
+  externalCooldown = 0
 }) => {
   const [otp, setOtp] = useState(Array(length).fill(''));
   const [timeLeft, setTimeLeft] = useState(cooldownSeconds);
   const inputsRef = useRef([]);
+
+  useEffect(() => {
+    if (externalCooldown > 0) {
+      setTimeLeft((prev) => Math.max(prev, externalCooldown));
+    }
+  }, [externalCooldown]);
 
   useEffect(() => {
     let timer;

@@ -1,52 +1,66 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin } from 'lucide-react';
+import { Logo } from '../ui';
 
 export const Footer = () => {
   return (
-    <footer className="bg-slate-900 text-slate-400 pt-12 pb-8 border-t border-slate-800 text-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 bg-white/10 text-white rounded-md flex items-center justify-center border border-white/20">
-              <MapPin className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-base font-extrabold text-white tracking-tight font-display">Local<span className="text-blue-400">Go</span> <span className="text-xs font-medium text-slate-400">Services</span></span>
-          </div>
-          <p className="text-slate-400 leading-relaxed">
-            Commercial-grade local service marketplace for verified doorstep professionals.
+    <footer className="bg-brand-ink text-gray-400 pt-12 pb-24 md:pb-10 border-t border-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div className="space-y-3">
+          <Logo variant="dark" size="sm" subtitle="On-Demand Marketplace" />
+          <p className="text-ds-12 text-gray-400 leading-relaxed max-w-xs">
+            Verified doorstep home professionals with live tracking, OTP-verified start, and transparent upfront pricing.
           </p>
         </div>
 
         <div>
-          <h4 className="text-white font-semibold text-xs mb-3 uppercase tracking-wider">Services</h4>
-          <ul className="space-y-2">
-            <li><Link to="/services" className="hover:text-white transition-colors">AC & Appliance Repair</Link></li>
-            <li><Link to="/services" className="hover:text-white transition-colors">Electrical Works</Link></li>
-            <li><Link to="/services" className="hover:text-white transition-colors">Plumbing Fixes</Link></li>
-            <li><Link to="/services" className="hover:text-white transition-colors">Gadget & PC Repair</Link></li>
+          <h4 className="text-brand-white font-display font-bold text-ds-12 uppercase tracking-wider mb-3">
+            Popular Services
+          </h4>
+          <ul className="space-y-2 text-ds-12">
+            <li><Link to="/services" className="hover:text-brand-yellow transition-colors">AC &amp; Appliance Repair</Link></li>
+            <li><Link to="/services" className="hover:text-brand-yellow transition-colors">Electricians &amp; Wiring</Link></li>
+            <li><Link to="/services" className="hover:text-brand-yellow transition-colors">Plumbing &amp; Leakage</Link></li>
+            <li><Link to="/services" className="hover:text-brand-yellow transition-colors">Home Deep Cleaning</Link></li>
           </ul>
         </div>
 
         <div>
-          <h4 className="text-white font-semibold text-xs mb-3 uppercase tracking-wider">Navigation</h4>
-          <ul className="space-y-2">
-            <li><Link to="/services" className="hover:text-white transition-colors">Service Catalog</Link></li>
-            <li><Link to="/map" className="hover:text-white transition-colors">Interactive Map</Link></li>
-            <li><Link to="/signup" className="hover:text-white transition-colors">Provider Portal Registration</Link></li>
-            <li><Link to="/login" className="hover:text-white transition-colors">Sign In</Link></li>
+          <h4 className="text-brand-white font-display font-bold text-ds-12 uppercase tracking-wider mb-3">
+            Customer Links
+          </h4>
+          <ul className="space-y-2 text-ds-12">
+            <li><Link to="/providers" className="hover:text-brand-yellow transition-colors">Find Nearby Pros</Link></li>
+            <li><Link to="/map" className="hover:text-brand-yellow transition-colors">Live Service Map</Link></li>
+            <li><Link to="/my-bookings" className="hover:text-brand-yellow transition-colors">Track Bookings</Link></li>
+            <li><Link to="/favorites" className="hover:text-brand-yellow transition-colors">Saved Favorites</Link></li>
           </ul>
         </div>
 
         <div>
-          <h4 className="text-white font-semibold text-xs mb-3 uppercase tracking-wider">Geographic Coverage</h4>
-          <p className="text-slate-400 mb-2">Doorstep Services Across Your City & Region</p>
-          <p className="text-[11px] text-slate-500">Haversine spatial algorithm with OpenStreetMap tile rendering.</p>
+          <h4 className="text-brand-white font-display font-bold text-ds-12 uppercase tracking-wider mb-3">
+            Account &amp; Partner
+          </h4>
+          <ul className="space-y-2 text-ds-12">
+            <li><Link to="/login" className="hover:text-brand-yellow transition-colors">Customer Sign In</Link></li>
+            <li><Link to="/signup" className="hover:text-brand-yellow transition-colors">Create Account</Link></li>
+            <li>
+              <a
+                href={import.meta.env.VITE_PROVIDER_APP_URL || 'http://localhost:5174'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-yellow font-semibold hover:underline"
+              >
+                Become a Provider &rarr;
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800 pt-6 text-center text-[11px] text-slate-500">
-        &copy; {new Date().getFullYear()} LocalGo Services Marketplace. All rights reserved.
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-gray-900 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-ds-12 text-gray-400">
+        <span>&copy; {new Date().getFullYear()} LocalGo Services. All rights reserved.</span>
+        <span>OTP-secured arrival &bull; Verified professionals</span>
       </div>
     </footer>
   );

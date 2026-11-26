@@ -21,6 +21,10 @@ export const providerPortalService = {
     });
     return res.data.data;
   },
+  confirmCashReceived: async (bookingId) => {
+    const res = await api.put(`/provider/bookings/${bookingId}/confirm-cash`);
+    return res.data.data;
+  },
   getProviderBookings: async (status = null, page = 0, size = 10) => {
     let url = `/provider/bookings?page=${page}&size=${size}`;
     if (status) url += `&status=${status}`;

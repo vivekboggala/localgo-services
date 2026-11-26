@@ -1,27 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Search, X } from 'lucide-react';
 import { serviceService } from '../../services/serviceService';
 import { ServiceCard } from '../../components/customer/ServiceCard';
-import { Search } from 'lucide-react';
+import {
+  Chip,
+  EmptyState,
+  ErrorState,
+  Input,
+  PageHeader,
+  SkeletonCard,
+} from '../../components/ui';
 
 export const ServiceListPage = () => {
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || searchParams.get('category') || '';
+
   const [services, setServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadServices = useCallback(() => {
+    setLoading(true);
+    setError('');
     serviceService.getAllServices()
       .then((data) => {
-        setServices(data);
-        setFilteredServices(data);
+        const list = Array.isArray(data) ? data : [];
+        setServices(list);
+        setFilteredServices(list);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error(err);
+        setError(err.response?.data?.message || 'Unable to load services from the server.');
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadServices();
+  }, [loadServices]);
 
   useEffect(() => {
     let result = services;
@@ -29,64 +51,83 @@ export const ServiceListPage = () => {
       result = result.filter((s) => s.category === selectedCategory);
     }
     if (searchQuery.trim() !== '') {
-      result = result.filter((s) =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(q) ||
+          s.category?.toLowerCase().includes(q) ||
+          s.description?.toLowerCase().includes(q)
       );
     }
     setFilteredServices(result);
   }, [searchQuery, selectedCategory, services]);
 
-  const categories = ['ALL', ...new Set(services.map((s) => s.category))];
+  const categories = ['ALL', ...new Set(services.map((s) => s.category).filter(Boolean))];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div>
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 tracking-tight">Service Catalog</h1>
-        <p className="text-xs text-slate-500 mt-1">Filter by category or search by service requirement</p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      <PageHeader
+        title="All Home Services"
+        subtitle="Select a service to view verified professionals near you"
+      />
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-grow">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search service category..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-300 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none text-xs bg-white text-slate-900 font-medium shadow-xs"
-          />
-        </div>
+      {/* Sticky Search & Category Chips Bar */}
+      <div className="sticky top-16 z-30 -mx-4 px-4 sm:mx-0 sm:px-0 py-3 bg-brand-white/95 backdrop-blur-md border-b border-gray-100 space-y-3">
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search plumber, AC repair, electrician, cleaning..."
+          aria-label="Search services"
+          leftIcon={<Search className="w-5 h-5" strokeWidth={2} />}
+          rightElement={
+            searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="w-9 h-9 rounded-pill hover:bg-gray-100 flex items-center justify-center text-gray-600"
+              >
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
+            ) : null
+          }
+        />
 
-        <div className="flex overflow-x-auto gap-2 pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {categories.map((cat) => (
-            <button
+            <Chip
               key={cat}
+              selected={selectedCategory === cat}
+              tone="yellow"
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-2 rounded-md text-xs font-semibold whitespace-nowrap transition-colors border ${
-                selectedCategory === cat
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
             >
-              {cat}
-            </button>
+              {cat === 'ALL' ? 'All Categories' : cat}
+            </Chip>
           ))}
         </div>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {error ? (
+        <ErrorState message={error} onRetry={loadServices} />
+      ) : loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-40 bg-slate-200/70 rounded-xl animate-pulse"></div>
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : filteredServices.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200/80 shadow-card">
-          <p className="text-slate-600 text-xs font-medium">No services found matching your criteria</p>
-        </div>
+        <EmptyState
+          icon={<Search className="w-7 h-7" strokeWidth={2} />}
+          title="No matching services"
+          description="Try another keyword or reset the selected category filter."
+          actionLabel="Clear Filters"
+          onAction={() => {
+            setSearchQuery('');
+            setSelectedCategory('ALL');
+          }}
+        />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
           {filteredServices.map((service) => (
             <ServiceCard
               key={service.id}

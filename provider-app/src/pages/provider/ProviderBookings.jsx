@@ -1,21 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { RotateCw, Calendar, MapPin, User, ArrowRight, Search, X } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { providerPortalService } from '../../services/providerPortalService';
-import { RotateCw, Calendar, Clock, MapPin, User, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  Input,
+  PageHeader,
+  SkeletonList,
+  StatusBadge,
+  Tabs,
+} from '../../components/ui';
+import { formatCurrency } from '../../utils/helpers';
 
-const STATUS_TABS = [
-  { key: 'ALL', label: 'All Jobs' },
-  { key: 'REQUESTED', label: 'Pending' },
-  { key: 'ACCEPTED', label: 'Accepted' },
-  { key: 'ON_THE_WAY', label: 'On The Way' },
-  { key: 'ARRIVED', label: 'Arrived' },
-  { key: 'IN_PROGRESS', label: 'In Progress' },
-  { key: 'COMPLETED', label: 'Completed' },
-  { key: 'CANCELLED', label: 'Cancelled' },
-];
+const TERMINATED_STATUSES = ['CANCELLED', 'REJECTED', 'EXPIRED'];
 
 export const ProviderBookings = () => {
   const { user, firebaseUser } = useAuth();
@@ -24,13 +27,19 @@ export const ProviderBookings = () => {
 
   const [allBookings, setAllBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const fetchBookings = () => {
     setLoading(true);
-    providerPortalService.getProviderBookings()
+    setError('');
+    providerPortalService.getProviderBookings(null, 0, 100)
       .then((data) => setAllBookings(Array.isArray(data) ? data : (data?.content || [])))
-      .catch(() => setAllBookings([]))
+      .catch((err) => {
+        setAllBookings([]);
+        setError(err.response?.data?.message || 'Unable to load booking history.');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -38,35 +47,21 @@ export const ProviderBookings = () => {
     if (!uid) {
       setAllBookings([]);
       setLoading(false);
-      return;
+      return undefined;
     }
 
-    // 1. Initial REST fetch
     fetchBookings();
 
-    // 2. Real-time Firestore snapshot listener
-    const q = query(
-      collection(db, 'bookings'),
-      where('providerId', '==', uid)
-    );
-
+    const q = query(collection(db, 'bookings'), where('providerId', '==', uid));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const liveList = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
-          const amountInRupees = data.amount != null
-            ? (Number(data.amount) / 100)
-            : 0;
-
-          return {
-            id: docSnap.id,
-            ...data,
-            amount: amountInRupees,
-          };
+          const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
+          return { id: docSnap.id, ...data, amount: amountInRupees };
         });
 
-        // Sort by scheduledDate / createdAt desc
         liveList.sort((a, b) => {
           const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
           const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
@@ -76,96 +71,152 @@ export const ProviderBookings = () => {
         setAllBookings(liveList);
         setLoading(false);
       },
-      (err) => {
-        console.warn('Real-time provider bookings listener error:', err);
-      }
+      (err) => console.warn('Real-time provider bookings listener error:', err)
     );
 
     return () => unsubscribe();
   }, [uid]);
 
-  const displayedBookings = activeTab === 'ALL'
-    ? allBookings
-    : allBookings.filter((b) => b.status === activeTab);
+  const tabsWithCounts = useMemo(
+    () => [
+      { key: 'ALL', label: 'All', count: allBookings.length },
+      { key: 'COMPLETED', label: 'Completed', count: allBookings.filter((b) => b.status === 'COMPLETED').length },
+      {
+        key: 'CANCELLED',
+        label: 'Cancelled',
+        count: allBookings.filter((b) => TERMINATED_STATUSES.includes(b.status)).length,
+      },
+    ],
+    [allBookings]
+  );
+
+  const displayedBookings = useMemo(() => {
+    let list = allBookings;
+    if (activeTab === 'COMPLETED') {
+      list = list.filter((b) => b.status === 'COMPLETED');
+    } else if (activeTab === 'CANCELLED') {
+      list = list.filter((b) => TERMINATED_STATUSES.includes(b.status));
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(
+        (b) =>
+          b.serviceName?.toLowerCase().includes(q) ||
+          b.customerName?.toLowerCase().includes(q) ||
+          b.address?.toLowerCase().includes(q) ||
+          String(b.id).toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [allBookings, activeTab, searchQuery]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Job History & Audit</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Filter and review all assigned service appointments</p>
-        </div>
-        <button
-          onClick={fetchBookings}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
-        >
-          <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-        </button>
-      </div>
-
-      {/* Status Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-colors ${
-              activeTab === tab.key
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <PageHeader
+        title="Job History"
+        subtitle="Review completed payouts, cancellations, and trip receipts"
+        actions={
+          <Button
+            variant="secondary"
+            onClick={fetchBookings}
+            leftIcon={<RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
+            className="min-h-[44px] py-2 px-3.5 text-ds-12"
           >
-            {tab.label}
-          </button>
-        ))}
+            Refresh
+          </Button>
+        }
+      />
+
+      <div className="space-y-3">
+        <Tabs tabs={tabsWithCounts} activeTab={activeTab} onChange={setActiveTab} />
+
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by customer, service, address, or ID..."
+          aria-label="Search booking history"
+          leftIcon={<Search className="w-5 h-5" />}
+          rightElement={
+            searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="w-9 h-9 rounded-pill hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center text-gray-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            ) : null
+          }
+        />
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto"></div>
-        </div>
+      {error && allBookings.length === 0 ? (
+        <ErrorState message={error} onRetry={fetchBookings} />
+      ) : loading ? (
+        <SkeletonList count={4} />
       ) : displayedBookings.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
-          <p className="text-xs text-slate-500">No bookings found for the selected status filter.</p>
-        </div>
+        <EmptyState
+          icon={<Calendar className="w-7 h-7" />}
+          title="No jobs match this filter"
+          description="Try clearing your search or switching tabs."
+          actionLabel={searchQuery || activeTab !== 'ALL' ? 'Reset Filters' : null}
+          onAction={
+            searchQuery || activeTab !== 'ALL'
+              ? () => {
+                  setSearchQuery('');
+                  setActiveTab('ALL');
+                }
+              : null
+          }
+        />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="divide-y divide-slate-100">
-            {displayedBookings.map((b) => (
-              <div
-                key={b.id}
-                onClick={() => navigate(`/jobs/${b.id}`)}
-                className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-400">#{b.id}</span>
-                    <h3 className="font-bold text-slate-900 text-sm">{b.serviceName}</h3>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
-                      {b.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                    <span className="flex items-center gap-1"><User className="w-3.5 h-3.5 text-slate-400" /> {b.customerName} ({b.customerPhone})</span>
-                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {b.scheduledDate} at {b.scheduledTime}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" /> {b.address}
-                  </div>
+        <div className="space-y-3">
+          {displayedBookings.map((b) => (
+            <div
+              key={b.id}
+              onClick={() => navigate(`/jobs/${b.id}`)}
+              className="bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 hover:border-brand-yellow rounded-card p-4 sm:p-5 shadow-card cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
+            >
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-mono text-gray-400">#{b.id}</span>
+                  <h2 className="font-display font-bold text-ds-16 text-brand-ink dark:text-brand-white">
+                    {b.serviceName}
+                  </h2>
+                  <StatusBadge status={b.status} />
                 </div>
 
-                <div className="flex items-center gap-4 sm:self-center shrink-0">
-                  <div className="text-right">
-                    <div className="font-bold text-slate-900 text-sm">₹{b.amount}</div>
-                    <span className="text-[10px] font-medium text-slate-500 uppercase">{b.paymentMethod} • {b.paymentStatus}</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
-                    Open <ArrowRight className="w-3.5 h-3.5" />
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-ds-12 text-gray-600 dark:text-gray-200 font-medium">
+                  <span className="inline-flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-brand-yellow" /> {b.customerName}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-brand-yellow" /> {b.scheduledDate} {b.scheduledTime}
                   </span>
                 </div>
+
+                <div className="flex items-start gap-1.5 text-ds-12 text-gray-600 dark:text-gray-400">
+                  <MapPin className="w-3.5 h-3.5 text-brand-yellow shrink-0 mt-0.5" />
+                  <span className="truncate">{b.address}</span>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <div className="flex items-center justify-between sm:justify-end gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-600/20 shrink-0">
+                <div className="text-left sm:text-right">
+                  <div className="font-display font-extrabold text-ds-20 text-brand-ink dark:text-brand-yellow">
+                    {formatCurrency(b.amount)}
+                  </div>
+                  <Badge tone={b.paymentStatus === 'PAID' ? 'success' : 'neutral'} className="mt-0.5 text-[10px] py-0.5 px-2">
+                    {b.paymentMethod} • {b.paymentStatus || 'PENDING'}
+                  </Badge>
+                </div>
+
+                <ArrowRight className="w-5 h-5 text-brand-yellow shrink-0" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

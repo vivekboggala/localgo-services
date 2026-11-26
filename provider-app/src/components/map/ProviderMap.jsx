@@ -1,92 +1,109 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Circle, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { TILE_URL, TILE_ATTRIBUTION } from '../../utils/constants';
 
-// Custom Map Markers using clean SVG icons
-const customerIcon = L.divIcon({
-  className: 'custom-customer-icon',
-  html: `<div style="background-color: #0f172a; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(15,23,42,0.3);"></div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+const basePinIcon = L.divIcon({
+  className: 'localgo-partner-pin',
+  html: `
+    <div style="position:relative;width:30px;height:30px;display:flex;align-items:center;justify-content:center;">
+      <span style="position:absolute;inset:0;border-radius:9999px;background:rgba(255,199,0,0.45);animation:ping 1.8s cubic-bezier(0,0,0.2,1) infinite;"></span>
+      <span style="position:relative;width:18px;height:18px;border-radius:9999px;background:#FFC700;border:3px solid #0B0B0F;box-shadow:0 2px 10px rgba(0,0,0,0.45);"></span>
+    </div>
+  `,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
 });
 
-const providerAvailableIcon = L.divIcon({
-  className: 'custom-provider-icon',
-  html: `<div style="background-color: #0f172a; color: white; width: 32px; height: 32px; border-radius: 8px; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
-const providerBusyIcon = L.divIcon({
-  className: 'custom-provider-icon',
-  html: `<div style="background-color: #64748b; color: white; width: 28px; height: 28px; border-radius: 6px; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-});
-
-const MapRecenter = ({ center }) => {
+const MapUpdater = ({ center, onPickLocation }) => {
   const map = useMap();
+
   useEffect(() => {
-    map.setView([center.lat, center.lng], map.getZoom());
-  }, [center, map]);
+    if (center?.lat && center?.lng) {
+      map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
+    }
+  }, [center?.lat, center?.lng, map]);
+
+  useMapEvents({
+    click: (e) => {
+      if (onPickLocation) {
+        onPickLocation({
+          lat: Number(e.latlng.lat.toFixed(6)),
+          lng: Number(e.latlng.lng.toFixed(6)),
+        });
+      }
+    },
+  });
+
   return null;
 };
 
-export const ProviderMap = ({ customerLocation, providers = [], selectedProvider, onSelectProvider }) => {
-  const center = customerLocation ? { lat: customerLocation.lat, lng: customerLocation.lng } : { lat: 13.5500, lng: 78.5000 };
+export const ProviderMap = ({
+  center = { lat: 12.9716, lng: 77.5946 },
+  radiusKm = null,
+  interactive = false,
+  onPickLocation = null,
+  zoom = 12,
+  className = '',
+}) => {
+  const safeCenter = useMemo(
+    () => ({
+      lat: Number(center?.lat) || 12.9716,
+      lng: Number(center?.lng) || 77.5946,
+    }),
+    [center?.lat, center?.lng]
+  );
 
   return (
-    <div className="w-full h-full min-h-[400px] rounded-lg overflow-hidden shadow-sm border border-slate-200 relative z-0">
+    <div className={`w-full h-full min-h-[220px] rounded-card overflow-hidden border border-gray-200 dark:border-gray-600/35 relative z-0 ${className}`}>
       <MapContainer
-        center={[center.lat, center.lng]}
-        zoom={13}
+        center={[safeCenter.lat, safeCenter.lng]}
+        zoom={zoom}
         style={{ width: '100%', height: '100%' }}
-        scrollWheelZoom={true}
+        scrollWheelZoom={interactive}
+        zoomControl={false}
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-        <MapRecenter center={center} />
+        <MapUpdater center={safeCenter} onPickLocation={interactive ? onPickLocation : null} />
 
-        {/* Customer Location Marker */}
-        {customerLocation && (
-          <Marker position={[customerLocation.lat, customerLocation.lng]} icon={customerIcon}>
-            <Popup>
-              <div className="p-1 font-semibold text-xs text-slate-900">Your Location</div>
-            </Popup>
-          </Marker>
-        )}
+        <Marker
+          position={[safeCenter.lat, safeCenter.lng]}
+          icon={basePinIcon}
+          draggable={interactive}
+          eventHandlers={
+            interactive
+              ? {
+                  dragend: (e) => {
+                    const pos = e.target.getLatLng();
+                    onPickLocation?.({
+                      lat: Number(pos.lat.toFixed(6)),
+                      lng: Number(pos.lng.toFixed(6)),
+                    });
+                  },
+                }
+              : {}
+          }
+        >
+          <Popup>
+            <div className="p-1 font-display font-bold text-xs text-brand-ink">
+              Service Base Pin
+            </div>
+          </Popup>
+        </Marker>
 
-        {/* Provider Markers */}
-        {providers.map((p) => (
-          <Marker
-            key={p.id}
-            position={[p.latitude, p.longitude]}
-            icon={p.available ? providerAvailableIcon : providerBusyIcon}
-            eventHandlers={{
-              click: () => onSelectProvider && onSelectProvider(p),
+        {radiusKm && Number(radiusKm) > 0 && (
+          <Circle
+            center={[safeCenter.lat, safeCenter.lng]}
+            radius={Number(radiusKm) * 1000}
+            pathOptions={{
+              color: '#FFC700',
+              fillColor: '#FFC700',
+              fillOpacity: 0.16,
+              weight: 2,
             }}
-          >
-            <Popup>
-              <div className="p-2 min-w-[180px]">
-                <div className="font-semibold text-sm text-slate-900 mb-0.5">{p.name}</div>
-                <div className="text-xs text-slate-500 mb-1.5">Rating: {p.rating?.toFixed(1)} • {p.distanceKm} km away</div>
-                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold mb-2 ${
-                  p.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                  {p.available ? 'Available' : 'Offline'}
-                </div>
-                <button
-                  onClick={() => onSelectProvider && onSelectProvider(p)}
-                  className="w-full py-1.5 bg-slate-900 text-white font-medium text-xs rounded-lg hover:bg-slate-800 transition-colors"
-                >
-                  View Provider
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+          />
+        )}
       </MapContainer>
     </div>
   );

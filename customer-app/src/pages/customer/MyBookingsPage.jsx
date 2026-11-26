@@ -1,31 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { Calendar, Search } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { bookingService } from '../../services/bookingService';
 import { BookingCard } from '../../components/customer/BookingCard';
-import { LoadingSkeleton } from '../../components/common/LoadingSkeleton';
-import { Calendar } from 'lucide-react';
+import {
+  Chip,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  SkeletonCard,
+  Tabs,
+  showToast,
+} from '../../components/ui';
 
-const TABS = ['ALL', 'REQUESTED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'COMPLETED', 'REJECTED', 'CANCELLED'];
+const TAB_GROUPS = [
+  { key: 'UPCOMING', label: 'Upcoming', statuses: ['REQUESTED', 'ACCEPTED'] },
+  { key: 'ACTIVE', label: 'Active', statuses: ['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'] },
+  { key: 'COMPLETED', label: 'Completed', statuses: ['COMPLETED'] },
+  { key: 'CANCELLED', label: 'Cancelled', statuses: ['CANCELLED', 'REJECTED', 'EXPIRED'] },
+];
+
+const CANCEL_REASONS = [
+  'Booked by mistake',
+  'Provider taking too long',
+  'Found another professional',
+  'Schedule changed',
+];
 
 export const MyBookingsPage = () => {
   const { user, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || user?.id;
+  const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeTab, setActiveTab] = useState('UPCOMING');
+  const [hasUserPickedTab, setHasUserPickedTab] = useState(false);
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
+  // Quick cancel dialog state
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+
+  const loadInitialBookings = () => {
     if (!uid) {
       setAllBookings([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
-    // 1. Initial REST fetch
+    setError('');
     bookingService.getMyBookings()
       .then((data) => {
         const list = Array.isArray(data) ? data : (data?.content || []);
@@ -33,32 +62,25 @@ export const MyBookingsPage = () => {
       })
       .catch((err) => {
         console.warn('Initial REST load error for my bookings:', err);
+        setError(err.response?.data?.message || 'Unable to load bookings right now.');
       })
       .finally(() => setLoading(false));
+  };
 
-    // 2. Real-time Firestore snapshot listener
-    const q = query(
-      collection(db, 'bookings'),
-      where('customerId', '==', uid)
-    );
+  useEffect(() => {
+    loadInitialBookings();
+    if (!uid) return undefined;
 
+    const q = query(collection(db, 'bookings'), where('customerId', '==', uid));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const liveList = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
-          const amountInRupees = data.amount != null
-            ? (Number(data.amount) / 100)
-            : 0;
-
-          return {
-            id: docSnap.id,
-            ...data,
-            amount: amountInRupees,
-          };
+          const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
+          return { id: docSnap.id, ...data, amount: amountInRupees };
         });
 
-        // Sort by createdAt descending
         liveList.sort((a, b) => {
           const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
           const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
@@ -78,51 +100,128 @@ export const MyBookingsPage = () => {
     return () => unsubscribe();
   }, [uid]);
 
-  const displayedBookings = activeTab === 'ALL'
-    ? allBookings
-    : allBookings.filter((b) => b.status === activeTab);
+  useEffect(() => {
+    if (hasUserPickedTab || allBookings.length === 0) return;
+    const priorityOrder = ['ACTIVE', 'UPCOMING', 'COMPLETED', 'CANCELLED'];
+    const firstNonEmpty = priorityOrder.find((key) => {
+      const grp = TAB_GROUPS.find((t) => t.key === key);
+      return allBookings.some((b) => grp.statuses.includes(b.status));
+    });
+    if (firstNonEmpty) setActiveTab(firstNonEmpty);
+  }, [allBookings, hasUserPickedTab]);
+
+  const tabsWithCounts = useMemo(
+    () =>
+      TAB_GROUPS.map((g) => ({
+        key: g.key,
+        label: g.label,
+        count: allBookings.filter((b) => g.statuses.includes(b.status)).length,
+      })),
+    [allBookings]
+  );
+
+  const displayedBookings = useMemo(() => {
+    const grp = TAB_GROUPS.find((g) => g.key === activeTab) || TAB_GROUPS[0];
+    return allBookings.filter((b) => grp.statuses.includes(b.status));
+  }, [allBookings, activeTab]);
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      const updated = await bookingService.cancelBooking(cancelTarget.id, cancelReason || 'Cancelled by customer');
+      setAllBookings((prev) => prev.map((b) => (b.id === cancelTarget.id ? { ...b, ...updated } : b)));
+      showToast.success('Booking cancelled');
+      setCancelTarget(null);
+      setCancelReason('');
+    } catch (err) {
+      showToast.error(err.response?.data?.message || 'Could not cancel booking');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Bookings</h1>
-        <p className="text-xs text-slate-500 mt-1">Track status timeline and manage your service requests</p>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      <PageHeader
+        title="My Bookings"
+        subtitle="Real-time status tracking and booking history"
+      />
 
-      {/* Status Filter Tabs */}
-      <div className="flex overflow-x-auto gap-2 pb-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-              activeTab === tab
-                ? 'bg-slate-900 text-white'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {tab.replace('_', ' ')}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={tabsWithCounts}
+        activeTab={activeTab}
+        onChange={(next) => {
+          setHasUserPickedTab(true);
+          setActiveTab(next);
+        }}
+      />
 
-      {loading ? (
-        <LoadingSkeleton count={3} />
-      ) : displayedBookings.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
-          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
-            <Calendar className="w-6 h-6" />
-          </div>
-          <h3 className="font-semibold text-slate-900 text-base mb-1">No bookings found</h3>
-          <p className="text-xs text-slate-500">Your requested and active services will appear here.</p>
+      {error && allBookings.length === 0 ? (
+        <ErrorState message={error} onRetry={loadInitialBookings} />
+      ) : loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
+      ) : displayedBookings.length === 0 ? (
+        <EmptyState
+          icon={<Calendar className="w-7 h-7" strokeWidth={2} />}
+          title={`No ${activeTab.toLowerCase()} bookings`}
+          description="Book a verified service professional nearby and track every step live."
+          actionLabel="Explore Services"
+          actionVariant="accent"
+          onAction={() => navigate('/services')}
+        />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {displayedBookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
+            <BookingCard
+              key={booking.id}
+              booking={booking}
+              onCancelRequest={(b) => {
+                setCancelTarget(b);
+                setCancelReason('');
+              }}
+            />
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        title="Cancel Booking?"
+        message={`Tell us why you want to cancel ${cancelTarget?.serviceName || 'this booking'}:`}
+        confirmLabel="Confirm Cancel"
+        cancelLabel="Keep Booking"
+        variant="danger"
+        loading={cancelling}
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setCancelTarget(null)}
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {CANCEL_REASONS.map((r) => (
+              <Chip
+                key={r}
+                selected={cancelReason === r}
+                tone="ink"
+                onClick={() => setCancelReason(r)}
+              >
+                {r}
+              </Chip>
+            ))}
+          </div>
+          <textarea
+            rows={2}
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Optional details..."
+            className="w-full p-3 rounded-input border border-gray-200 focus:border-brand-ink outline-none text-ds-12 text-brand-ink"
+          />
+        </div>
+      </ConfirmDialog>
     </div>
   );
 };

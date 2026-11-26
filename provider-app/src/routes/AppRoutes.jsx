@@ -4,6 +4,8 @@ import { ProviderLayout } from '../layouts/ProviderLayout';
 
 import { LoginPage } from '../pages/LoginPage';
 import { SignupPage } from '../pages/SignupPage';
+import { NotFoundPage } from '../pages/NotFoundPage';
+import { ErrorPage } from '../pages/ErrorPage';
 
 import { ProviderDashboard } from '../pages/provider/ProviderDashboard';
 import { ProviderRequests } from '../pages/provider/ProviderRequests';
@@ -16,6 +18,7 @@ import { ProviderProfile } from '../pages/provider/ProviderProfile';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import { DesignPreviewPage } from '../pages/DesignPreviewPage';
 
 export const AppRoutes = () => {
   return (
@@ -36,14 +39,9 @@ export const AppRoutes = () => {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-      <Route path="*" element={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
-          <p className="text-gray-500 mb-4">Page not found</p>
-          <a href="/dashboard" className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-xl">Go to Dashboard</a>
-        </div>
-      } />
+      <Route path="/design-preview" element={<DesignPreviewPage />} />
+      <Route path="/error" element={<ErrorPage />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

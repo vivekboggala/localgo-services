@@ -1,46 +1,22 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { Home, Wrench, Calendar, Heart, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { Home, Search, Map, Calendar } from 'lucide-react';
+import { BottomNav } from '../ui';
 
 export const BottomNavigation = () => {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  if (!user || user.role !== 'CUSTOMER') return null;
+  const items = [
+    { key: 'home', label: 'Home', icon: Home, to: isAuthenticated ? '/dashboard' : '/' },
+    { key: 'services', label: 'Services', icon: Wrench, to: '/services' },
+    { key: 'bookings', label: 'Bookings', icon: Calendar, to: '/my-bookings' },
+    { key: 'favorites', label: 'Favorites', icon: Heart, to: '/favorites' },
+    { key: 'profile', label: 'Profile', icon: User, to: '/profile' },
+  ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-2 px-4 z-40 flex items-center justify-around shadow-lg">
-      <NavLink
-        to="/dashboard"
-        className={({ isActive }) => `flex flex-col items-center text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-slate-500'}`}
-      >
-        <Home className="w-4 h-4 mb-0.5" />
-        Home
-      </NavLink>
-
-      <NavLink
-        to="/services"
-        className={({ isActive }) => `flex flex-col items-center text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-slate-500'}`}
-      >
-        <Search className="w-4 h-4 mb-0.5" />
-        Catalog
-      </NavLink>
-
-      <NavLink
-        to="/map"
-        className={({ isActive }) => `flex flex-col items-center text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-slate-500'}`}
-      >
-        <Map className="w-4 h-4 mb-0.5" />
-        Map
-      </NavLink>
-
-      <NavLink
-        to="/my-bookings"
-        className={({ isActive }) => `flex flex-col items-center text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-slate-500'}`}
-      >
-        <Calendar className="w-4 h-4 mb-0.5" />
-        Bookings
-      </NavLink>
+    <div className="md:hidden">
+      <BottomNav items={items} fixed={true} />
     </div>
   );
 };
