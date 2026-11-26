@@ -74,9 +74,8 @@ export const BottomSheet = ({
       <div
         style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
         className={`w-full bg-brand-white shadow-sheet border-t border-gray-200 flex flex-col overflow-hidden animate-sheet-up transition-transform duration-150 ${
-          /* Admin drawer uses 480px (vs 440px in customer/provider) to fit multi-field record details and metadata cleanly */
           isDrawer
-            ? `rounded-t-sheet sm:max-w-lg sm:rounded-sheet lg:max-w-[480px] lg:h-full lg:max-h-screen lg:rounded-none lg:rounded-l-sheet lg:border-l lg:border-t-0 ${maxHeightClass}`
+            ? `rounded-t-sheet sm:max-w-lg sm:rounded-sheet lg:max-w-[440px] lg:h-full lg:max-h-screen lg:rounded-none lg:rounded-l-sheet lg:border-l lg:border-t-0 ${maxHeightClass}`
             : `rounded-t-sheet sm:max-w-lg lg:max-w-xl sm:rounded-sheet sm:border ${maxHeightClass}`
         }`}
       >

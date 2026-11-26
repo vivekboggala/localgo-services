@@ -200,25 +200,25 @@ export const LandingPage = () => {
     : DEFAULT_CATEGORY_TILES;
 
   const statsSummary = useMemo(() => {
-    const hasProviders = providers.length > 0;
+    if (providers.length === 0) return [];
     const totalJobs = providers.reduce((acc, p) => acc + Number(p.completedJobs || 0), 0);
     const rated = providers.filter((p) => Number(p.rating) > 0);
     const avgRating = rated.length > 0
-      ? (rated.reduce((acc, p) => acc + Number(p.rating), 0) / rated.length).toFixed(1)
-      : '4.8';
+      ? `${(rated.reduce((acc, p) => acc + Number(p.rating), 0) / rated.length).toFixed(1)} ★`
+      : 'New';
 
     return [
       {
         icon: Users,
-        label: hasProviders ? 'Nearby Verified Pros' : 'Verified Specialists',
-        value: hasProviders ? `${providers.length}+` : '22+',
-        caption: hasProviders ? `Live in ${location?.city || 'your area'}` : 'Sample platform benchmark',
+        label: 'Nearby Verified Pros',
+        value: `${providers.length}`,
+        caption: `Live in ${location?.city || 'your area'}`,
       },
       {
         icon: Briefcase,
-        label: totalJobs > 0 ? 'Jobs in Area' : 'Completed Bookings',
-        value: totalJobs > 0 ? `${totalJobs}+` : '1,200+',
-        caption: totalJobs > 0 ? 'From nearby rated pros' : 'Sample marketplace figure',
+        label: 'Jobs in Area',
+        value: `${totalJobs}`,
+        caption: totalJobs > 0 ? 'From nearby rated pros' : 'Ready for first booking',
       },
       {
         icon: Building2,
@@ -229,8 +229,8 @@ export const LandingPage = () => {
       {
         icon: Star,
         label: 'Average Rating',
-        value: `${avgRating} ★`,
-        caption: rated.length > 0 ? 'Across nearby verified pros' : 'Sample review rating',
+        value: avgRating,
+        caption: rated.length > 0 ? 'Across nearby verified pros' : 'Awaiting first review',
       },
     ];
   }, [providers, location?.city, predefinedLocations.length]);
@@ -492,27 +492,29 @@ export const LandingPage = () => {
       </section>
 
       {/* 5. Stats Band */}
-      <section className="bg-brand-ink text-brand-white border-y border-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {statsSummary.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.label} className="bg-gray-900/90 border border-gray-600/30 rounded-card p-5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-ds-12 font-semibold text-gray-400">{stat.label}</span>
-                    <Icon className="w-4 h-4 text-brand-yellow" />
+      {providers.length > 0 && (
+        <section className="bg-brand-ink text-brand-white border-y border-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsSummary.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className="bg-gray-900/90 border border-gray-600/30 rounded-card p-5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-ds-12 font-semibold text-gray-400">{stat.label}</span>
+                      <Icon className="w-4 h-4 text-brand-yellow" />
+                    </div>
+                    <div className="font-display font-extrabold text-ds-32 text-brand-white">
+                      {stat.value}
+                    </div>
+                    <div className="text-[11px] text-gray-400">{stat.caption}</div>
                   </div>
-                  <div className="font-display font-extrabold text-ds-32 text-brand-white">
-                    {stat.value}
-                  </div>
-                  <div className="text-[11px] text-gray-400">{stat.caption}</div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 6. Top-Rated Providers 4-Column Grid */}
       <section className="bg-gray-50 border-b border-gray-200 py-14">
