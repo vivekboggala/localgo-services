@@ -1032,3 +1032,401 @@ Generated: 2026-11-26 21:24:14 +05:30
    - Admin login (`ADMIN` role), KPI charts, provider approve/reject modal, and review hide + undo toast
 
 ================================================================================
+
+
+================================================================================
+POST-REDESIGN VERIFICATION AUDIT
+Generated: 2026-11-26 21:56:09 +05:30
+================================================================================
+
+Audit basis: direct inspection of repository files, git status/branch/log output,
+production Vite builds, Maven test run, Firestore Rules Emulator test run, and
+archived screenshots under /docs/screenshots/. No application code was modified
+during this audit.
+
+--------------------------------------------------------------------------------
+A. PHASE-BY-PHASE STATUS
+--------------------------------------------------------------------------------
+Phase 0: Git setup (branch created, logical commits made, branch pushed)
+  - Branch `ui-website-redesign` created from `main`: Done
+  - Pre-redesign work organized into 5 logical commits (`6078a57`, `1771fe1`, `56f28d8`, `c742f7a`, `beb479f`): Done
+  - Pushed to `origin/ui-website-redesign`: Done
+
+Phase 1: customer-app website layouts (`21b9325`, `21ba6f2`)
+  - BottomSheet responsive modal/drawer (`customer-app/src/components/ui/BottomSheet.jsx`): Done
+  - Navbar with Services mega-dropdown, XL search box, profile menu (`customer-app/src/components/common/Navbar.jsx`): Done
+  - 4-column desktop Footer (`customer-app/src/components/common/Footer.jsx`): Done
+  - BottomNavigation hidden at lg+ (`customer-app/src/components/common/BottomNavigation.jsx`): Done
+  - CustomerLayout (`customer-app/src/layouts/CustomerLayout.jsx`): Done
+  - LandingPage (`customer-app/src/pages/LandingPage.jsx`) — dark hero, floating booking card, 5x2 category grid, stats band, 4-col providers, 3-col testimonials, Become-a-partner banner: Done (Note: stats band falls back to "Sample platform benchmark" text when zero nearby providers are returned)
+  - ServiceListPage (`customer-app/src/pages/customer/ServiceListPage.jsx`): Done
+  - CustomerDashboard (`customer-app/src/pages/customer/CustomerDashboard.jsx`): Done
+  - NearbyProvidersPage (`customer-app/src/pages/customer/NearbyProvidersPage.jsx`): Done
+  - MapPage (`customer-app/src/pages/customer/MapPage.jsx`): Done
+  - ProviderDetailPage (`customer-app/src/pages/customer/ProviderDetailPage.jsx`): Done (Minor responsive note: mobile fixed bar uses `bottom-16 md:bottom-0` while BottomNav stays visible up to `< lg`)
+  - BookingFlow (`customer-app/src/pages/customer/BookingFlow.jsx`): Done
+  - MyBookingsPage (`customer-app/src/pages/customer/MyBookingsPage.jsx`): Done
+  - BookingDetailPage, NotificationsPage, FavoritesPage, ProfilePage (`customer-app/src/pages/customer/*.jsx`): Done
+
+Phase 2: provider-app SaaS dashboard layouts (`7cc4ff1`, `21ba6f2`)
+  - BottomSheet responsive modal/drawer (`provider-app/src/components/ui/BottomSheet.jsx`): Done
+  - ProviderLayout 240px left sidebar + persistent GO ONLINE status card + top bar + mobile BottomNav `< lg` (`provider-app/src/layouts/ProviderLayout.jsx`): Done
+  - ProviderDashboard (`provider-app/src/pages/provider/ProviderDashboard.jsx` — 4 KPIs, 7d/30d Recharts chart, Recent Jobs table, right duty/verification column): Done
+  - ProviderRequests (`provider-app/src/pages/provider/ProviderRequests.jsx` — multi-column grid + mute & countdown): Done
+  - ProviderActiveJob & ProviderJobDetailPage (`provider-app/src/pages/provider/ProviderActiveJob.jsx`, `ProviderJobDetailPage.jsx`): Done (Minor responsive note: mobile CTA uses `bottom-[68px] md:bottom-0` while BottomNav is `lg:hidden`)
+  - ProviderBookings (`provider-app/src/pages/provider/ProviderBookings.jsx` — tabs + search + sort + desktop table): Done
+  - ProviderEarnings (`provider-app/src/pages/provider/ProviderEarnings.jsx` — hero banner + Recharts bar chart + sortable payout table): Done
+  - ProviderProfile (`provider-app/src/pages/provider/ProviderProfile.jsx` — left sub-nav + 6 panels) & wide SignupPage (`provider-app/src/pages/SignupPage.jsx`): Done
+
+Phase 3: admin-app full redesign (`8dfeb07`, `21ba6f2`)
+  - AdminLayout collapsible dark sidebar + breadcrumbs + search + alerts bell + avatar menu (`admin-app/src/layouts/AdminLayout.jsx`): Done
+  - LoginPage, ForgotPasswordPage, NotFoundPage, ForbiddenPage, ErrorPage, ErrorBoundary (`admin-app/src/pages/*.jsx`, `admin-app/src/components/common/ErrorBoundary.jsx`): Done
+  - AdminDashboard (`admin-app/src/pages/admin/AdminDashboard.jsx` — 6 KPIs + 4 Recharts charts + Needs Attention + Activity feed): Done (New Users chart & KPI trend footers clearly labeled as placeholders/sampled due to missing backend endpoints)
+  - AdminProviders (`admin-app/src/pages/admin/AdminProviders.jsx` — tabs, sticky table, CSV export, approve/reject Modal, KYC placeholder drawer): Done
+  - AdminUsers (`admin-app/src/pages/admin/AdminUsers.jsx` — role tabs, search, sort, CSV, PaginationBar, drawer): Done
+  - AdminBookings & AdminReviews (`admin-app/src/pages/admin/AdminBookings.jsx`, `AdminReviews.jsx` — status/rating filters, CSV, PaginationBar, drawer, 5s Undo hide/restore toast): Done
+
+Phase 4: Cleanup (`1fe94bb`)
+  - Removed 18 confirmed zero-import legacy files via `git rm`: Done
+  - React.lazy + Suspense route code-splitting in all 3 `AppRoutes.jsx` + Rollup `manualChunks` in all 3 `vite.config.js`: Done
+  - Standardized `provider-app/.env.example`, created `admin-app/.env.example`, added `Local development` docs to `README.md`: Done
+
+Phase 5: Verification (`21ba6f2`)
+  - Production builds + Maven backend tests + Firestore rules emulator tests: Done
+  - Responsive Playwright browser verification at `1440`, `1024`, `768`, `390`: Done for public/auth/error/preview routes; auth-gated inner routes Unverified live in browser
+  - Archived PNG screenshots under `/docs/screenshots/`: Partially done — 25 PNGs exist at `1440px` and `390px` only (`0` PNGs captured/saved at `1024px` or `768px`, and auth-gated routes not screenshotted). CORRECTION to line 1005: `docs/screenshots/customer-app/providers-1440.png` also shows skeleton placeholders mid-load instead of resolved provider cards.
+
+Phase 6: Deploy preparation (`1a2469d`)
+  - Inspected `BookingService.java` and `firestore.rules` and authored idempotent dry-run migration utility `scripts/migrate-booking-otp-secrets.mjs` + `scripts/package.json` without executing deploys or mutations: Done
+
+Phase 7: Report (`ee24fcc`)
+  - Appended `WEBSITE UI REDESIGN REPORT` to `LOCALGO_PROJECT_ANALYSIS.txt`: Done (note minor inaccuracies identified in Sections A, D, and E of this audit)
+
+--------------------------------------------------------------------------------
+B. GIT AND DEPLOYMENT STATE
+--------------------------------------------------------------------------------
+1. Observed git output:
+   `git status`:
+     On branch ui-website-redesign
+     Your branch is up to date with 'origin/ui-website-redesign'.
+     nothing to commit, working tree clean
+     (Note: prior to writing this audit; appending this section dirties `LOCALGO_PROJECT_ANALYSIS.txt` only.)
+
+   `git branch -a`:
+       main
+     * ui-website-redesign
+       remotes/origin/main
+       remotes/origin/ui-website-redesign
+
+   `git remote -v`:
+     origin  https://github.com/vivekboggala/localgo-services.git (fetch)
+     origin  https://github.com/vivekboggala/localgo-services.git (push)
+
+   `git log --oneline -20`:
+     ee24fcc docs: append Phase 7 WEBSITE UI REDESIGN REPORT
+     1a2469d chore: add idempotent booking startOtp secrets migration script
+     21ba6f2 ui: fix responsive browser findings and archive verified screenshots
+     1fe94bb chore: remove unused legacy components, add route code-splitting and local dev docs
+     8dfeb07 ui: complete admin-app website console redesign
+     7cc4ff1 ui: convert provider-app to SaaS partner dashboard
+     21b9325 ui: convert customer-app to full desktop website layouts
+     beb479f admin-app: pagination and cleanup
+     c742f7a ui: customer-app and provider-app mobile-first redesign
+     56f28d8 ui: shared design system and /design-preview in all apps
+     1771fe1 chore: remove legacy frontend, add CI workflow, update README
+     6078a57 backend: security hardening, pricing, OTP isolation, rate limiting, notifications, auto-expire
+     2ddd4d1 Separate Customer, Provider, and Admin websites into standalone apps
+     26678b7 Sync completedJobs from real bookings and enforce Uber/Rapido duty status
+     74b179e Remove duplicate reset link on login and stepper bar on forgot-password
+     eafd115 Add 2-step forgot-password OTP flow and Admin verification studio
+     af1ab7e Fix disappearing providers and simplify booking verification to single start OTP
+     2837e60 Add Madanapalle and Palamaner demo providers with location preset
+     095890f Fix provider online/offline presence sync and live customer availability
+     2bf04ff feat: add interactive provider request-to-completion step flow across all apps
+
+2. Current branch & push state:
+   - Current branch: `ui-website-redesign`.
+   - Pushed to `origin/ui-website-redesign`: Yes (`up to date`).
+   - Uncommitted changes: None in application code (clean working tree before appending this audit section).
+   - Anything pushed or merged to `main`: No (`main` remains at `2ddd4d1`).
+
+3. Vercel preview / deployed URL state:
+   - Live Vercel deployment state is **Unverified** from local workspace tools (no Vercel CLI inspection or live remote deployment fetch performed after push).
+   - What to check in the Vercel Dashboard (for each of the 3 Vercel projects — customer, provider, admin):
+     - Confirm Project Settings -> General -> Root Directory is `customer-app`, `provider-app`, and `admin-app` respectively.
+     - Open Deployments -> locate the automatic preview deployment triggered by Git branch `ui-website-redesign` (commit `ee24fcc` or latest) to view the redesigned UI before merging.
+     - Confirm Production Branch remains `main` (which still serves `2ddd4d1` until merged).
+
+4. Confirmation:
+   - Confirmed: `firebase deploy` was NOT executed.
+   - Confirmed: Nothing was merged or pushed to `main` (`origin/main` still points to `2ddd4d1`).
+
+--------------------------------------------------------------------------------
+C. PAGE-BY-PAGE LAYOUT AUDIT
+--------------------------------------------------------------------------------
+
+### 1. customer-app
+
+| Route | Page file | Desktop layout used (`>=1024px`) | Container max-width | Phone column on desktop? | Tablet (`768px`) behavior | Mobile (`390px`) behavior | Skeleton / Empty / Error states? |
+|---|---|---|---|---|---|---|---|
+| `/` | `customer-app/src/pages/LandingPage.jsx` | 12-col Hero + booking card, 5x2 categories, 3-col steps, 4-col providers, 3-col testimonials, 12-col partner banner | `max-w-7xl` | No | 3–5 col category grid; 1-col stacked hero; `BottomNavigation` `<lg` | 2-col categories; stacked hero card + sticky `BottomNavigation` | Yes (SkeletonCard / ErrorState; no EmptyState component on hero) |
+| `/services` | `customer-app/src/pages/customer/ServiceListPage.jsx` | 12-col split: 3-col sticky category filter sidebar + 9-col (3–4 col service cards) | `max-w-7xl` | No | Horizontal pill category bar + 3-col service cards | Search bar + horizontal chips + 1–2 col cards | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/dashboard` | `customer-app/src/pages/customer/CustomerDashboard.jsx` | Multi-column booking grid + 3–4 col quick-access services & pros | `max-w-7xl` | No | 2-col cards | Single-column stacked sections + `BottomNavigation` | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/providers`, `/providers/nearby` | `customer-app/src/pages/customer/NearbyProvidersPage.jsx` | 12-col 3-pane: sticky 3-col Filters + 5-col pro list + 4-col Leaflet map | `max-w-7xl` | No | 2-col list or full map via List/Map toggle + chip bar | Stacked filters/list toggle (`BottomSheet` all filters) + `BottomNavigation` | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/providers/:id` | `customer-app/src/pages/customer/ProviderDetailPage.jsx` | Full-width dark hero band + 12-col split (8-col details/services/reviews + 4-col sticky booking card) | `max-w-7xl` | No | Single column details + fixed bottom CTA | Stacked + sticky bottom CTA (`fixed bottom-16 md:bottom-0` overlaps `<lg` slightly at `md`) | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/map` | `customer-app/src/pages/customer/MapPage.jsx` | Split screen: fixed 380px scrollable pro sidebar + full-height Leaflet map (no Footer) | Full bleed (`w-full`) | No | Full-height map + compact draggable sheet | Full-height map (`calc(100dvh - 148px)`) + bottom sheet above `BottomNavigation` | Yes (`Skeleton` + inline empty copy; no ErrorState banner) |
+| `/book/:providerId` | `customer-app/src/pages/customer/BookingFlow.jsx` | 12-col split: 7-col multi-step booking form + 5-col sticky price/pro summary | `max-w-7xl` (Success state card uses centered `max-w-xl` inside `max-w-7xl`) | No | Stacked summary + sticky footer CTA | Stacked steps + sticky CTA | Yes (SkeletonCard / ErrorState; inline confirmation view) |
+| `/bookings`, `/my-bookings` | `customer-app/src/pages/customer/MyBookingsPage.jsx` | 12-col desktop table (`8`-col table + `4`-col booking detail preview card) | `max-w-7xl` | No | 2-col booking cards (`lg:hidden`) | Single-column booking cards | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/bookings/:id` | `customer-app/src/pages/customer/BookingDetailPage.jsx` | 12-col split (7-col live Leaflet map + vertical timeline + 5-col OTP/details/actions) | `max-w-7xl` | No | Stacked map + timeline + actions | Single-column stacked | Yes (SkeletonCard / ErrorState; status-driven actions) |
+| `/favorites` | `customer-app/src/pages/customer/FavoritesPage.jsx` | 3–4 col `ProviderCard` grid | `max-w-7xl` | No | 2-col `ProviderCard` grid | 1-col `ProviderCard` stack | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/notifications` | `customer-app/src/pages/customer/NotificationsPage.jsx` | 12-col split (3-col filter rail + 9-col notification feed) | `max-w-7xl` | No | Stacked filter chips + notification cards | Horizontal filter chips + stacked feed | Yes (SkeletonList / EmptyState / ErrorState) |
+| `/profile` | `customer-app/src/pages/customer/ProfilePage.jsx` | 12-col split (4-col vertical sub-nav + 8-col Personal Info / Saved Addresses / Security panels) | `max-w-7xl` | No | Stacked cards | Single-column forms + saved addresses | Yes (EmptyState for addresses; toast validation; no full-page Skeleton/ErrorState) |
+| `/login` | `customer-app/src/pages/LoginPage.jsx` | `AuthSplitLayout`: 12-col split (5-col dark brand panel + 7-col form card) | Centered `max-w-md` form in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` single column card (left panel hidden `<lg`) | Single column form card | Loading button + `role="alert"` inline error banner |
+| `/signup` | `customer-app/src/pages/SignupPage.jsx` | `AuthSplitLayout`: 12-col split (5-col dark panel + 7-col form card) | Centered `max-w-md` in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` single column card | Single column form card | Loading button + inline validation/alert banner |
+| `/verify-email` | `customer-app/src/pages/auth/VerifyEmailPage.jsx` | `AuthSplitLayout`: 12-col split | Centered `max-w-md` in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` card | Single column OTP boxes | Loading button + `role="alert"` error banner |
+| `/forgot-password` | `customer-app/src/pages/auth/ForgotPasswordPage.jsx` | `AuthSplitLayout`: 12-col split | Centered `max-w-md` in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` card | Single column 3-step recovery | Loading button + `role="alert"` error banner |
+| `/design-preview` | `customer-app/src/pages/DesignPreviewPage.jsx` | Full system showcase: header band + 2-col cards | `max-w-6xl` | No | 2-col grids where specified | Single column stacked | Interactive showcase (SkeletonCard / EmptyState / ErrorState) |
+| `/error` | `customer-app/src/pages/ErrorPage.jsx` | Standalone centered error state card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A (is ErrorPage) |
+| `*` (404) | `customer-app/src/pages/NotFoundPage.jsx` | Standalone centered 404 card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A (is 404 page) |
+
+### 2. provider-app
+
+| Route | Page file | Desktop layout used (`>=1024px`) | Container max-width | Phone column on desktop? | Tablet (`768px`) behavior | Mobile (`390px`) behavior | Skeleton / Empty / Error states? |
+|---|---|---|---|---|---|---|---|
+| `/dashboard` | `provider-app/src/pages/provider/ProviderDashboard.jsx` | Sidebar (`240px`) + 4 KPI row + 12-col split (8-col Recharts 7d/30d chart + Recent Jobs table; 4-col Duty toggle, verification & live request) | `max-w-7xl` (in `ProviderLayout`) | No | 2-col KPIs + stacked panels + `BottomNav` | 2-col KPIs + stacked cards + `BottomNav` | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/requests` | `provider-app/src/pages/provider/ProviderRequests.jsx` | Sidebar + 2–3 col live request card grid w/ timers + audio chime mute toggle | `max-w-7xl` | No | 2-col request grid (`md:grid-cols-2`) + `BottomNav` | Single-column request cards + `BottomNav` | Yes (SkeletonList / EmptyState / ErrorState) |
+| `/jobs` | `provider-app/src/pages/provider/ProviderActiveJob.jsx` | Sidebar + 12-col master-detail split (5-col active jobs queue + 7-col embedded `ProviderJobDetailPanel`) | `max-w-7xl` | No | Single column active list; click opens detail | Stacked active cards + `BottomNav` | Yes (SkeletonList / EmptyState / ErrorState) |
+| `/jobs/:id` | `provider-app/src/pages/provider/ProviderJobDetailPage.jsx` | Sidebar + 12-col split (7-col map/OTP/customer/notes + 5-col timeline/summary/action box) | `max-w-7xl` | No | Stacked; note fixed CTA uses `bottom-[68px] md:bottom-0` conflicting with `<lg` BottomNav at 768px | Stacked + sticky bottom action CTA above `BottomNav` | Yes (SkeletonList / ErrorState) |
+| `/bookings` | `provider-app/src/pages/provider/ProviderBookings.jsx` | Sidebar + status Tabs + Search/Sort + full sortable `<table>` | `max-w-7xl` | No | Card list (`lg:hidden`) + `BottomNav` | Card list + `BottomNav` | Yes (SkeletonList / EmptyState / ErrorState) |
+| `/earnings` | `provider-app/src/pages/provider/ProviderEarnings.jsx` | Sidebar + 4-col Hero stats band + Recharts BarChart + sortable payout `<table>` | `max-w-7xl` | No | Card list (`lg:hidden`) + `BottomNav` | 2-col hero metrics + chart + card list + `BottomNav` | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/profile` | `provider-app/src/pages/provider/ProviderProfile.jsx` | Sidebar + 12-col split (4-col vertical sub-nav + 8-col Overview, Services, Pricing, Coverage Leaflet Map + Radius Slider, Docs, Theme/Security) | `max-w-7xl` | No | Accordion/stacked sections + `BottomNav` | Single-column sections + `BottomNav` | Yes (SkeletonCard / ErrorState; inline lists) |
+| `/login` | `provider-app/src/pages/LoginPage.jsx` | `AuthSplitLayout`: 12-col split (5-col dark Partner perks + 7-col form card) | Centered `max-w-md` in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` single column card | Single column dark form card | Loading button + `role="alert"` error banner |
+| `/signup` | `provider-app/src/pages/SignupPage.jsx` | `AuthSplitLayout` (`wideForm`): 12-col split (5-col dark panel + wide 7-col 2-col form card) | Wide `max-w-xl` inside right 7 cols | Intentional Auth Split (No) | 2-col internal fields (`md:grid-cols-2`) inside card | Single column 3-step registration | Loading button + `role="alert"` error banner |
+| `/verify-email` | `provider-app/src/pages/auth/VerifyEmailPage.jsx` | `AuthSplitLayout`: 12-col split | Centered `max-w-md` in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` card | Single column OTP boxes | Loading button + `role="alert"` error banner |
+| `/forgot-password` | `provider-app/src/pages/auth/ForgotPasswordPage.jsx` | `AuthSplitLayout`: 12-col split | Centered `max-w-md` in right 7 cols | Intentional Auth Split (No) | Centered `max-w-md` card | Single column 3-step recovery | Loading button + `role="alert"` error banner |
+| `/design-preview` | `provider-app/src/pages/DesignPreviewPage.jsx` | Header band + multi-column showcase grids (dark-mode aware) | `max-w-6xl` | No | 2-col grids where specified | Single column stacked | Interactive showcase (SkeletonCard / EmptyState / ErrorState) |
+| `/error` | `provider-app/src/pages/ErrorPage.jsx` | Standalone centered error card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A |
+| `*` (404) | `provider-app/src/pages/NotFoundPage.jsx` | Standalone centered 404 card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A |
+
+### 3. admin-app
+
+| Route | Page file | Desktop layout used (`>=1024px`) | Container max-width | Phone column on desktop? | Tablet (`768px`) behavior | Mobile (`390px`) behavior | Skeleton / Empty / Error states? |
+|---|---|---|---|---|---|---|---|
+| `/dashboard` | `admin-app/src/pages/admin/AdminDashboard.jsx` | Collapsible ink sidebar + 6 KPI grid (`lg:grid-cols-3`) + 12-col Recharts charts (Area + Donut + Bar + Placeholder Line) + Needs Attention & Recent Activity 12-col split | `max-w-7xl` (in `AdminLayout`) | No | 2-col KPIs (`sm:grid-cols-2`), stacked charts, slide-out mobile nav drawer | 1-col KPIs & charts, sticky header w/ menu drawer | Yes (SkeletonCard / EmptyState / ErrorState) |
+| `/providers` | `admin-app/src/pages/admin/AdminProviders.jsx` | Sidebar + Tabs + Search/CSV bar + sticky-header table + `PaginationBar` + right-side `BottomSheet` drawer (`desktopPresentation="drawer"`) + Reject `Modal` | `max-w-7xl` | No | Mobile slide-out nav + table scrolling / card detail drawer | Responsive stacked cards/table scroll + full drawer | Yes (`SkeletonTableRow` / `EmptyState` / toast on API error; no `ErrorState` component) |
+| `/users` | `admin-app/src/pages/admin/AdminUsers.jsx` | Sidebar + role Tabs + Search/Sort/CSV + sticky-header table + `PaginationBar` + right-side drawer | `max-w-7xl` | No | Responsive table scroll + mobile drawer | Stacked user controls + drawer | Yes (`SkeletonTableRow` / `EmptyState` / toast on API error; no `ErrorState` component) |
+| `/bookings` | `admin-app/src/pages/admin/AdminBookings.jsx` | Sidebar + status Filter chips + Search/Sort/CSV + sticky-header table + `PaginationBar` + right-side drawer | `max-w-7xl` | No | Responsive table scroll + mobile drawer | Horizontal filter chips + drawer | Yes (`SkeletonTableRow` / `EmptyState` / toast on API error; no `ErrorState` component) |
+| `/reviews` | `admin-app/src/pages/admin/AdminReviews.jsx` | Sidebar + rating Filter chips (`1-2* Flagged`) + Search/Sort/CSV + table (highlighted flagged rows) + Undo toast + `PaginationBar` + drawer | `max-w-7xl` | No | Responsive table scroll + mobile drawer | Filter chips + drawer | Yes (`SkeletonTableRow` / `EmptyState` / toast on API error; no `ErrorState` component) |
+| `/login` | `admin-app/src/pages/LoginPage.jsx` | Standalone dark gradient (`#0B0B0F`) + grid overlay centered Admin Sign In card | Centered `max-w-md` | Centered auth card (Yes, intentional) | Centered `max-w-md` card | Single column centered card | Loading button + `role="alert"` error banner |
+| `/forgot-password` | `admin-app/src/pages/auth/ForgotPasswordPage.jsx` | Standalone dark gradient + grid overlay centered 3-step recovery card | Centered `max-w-md` | Centered auth card (Yes, intentional) | Centered `max-w-md` card | Single column centered card | Loading button + `role="alert"` error banner |
+| `/design-preview` | `admin-app/src/pages/DesignPreviewPage.jsx` | Header band + multi-column showcase grids | `max-w-6xl` | No | 2-col grids where specified | Single column stacked | Interactive showcase (SkeletonCard / EmptyState / ErrorState) |
+| `/forbidden` | `admin-app/src/pages/ForbiddenPage.jsx` | Standalone centered 403 card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A |
+| `/error` | `admin-app/src/pages/ErrorPage.jsx` | Standalone centered error card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A |
+| `*` (404) | `admin-app/src/pages/NotFoundPage.jsx` | Standalone centered 404 card | `max-w-md` | Centered utility card (Yes, intentional) | Centered utility card | Single column full width | N/A |
+
+- **Pages still looking like a phone screen on a large monitor**:
+  Zero primary workspace/app pages remain constrained to narrow phone columns. Only standalone auth/utility cards (`admin-app/LoginPage`, `admin-app/ForgotPasswordPage`, and `NotFoundPage`/`ForbiddenPage`/`ErrorPage` across apps) intentionally use `max-w-md` centered cards (while `customer-app` and `provider-app` auth pages sit inside desktop `AuthSplitLayout`).
+- **Pages still containing `max-w-2xl`, `max-w-3xl`, or `max-w-4xl` as main content wrapper**:
+  Zero across all three apps (`git grep` confirmed `max-w-7xl` on every workspace page and `max-w-6xl` on `DesignPreviewPage`).
+- **Routes rendering an old (pre-redesign) page or importing zero components from `src/components/ui`**:
+  Zero (`0` pages across `customer-app`, `provider-app`, and `admin-app` lack `components/ui` imports).
+
+--------------------------------------------------------------------------------
+D. DESIGN SYSTEM CONSISTENCY
+--------------------------------------------------------------------------------
+1. Tokens & hardcoded colors outside `src/components/ui/`:
+   All three `tailwind.config.js` files share the LocalGo tokens (`#FFC700` yellow, `#0B0B0F` ink, Plus Jakarta Sans / Inter, 12px/16px/999px radii, semantic booking/status colors). Exact matches found outside `src/components/ui/`:
+   - `customer-app`:
+     - Raw hex strings: `23` total (`9` excluding `DesignPreviewPage.jsx` token swatches): `index.css` scrollbar/base (`5`), `ProviderMap.jsx` Leaflet inline HTML pin styles (`4`).
+     - `slate-*`: `0`
+     - `blue-*`: `1` (`customer-app/src/pages/customer/NotificationsPage.jsx:80` uses `bg-blue-50 text-booking-accepted border-blue-200`)
+     - `indigo-*`: `1` (`customer-app/src/pages/customer/NotificationsPage.jsx:62` uses `bg-indigo-50 text-booking-ontheway border-indigo-200`)
+   - `provider-app`:
+     - Raw hex strings: `41` total (`27` excluding `DesignPreviewPage.jsx` swatches): `index.css` base/dark/scrollbar (`7`), `ProviderMap.jsx` Leaflet pin & circle fill (`3`), `RequestCard.jsx` countdown ring SVG (`1`), `ProviderDashboard.jsx` & `ProviderEarnings.jsx` Recharts CartesianGrid/Tooltip/Bar hex (`14`), `ProviderProfile.jsx` description copy (`2`).
+     - `slate-*`: `0`, `blue-*`: `0`, `indigo-*`: `0`.
+   - `admin-app`:
+     - Raw hex strings: `50` total (`36` excluding `DesignPreviewPage.jsx` swatches): `index.css` base/scrollbar (`5`), `AdminDashboard.jsx` Recharts chart series/grids/tooltips (`31`).
+     - `slate-*`: `1` (`admin-app/src/components/common/ServerWakeBanner.jsx:23` still has `bg-slate-900 ... border-slate-700`) — **CORRECTION** to Phase 3/7 claim that `admin-app` was completely converted off `slate`/`blue`.
+     - `blue-*`: `1` (`admin-app/src/components/common/ServerWakeBanner.jsx:25` still has `text-blue-400`).
+     - `indigo-*`: `0`.
+   (Note: inside `src/components/ui/Badge.jsx` across apps, `blue-*` and `indigo-*` Tailwind utilities are used alongside `booking-accepted` and `booking-ontheway`.)
+
+2. Duplication / divergence across the 3 `src/components/ui/` folders:
+   MD5 parity comparison vs `customer-app/src/components/ui/`:
+   - `admin-app/src/components/ui/` matches `customer-app` identically on **23 of 26** files. The **3 intentional/minor diffs** are:
+     - `Avatar.jsx`: `customer-app` added `w-fit self-start sm:self-auto` (`flex-col` mobile fix); `admin-app` and `provider-app` do not have that class.
+     - `BottomSheet.jsx`: `admin-app` uses drawer width `lg:max-w-[480px]` vs `customer-app`/`provider-app` `lg:max-w-[440px]`.
+     - `ConfirmDialog.jsx`: `customer-app` accepts an optional `children = null` slot (used on `BookingDetailPage`); `admin-app` and `provider-app` have identical variant minus `children` slot support (actually `provider-app`'s `ConfirmDialog.jsx` wasn't MD5-equal due to `dark:` classes).
+   - `provider-app/src/components/ui/` diverges intentionally on **19 of 26** files solely to support Tailwind `dark:` variants (52px touch targets, dark card/input/modal/tab surfaces), plus matching `index.js`, `Logo.jsx`, `PasswordInput.jsx`, `RatingStars.jsx`, `Sidebar.jsx`, `Toast.jsx`.
+
+3. Responsive `BottomSheet` and `BottomNav`:
+   - `BottomSheet`: renders as a draggable bottom sheet on `<lg` and switches to a centered modal (`sm:items-center`) or right-side drawer (`desktopPresentation="drawer"` -> `lg:items-stretch lg:justify-end`) at `lg+` cleanly across all 3 apps.
+   - `BottomNav`: hidden at `lg` (`lg:hidden`) in both `customer-app/src/components/common/BottomNavigation.jsx` (matching `Navbar.jsx` `hidden lg:flex`) and `provider-app/src/layouts/ProviderLayout.jsx` (matching sidebar `lg:flex`). Note `ProviderJobDetailPage.jsx:605` (`bottom-[68px] md:bottom-0`) and `ProviderDetailPage.jsx:561` (`bottom-16 md:bottom-0`) still switch bottom clearance at `md` (`768px`) instead of `lg` (`1024px`).
+
+4. `provider-app` light/dark theme toggle & light mode issues:
+   - Toggle exists cleanly in both `ProviderProfile.jsx` (Appearance & security panel) and the profile menu in `ProviderLayout.jsx`.
+   - Pages/sections broken or awkward in light mode (`html` without `dark` class):
+     - `ProviderDashboard.jsx:385` and `ProviderEarnings.jsx:237` hardcode Recharts dark grid strokes (`stroke="#2a2a33"`) and dark tooltips (`backgroundColor: '#0B0B0F'`) directly in JSX rather than reading light/dark theme state (`isDark`).
+     - `ProviderEarnings.jsx:165` (`bg-gray-900 text-brand-white`) and `ProviderProfile.jsx:251` (`bg-gray-900 text-brand-white`) keep permanent dark cards in light mode (intentional contrast cards, though text/border tokens around them are hardcoded dark rather than light surfaces).
+
+5. Accessibility basics:
+   - `:focus-visible` outlines (`#0B0B0F` on light, `#FFC700` on dark) exist globally in all 3 `index.css` files + `focus-visible` rings across key interactive cards (`10` in `customer-app`, `5` in `provider-app`, `3` in `admin-app`).
+   - `aria-label` attributes exist extensively (`34` in `customer-app`, `20` in `provider-app`, `17` in `admin-app`).
+   - Verified color contrast: fixed earlier `/design-preview` light/dark wordmark & `<h1>` contrast failure in `provider-app`, and fixed transparent background on `admin-app` `/login` & `/forgot-password`. Note: `text-gray-400` (`#9A9AA5`) helper captions on `#FFFFFF` (seen in minor micro-copy lines like chart footnotes in `AdminDashboard.jsx:488` and small badges) fall below WCAG AA 4.5:1 ratio and remain subtle.
+
+--------------------------------------------------------------------------------
+E. SCREENSHOTS AND VISUAL VERIFICATION
+--------------------------------------------------------------------------------
+1. `/docs/screenshots/` inventory (`25` total PNG files):
+   - `customer-app`: **10 PNGs** (1440px: 7 -> `design-preview-1440.png`, `landing-1440.png`, `login-1440.png`, `map-1440.png`, `provider-detail-1440.png`, `providers-1440.png`, `services-1440.png`; 390px: 3 -> `landing-390.png`, `map-390.png`, `providers-390.png`; **1024px: 0; 768px: 0**)
+   - `provider-app`: **8 PNGs** (1440px: 5 -> `design-preview-1440.png`, `forgot-password-1440.png`, `login-1440.png`, `not-found-1440.png`, `signup-1440.png`; 390px: 3 -> `design-preview-390.png`, `login-390.png`, `signup-390.png`; **1024px: 0; 768px: 0**)
+   - `admin-app`: **7 PNGs** (1440px: 6 -> `design-preview-1440.png`, `error-1440.png`, `forbidden-1440.png`, `forgot-password-1440.png`, `login-1440.png`, `not-found-1440.png`; 390px: 1 -> `login-390.png`; **1024px: 0; 768px: 0**)
+
+2. Pages NOT screenshotted at all four widths (`1440`, `1024`, `768`, `390`):
+   - **Every single page** across all 3 apps lacks saved PNG files at `1024px` and `768px` (those viewports were inspected programmatically for overflow/bounds in Playwright, not saved as PNGs).
+   - **All auth-gated inner routes** were NOT screenshotted at any width (live login sessions were not initiated):
+     - `customer-app`: `/dashboard`, `/profile`, `/book/:providerId`, `/bookings`, `/my-bookings`, `/bookings/:id`, `/favorites`, `/notifications`, `/verify-email`, `/error`, and `1440px`/`390px` missing widths on `/services`, `/provider-detail`, `/login`, `/signup`, `/forgot-password`, `/design-preview`, `/not-found`.
+     - `provider-app`: `/dashboard`, `/requests`, `/jobs`, `/jobs/:id`, `/bookings`, `/earnings`, `/profile`, `/verify-email`, `/error`.
+     - `admin-app`: `/dashboard`, `/providers`, `/users`, `/bookings`, `/reviews`.
+
+3. Visual observations from inspecting actual PNG screenshots in `docs/screenshots/`:
+   - `customer-app/landing-1440.png`: Crisp top navbar, dark architectural grid hero, aligned floating "Book a service" form card, centered native dropdown arrow in "All Home Services", 10-category grid preview below fold. No overlaps or overflow.
+   - `customer-app/landing-390.png`: Clean mobile header (`LocalGo`, location pill, bell, `Sign Up`) without overflow; minor cosmetic note — location pill truncates `"Your L..."` tightly inside `max-w-[112px]`. Stacked hero card and `BottomNav` render cleanly.
+   - `customer-app/services-1440.png`: Clean 2-col layout (sticky left filter sidebar + 4-col service card grid); category names & pricing chips unclipped; `Washing Machine ...` slightly truncates with ellipsis at card title edge.
+   - `customer-app/providers-1440.png`: Filters sidebar (`<Select>` now shows a single crisp dropdown arrow), location bar, and Leaflet map + zoom controls render cleanly; **however**, the center list shows 3 gray skeleton placeholder cards because `/api/providers/nearby` had not resolved before the screenshot was taken.
+   - `customer-app/provider-detail-1440.png`: Dark hero banner (`Suresh Electricals & AC`, avatar with bottom-right status dot properly anchored, rating/jobs/exp box), 8/4 content + sticky booking summary card cleanly laid out; `Currently Offline` disables booking as expected.
+   - `customer-app/map-1440.png` & `map-390.png`: Full-bleed Leaflet map tiles render cleanly with user pulse marker and top-right `+`/`-` zoom controls; mobile draggable sheet (`Suresh Electricals & AC`) and OpenStreetMap attribution clear the bottom nav cleanly. Minor grammar copy: `"1 pros within 15 km"`.
+   - `provider-app/login-1440.png` & `signup-390.png`: Crisp `#0B0B0F` dark Partner split screen on desktop and clean 390px dark mobile signup card with full `"e.g. Rajesh Electric Works"` placeholder unclipped.
+   - `provider-app/design-preview-1440.png` & `customer-app/design-preview-1440.png` & `admin-app/design-preview-1440.png`: Both light (`customer-app`/`admin-app`) and dark (`provider-app`) DesignPreview canvases render high-contrast headings, unclipped badges, crisp color swatches, and clean 3-wordmark contrast pills.
+   - `admin-app/login-1440.png` & `forbidden-1440.png`: Centered white cards render cleanly (rich dark `#0B0B0F` grid behind `/login`, aligned `"Password *"` + `"Forgot Password?"` row; light `#F7F7F8` canvas behind `/forbidden`).
+
+--------------------------------------------------------------------------------
+F. BUILD, TEST AND PERFORMANCE RESULTS (FRESH RUNS DURING THIS AUDIT)
+--------------------------------------------------------------------------------
+1. Fresh production Vite builds & backend tests run cleanly on `2026-11-26`:
+   - `customer-app` (`npm run build`): **PASS** — `2368 modules transformed`, `12.45s`, exit `0`. Non-fatal Vite info notice: `ErrorPage.jsx` is dynamically imported by `AppRoutes.jsx` and statically imported by `ErrorBoundary.jsx`. Zero `>500 kB` chunk warnings.
+   - `provider-app` (`npm run build`): **PASS** — `2964 modules transformed`, `16.73s`, exit `0`. Same non-fatal `ErrorBoundary.jsx` / `ErrorPage.jsx` static+dynamic notice. Zero `>500 kB` chunk warnings.
+   - `admin-app` (`npm run build`): **PASS** — `2909 modules transformed`, `14.99s`, exit `0`. Same non-fatal `ForbiddenPage.jsx` static+dynamic notice (`ProtectedRoute.jsx` imports `ForbiddenPage`). Zero `>500 kB` chunk warnings.
+   - `backend` (`$env:Path = "C:\Program Files\Java\jdk-21\bin;" + $env:Path; mvn -B test`): **PASS** — **29 tests run, 0 failures, 0 errors, 0 skipped** (`BUILD SUCCESS` in `01:16 min`). Expected warning/error log lines appear inside negative-path unit tests (`BookingBugsFixTest`, `BookingOtpFlowTest`, `EmailServiceTest`, `SecurityHardeningTest`).
+
+2. Bundle sizes — Before Phase 4 vs Now:
+   (Before-Phase-4 figures taken from `LOCALGO_PROJECT_ANALYSIS.txt` lines `864–866` and `admin-app` pre-code-split build with `recharts` added in Phase 3; current figures from fresh audit builds):
+   - `customer-app`:
+     - Before: single monolithic `index.js` `1,089.61 kB` (before Phase 1 website pages) / `>500 kB` warning.
+     - Now (`0` chunks > 500 kB): `firebase` `435.84 kB` (`102.18 kB` gzip), `react` `165.55 kB` (`53.90 kB` gzip), `maps` `154.84 kB` (`45.30 kB` gzip), `index` `126.41 kB` (`42.38 kB` gzip), `icons` `21.19 kB`, plus 29 lazy route/component JS chunks (`0.33 kB`–`22.10 kB`) and CSS (`maps` `15.04 kB`, `index` `46.85 kB`).
+   - `provider-app`:
+     - Before: single monolithic `index.js` `1,463.46 kB` (`>500 kB` warning).
+     - Now (`0` chunks > 500 kB): `firebase` `435.84 kB` (`102.18 kB` gzip), `charts` `427.74 kB` (`122.95 kB` gzip), `react` `165.56 kB` (`53.90 kB` gzip), `maps` `155.01 kB` (`45.30 kB` gzip), `index` `120.11 kB` (`40.75 kB` gzip), `icons` `20.03 kB`, plus 24 lazy route/component JS chunks (`1.02 kB`–`20.30 kB`) and CSS (`maps` `15.04 kB`, `index` `44.29 kB`).
+   - `admin-app`:
+     - Before: `604.47 kB` pre-redesign (before `recharts`), `1,125.34 kB` (`316.60 kB` gzip) right after Phase 3 with `recharts` unsplit (`>500 kB` warning).
+     - Now (`0` chunks > 500 kB): `charts` `493.03 kB` (`138.98 kB` gzip), `firebase` `241.43 kB` (`58.44 kB` gzip), `react` `165.35 kB` (`53.84 kB` gzip), `index` `107.28 kB` (`37.41 kB` gzip), `icons` `15.81 kB`, plus 19 lazy route/UI chunks (`1.02 kB`–`25.14 kB`) and CSS `37.87 kB`.
+   - `React.lazy` + `Suspense` route code-splitting + Rollup `manualChunks`: Confirmed configured in all 3 `AppRoutes.jsx` and `vite.config.js` files and actively producing separate chunks.
+
+3. Browser console errors/warnings on major pages:
+   - From Phase 5 Playwright inspection across reachable public/auth/error/preview routes: **0 uncaught JS errors** across all 3 apps (`customer-app` logged only transient `net::ERR_ABORTED` on rapid route transitions / map tiles and Render cold-start wake-up retry banner before initial API response).
+   - Live browser console behavior on **auth-gated routes** (`/dashboard`, `/bookings`, `/earnings`, `/admin/*`): **Unverified** live in browser (no live sign-in sessions executed during audit).
+
+4. Fresh Firestore Security Rules test run (`$env:Path = "C:\Program Files\Java\jdk-21\bin;" + $env:Path; cd firestore-rules-tests; firebase emulators:exec --only firestore "npm test"`):
+   - **PASS** — **42 tests across 6 suites passed, 0 failed, 0 cancelled, 0 skipped** (`duration_ms 14920.8`).
+
+--------------------------------------------------------------------------------
+G. OTHER IMPROVEMENTS
+--------------------------------------------------------------------------------
+1. Legacy file cleanup:
+   - Verified deleted from git tree (`git show --name-status 1fe94bb`, 18 files total):
+     - `customer-app`: `ConfirmModal.jsx`, `EmptyState.jsx`, `LoadingSkeleton.jsx`, `OtpInput.jsx`, `RatingStars.jsx`, `StatusTimeline.jsx` (Note: `Navbar.jsx`, `Footer.jsx`, `BottomNavigation.jsx`, `MainLayout.jsx` intentionally retained because `AppRoutes.jsx` renders `MainLayout` for `/` and `/services`).
+     - `provider-app`: `BottomNavigation.jsx`, `ConfirmModal.jsx`, `EmptyState.jsx`, `Footer.jsx`, `LoadingSkeleton.jsx`, `Navbar.jsx`, `OtpInput.jsx`, `RatingStars.jsx`, `ActiveJobCard.jsx`, `MainLayout.jsx`.
+     - `admin-app`: `ConfirmModal.jsx`, `OtpInput.jsx`.
+   - Remaining dead files check: `0` unreferenced legacy page/UI components flagged (`NO_UI_IMPORT` = 0). One un-styled legacy file remains: `admin-app/src/components/common/ServerWakeBanner.jsx`.
+
+2. Env & docs status:
+   - `provider-app/.env.example`: Updated (`VITE_API_BASE_URL=https://localgo-services-1.onrender.com/` + `VITE_FIREBASE_*` keys).
+   - `admin-app/.env.example`: Created cleanly matching the same variable schema.
+   - `README.md`: Added `## Local development` documenting JDK 21 `PATH`, the `:8080` Spring Boot vs Firestore emulator conflict, and Vite ports `5173`/`5174`/`5175`.
+
+3. Anything changed outside the pure UI redesign scope:
+   - Backend (`backend/`): **0 logic or API contract edits** during Phases 1–7 (`6078a57` committed pre-existing backend security work from before redesign).
+   - Dependencies: Added `recharts` (`^3.11.1`) in `admin-app/package.json` (`package-lock.json` updated) for Phase 3 dashboard analytics charts.
+   - Tooling/Build: Updated all 3 `vite.config.js` (`manualChunks`) and added `scripts/package.json` + `scripts/migrate-booking-otp-secrets.mjs` for Phase 6 deployment readiness.
+
+4. TODO / FIXME / Placeholder / Mock data audit:
+   - Zero `TODO` or `FIXME` comments introduced.
+   - Legacy token check (`token.startsWith('mock-')`) remains inside `customer-app/src/context/AuthContext.jsx:15` and `provider-app/src/context/AuthContext.jsx:15`.
+   - Intentional placeholder UI / fallbacks introduced with clear labels:
+     - `LandingPage.jsx`: benchmark copy (`"Sample platform benchmark"`) when `getNearbyProviders` returns 0 providers or before GPS settles.
+     - `AdminDashboard.jsx`: `USER_GROWTH_PLACEHOLDER` line chart (`"Placeholder Data"`), client-side sampled status/service charts (`"Sampled"`), KPI footers `"No period delta endpoint"` / `"Live queue count"`.
+     - `AdminProviders.jsx`: KYC verification checklist in detail drawer (`"Placeholder"` badge).
+
+5. AdminDashboard KPI & chart data source breakdown (`admin-app/src/pages/admin/AdminDashboard.jsx`):
+   - KPI `Pending Verifications`: **Real API** (`GET /admin/dashboard` -> `pendingVerifications`), footer text `"Live queue count"` (no period delta).
+   - KPI `Verified Providers`: **Real API** (`GET /admin/dashboard` -> `verifiedProviders` / `totalProviders`), footer `"No period delta endpoint"`.
+   - KPI `Total Customers`: **Real API** (`GET /admin/dashboard` -> `totalCustomers`, `rejectedProviders`), footer `"No period delta endpoint"`.
+   - KPI `Active Bookings`: **Real API** (`GET /admin/dashboard` -> `activeBookings`) + trend computed from `GET /admin/analytics/trends?days=`.
+   - KPI `Completed Jobs`: **Real API** (`GET /admin/dashboard` -> `completedBookings` / `totalBookings`) + trend computed from `GET /admin/analytics/trends`.
+   - KPI `Realized Revenue`: **Real API** (`GET /admin/dashboard` -> `totalRealizedRevenue`) + trend computed from `GET /admin/analytics/trends`.
+   - Chart 1 `Revenue AreaChart`: **Real API** (`GET /admin/analytics/trends?days=7|30|90`, badge `Live API`).
+   - Chart 2 `Bookings by Status Donut`: **Derived client-side from Real API** (`GET /admin/bookings?status=ALL&limit=100` — sampled from latest 100 bookings, not a full database aggregate).
+   - Chart 3 `Bookings by Service BarChart`: **Derived client-side from Real API** (`GET /admin/bookings?status=ALL&limit=100` — labeled `"Sampled"`, no dedicated backend aggregate endpoint).
+   - Chart 4 `New Users Growth LineChart`: **Placeholder** (`USER_GROWTH_PLACEHOLDER` static series, explicitly badged `"Placeholder Data"`, because no `/admin/analytics/users-trend` endpoint exists).
+
+--------------------------------------------------------------------------------
+H. DEPLOYMENT READINESS
+--------------------------------------------------------------------------------
+1. Ordered deploy checklist in `LOCALGO_PROJECT_ANALYSIS.txt`:
+   - Section `(h)` of `WEBSITE UI REDESIGN REPORT` (lines `1020–1033`) contains a checklist, though its order should be tightened for production safety (**Backend first, then Data Migration + Firestore Rules, then Vercel Frontends**):
+     1. Merge `ui-website-redesign` PR into `main`.
+     2. Wait for Render backend deployment from `main` to go healthy (with `FIREBASE_CREDENTIALS_PATH`/`JSON`, `APP_FIREBASE_PROJECT_ID`, `DEMO_PROVIDER_PASSWORD`, `CORS_ALLOWED_ORIGINS`, mail keys). **Backend must deploy BEFORE enforcing new `firestore.rules`**, because the old backend (`2ddd4d1`) didn't isolate `startOtp` into `bookings/{id}/secrets/otp` or separate `provider_private/{id}`.
+     3. Run `node scripts/migrate-booking-otp-secrets.mjs` (dry-run) and then `--apply` so pre-existing booking docs move inline `startOtp` to `bookings/{id}/secrets/otp`. (Note: any legacy `providers/{id}` docs still containing non-null `email`/`phone` will also be blocked by `hasNoSensitiveProviderFields()` in `firestore.rules` unless cleaned up/migrated or only fetched through backend REST endpoints.)
+     4. Deploy Firestore rules: `firebase deploy --only firestore:rules`.
+     5. Verify Vercel rebuilds for `customer-app`, `provider-app`, and `admin-app` and run end-to-end smoke tests.
+
+2. `startOtp` migration status:
+   - Migration script exists and was syntax-checked (`node --check scripts/migrate-booking-otp-secrets.mjs` exited `0`): Yes, needed for any pre-existing production booking docs created before commit `6078a57` so assigned providers cannot read plaintext `startOtp` via `bookings/{id}` client listener and customers still see their `startOtp`. Script uses dry-run by default and `--apply` for writes.
+
+3. Required environment variables per service:
+   - Render (`backend/` — spring boot):
+     - `FIREBASE_CREDENTIALS_PATH` / `APP_FIREBASE_credential` (`/etc/secrets/...json`) or `FIREBASE_CREDENTIALS_JSON` (Required)
+     - `APP_FIREBASE_PROJECT_ID` (default `localgo-824dd`)
+     - `DEMO_PROVIDER_PASSWORD` (optional; skips demo account Auth seeding if unset)
+     - `BREVO_API_KEY` / `RESEND_API_KEY` / `EMAIL_WEBHOOK_URL` or `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` (for OTP emails)
+     - `CORS_ALLOWED_ORIGINS` (comma-separated custom frontend URLs if using custom Vercel domains)
+   - Vercel Projects (`customer-app`, `provider-app`, `admin-app` — each needs):
+     - `VITE_API_BASE_URL` (e.g. `https://localgo-services-1.onrender.com/`)
+     - `VITE_FIREBASE_API_KEY`
+     - `VITE_FIREBASE_AUTH_DOMAIN`
+     - `VITE_FIREBASE_PROJECT_ID`
+     - `VITE_FIREBASE_STORAGE_BUCKET`
+     - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+     - `VITE_FIREBASE_APP_ID`
+     - `VITE_FIREBASE_MEASUREMENT_ID` (optional analytics ID; present in `.env.example`)
+
+--------------------------------------------------------------------------------
+I. TOP REMAINING PROBLEMS (PRIORITIZED)
+--------------------------------------------------------------------------------
+1. [High] `ui-website-redesign` is not yet merged to `main`, and Render (`backend`) + Vercel (`main` prod) + `firestore.rules` have not been deployed: New UI and security fixes are invisible on production URLs until deployed in order (`main` merge -> Render -> OTP migration -> Firestore rules -> Vercel). Files: Git branch `main` vs `ui-website-redesign`, `firestore.rules`, `scripts/migrate-booking-otp-secrets.mjs`.
+2. [High] Authenticated workspace screens were not verified live in a real browser session: Inner customer booking creation/tracking, provider GO ONLINE / OTP verification, and admin KPI/approval drawers were checked only via Vite production compilation and unauthenticated redirects, not live end-to-end Firebase sessions. Files: `customer-app/src/pages/customer/*`, `provider-app/src/pages/provider/*`, `admin-app/src/pages/admin/*`.
+3. [Medium] Mobile sticky CTA bar overlaps `BottomNav` at `768px` tablet width: `ProviderDetailPage.jsx:561` (`customer-app`) and `ProviderJobDetailPage.jsx:605` (`provider-app`) hide bottom padding clearance at `md:bottom-0` (`768px`), whereas `BottomNav` stays rendered up to `< lg` (`1024px`). Files: `customer-app/src/pages/customer/ProviderDetailPage.jsx`, `provider-app/src/pages/provider/ProviderJobDetailPage.jsx`.
+4. [Medium] Missing backend analytics & KYC endpoints force client sampling/placeholders on Admin Console: New User Growth (`AdminDashboard.jsx`), KPI period deltas, Bookings-by-Service/Status full counts, and KYC file review (`AdminProviders.jsx`) cannot show full server aggregates until backend endpoints are built. Files: `admin-app/src/pages/admin/AdminDashboard.jsx`, `admin-app/src/pages/admin/AdminProviders.jsx`, `backend/src/main/java/com/localgo/service/AdminService.java`.
+5. [Medium] `provider-app` Recharts charts break theme harmony in Light Mode: `ProviderDashboard.jsx:385` and `ProviderEarnings.jsx:237` hardcode dark grid/tooltip colors (`stroke="#2a2a33"`, `backgroundColor: "#0B0B0F"`) without reading `isDark` from `ThemeContext`. Files: `provider-app/src/pages/provider/ProviderDashboard.jsx`, `provider-app/src/pages/provider/ProviderEarnings.jsx`.
+6. [Medium] `admin-app/src/components/common/ServerWakeBanner.jsx` retains old `slate-900`/`blue-400` styling: Only non-UI file across all 3 apps still using legacy `slate-*`/`blue-*` brand styling instead of `brand-ink`/`brand-yellow`. File: `admin-app/src/components/common/ServerWakeBanner.jsx`.
+7. [Low] `docs/screenshots/` lacks `1024px` and `768px` captures, and `customer-app/providers-1440.png` shows skeleton cards mid-fetch: Visual archive covers `1440px` and `390px` public routes only. Files: `docs/screenshots/`.
+8. [Low] `admin-app` list pages (`AdminProviders`, `AdminUsers`, `AdminBookings`, `AdminReviews`) rely on transient toasts instead of persistent `<ErrorState onRetry />` cards if an initial API call fails. Files: `admin-app/src/pages/admin/Admin*.jsx`.
+9. [Low] Minor UI component drift across the 3 `src/components/ui/` copies (`Avatar.jsx` missing `w-fit self-start sm:self-auto` in provider/admin; `ConfirmDialog.jsx` missing `children` slot in provider/admin; `BottomSheet.jsx` drawer width `440px` vs `480px`). Files: `*/src/components/ui/`.
+10. [Low] Minor UI copy/polish items: `map-1440.png` / `map-390.png` display `"1 pros within 15 km"` pluralization, landing header location pill truncates `"Your L..."` tightly on `390px`, and `text-gray-400` chart footnotes sit slightly below 4.5:1 AA contrast on white. Files: `customer-app/src/pages/customer/MapPage.jsx`, `customer-app/src/components/common/Navbar.jsx`, `admin-app/src/pages/admin/AdminDashboard.jsx`.
+
+--------------------------------------------------------------------------------
+J. HONEST SELF-ASSESSMENT
+--------------------------------------------------------------------------------
+1. Current ratings (1-10) vs "professional website like Uber/Rapido/Urban Company":
+   - `customer-app`: **8.0 / 10** — Genuine full-width multi-column website layouts (`max-w-7xl`), crisp mega-menu header, dark architectural hero + floating booking card, 3-pane desktop map/filters, and clean OTP/tracking screens. Kept from a 10 by a few visual polish rough edges (`"1 pros"` copy, tight `390px` location pill, `providers-1440.png` initial Render cold-start latency, and `bottom-16 md:bottom-0` tablet CTA gap).
+   - `provider-app`: **8.0 / 10** — Looks like a real dark SaaS dispatch partner console (`240px` sidebar, persistent GO ONLINE status, 10-min request timers, master-detail active job console, Recharts earnings analytics). Kept from a 10 by hardcoded dark Recharts styling in Light Mode, the `768px` CTA overlap risk, and unverified live-session visual screenshots for authenticated partner views.
+   - `admin-app`: **7.5 / 10** — Dramatic jump from plain legacy tables into a structured dark-sidebar ops console with charts, approval/rejection modals, review undo workflow, and drawers. Kept from a 10 by un-migrated `ServerWakeBanner.jsx`, reliance on toast-only error handling on 4 table pages, and backend data gaps forcing sampled/placeholder chart panels.
+
+2. Five highest-impact remaining UI improvements:
+   1. Run authenticated end-to-end visual QA & archive loaded-state screenshots (including replacing the skeleton-state `providers-1440.png` capture and adding `1024px`/`768px` captures across all logged-in dashboards).
+   2. Fix the `md:bottom-0` -> `lg:bottom-0` sticky mobile action bar breakpoint on `ProviderDetailPage.jsx` (`customer-app`) and `ProviderJobDetailPage.jsx` (`provider-app`) so `768px` tablet view never overlaps `BottomNav`.
+   3. Align `provider-app` Recharts grids/tooltips cleanly to `isDark` in `ProviderDashboard.jsx` & `ProviderEarnings.jsx` so Light Mode looks as polished as Dark Mode.
+   4. Replace `ServerWakeBanner.jsx` `slate-*`/`blue-*` classes in `admin-app` with `brand-ink`/`brand-yellow`, and add inline `<ErrorState onRetry />` states to `AdminProviders`, `AdminUsers`, `AdminBookings`, and `AdminReviews`.
+   5. Replace remaining `New Users Growth` / `KYC` placeholders and client-side `100`-booking chart sampling with dedicated lightweight Spring Boot `/admin/analytics/*` aggregate endpoints.
+
+================================================================================
