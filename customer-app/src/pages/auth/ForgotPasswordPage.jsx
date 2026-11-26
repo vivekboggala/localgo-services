@@ -5,12 +5,6 @@ import { toast } from 'react-hot-toast';
 import api from '../../api/axios';
 import OtpInput from '../../components/common/OtpInput';
 
-const STEPS = [
-  { num: 1, label: 'Email' },
-  { num: 2, label: 'Verify OTP' },
-  { num: 3, label: 'New Password' },
-];
-
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Email Request, 2: Verify OTP, 3: Set New Password
@@ -157,26 +151,6 @@ const ForgotPasswordPage = () => {
                 ? `Enter the 6-digit code sent to ${email} to verify your identity.`
                 : `Your code is verified. Set a strong new password for ${email}.`}
           </p>
-        </div>
-
-        {/* 3-Step Indicator */}
-        <div className="flex items-center justify-between gap-2 pt-1">
-          {STEPS.map((s) => {
-            const done = step > s.num;
-            const active = step === s.num;
-            return (
-              <div key={s.num} className="flex-1 flex flex-col items-center gap-1">
-                <div className={`w-full h-1.5 rounded-full transition-colors ${
-                  done ? 'bg-emerald-500' : active ? 'bg-slate-900' : 'bg-slate-200'
-                }`} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${
-                  done ? 'text-emerald-700' : active ? 'text-slate-900' : 'text-slate-400'
-                }`}>
-                  {s.num}. {s.label}
-                </span>
-              </div>
-            );
-          })}
         </div>
 
         {infoMessage && step === 2 && (

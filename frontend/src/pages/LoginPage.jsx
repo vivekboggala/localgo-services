@@ -148,19 +148,11 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100 space-y-2">
-          <div>
-            Trouble signing in?{' '}
-            <Link to="/forgot-password" className="text-blue-600 font-semibold hover:underline">
-              Reset Password with OTP
-            </Link>
-          </div>
-          <div>
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-slate-900 font-bold hover:underline">
-              Register
-            </Link>
-          </div>
+        <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-slate-900 font-bold hover:underline">
+            Register
+          </Link>
         </div>
       </div>
     </div>
