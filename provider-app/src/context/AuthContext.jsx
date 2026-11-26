@@ -9,18 +9,6 @@ import api from '../api/axios';
 
 export const AuthContext = createContext(null);
 
-const clearStaleMockSession = () => {
-  try {
-    const token = localStorage.getItem('localgo_token');
-    if (token && token.startsWith('mock-')) {
-      localStorage.removeItem('localgo_token');
-      localStorage.removeItem('localgo_user');
-    }
-  } catch (e) {
-    // ignore storage errors
-  }
-};
-
 const mapFirebaseLoginError = (err) => {
   const code = err?.code || '';
   if (
@@ -39,7 +27,6 @@ const mapFirebaseLoginError = (err) => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    clearStaleMockSession();
     try {
       const saved = localStorage.getItem('localgo_user');
       return saved ? JSON.parse(saved) : null;
@@ -49,7 +36,6 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [firebaseUser, setFirebaseUser] = useState(() => {
-    clearStaleMockSession();
     try {
       const saved = localStorage.getItem('localgo_user');
       if (saved) {
@@ -79,7 +65,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    clearStaleMockSession();
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
