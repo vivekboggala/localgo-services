@@ -55,6 +55,12 @@ beforeEach(async () => {
         available: true,
         serviceRadiusKm: 15,
       });
+      await setDoc(doc(db, 'providers/provider_migrated_null_pii'), {
+        name: 'Migrated Provider',
+        email: null,
+        phone: null,
+        available: true,
+      });
       await setDoc(doc(db, 'providers/provider_with_pii'), {
         name: 'Leaked Provider',
         email: 'secret@example.com',
@@ -134,6 +140,14 @@ describe('Firestore Security Rules', () => {
 
       const authDb = testEnv.authenticatedContext('customer_123').firestore();
       await assertSucceeds(getDoc(doc(authDb, 'providers/provider_456')));
+    });
+
+    it('public clients can read migrated provider document with nulled email/phone', async () => {
+      const unauthDb = testEnv.unauthenticatedContext().firestore();
+      await assertSucceeds(getDoc(doc(unauthDb, 'providers/provider_migrated_null_pii')));
+
+      const authDb = testEnv.authenticatedContext('customer_123').firestore();
+      await assertSucceeds(getDoc(doc(authDb, 'providers/provider_migrated_null_pii')));
     });
 
     it('clients CANNOT read a provider document containing email or phone', async () => {

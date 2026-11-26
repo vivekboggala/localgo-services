@@ -128,6 +128,10 @@ cd ../admin-app && npm install && npm run build
   - `provider-app`: `http://localhost:5174` (`cd provider-app && npm run dev`)
   - `admin-app`: `http://localhost:5175` (`cd admin-app && npm run dev`)
 - **Backend URL (`VITE_API_BASE_URL`)**: Copy `.env.example` to `.env` in each app. Use `VITE_API_BASE_URL=http://localhost:8080/` to target a local Spring Boot server (or keep the Render URL for hosted API testing).
+- **Database migrations (dry-run by default)**: Before running `firebase deploy --only firestore:rules`, run both idempotent scripts under `scripts/` in dry-run mode first, review the output, and only then pass `--apply` with explicit service-account credentials (`FIREBASE_CREDENTIALS_PATH`):
+  - `cd scripts && npm install`
+  - `FIREBASE_CREDENTIALS_PATH=../service-account.json node migrate-booking-otp-secrets.mjs [--apply]`
+  - `FIREBASE_CREDENTIALS_PATH=../service-account.json node migrate-provider-private-fields.mjs [--apply]`
 
 ---
 
