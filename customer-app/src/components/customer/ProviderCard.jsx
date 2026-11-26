@@ -139,7 +139,7 @@ export const ProviderCard = ({
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-gray-100 text-gray-900">
             <Briefcase className="w-3.5 h-3.5 text-gray-600" strokeWidth={2} />
-            {provider.completedJobs ?? 0} jobs
+            {provider.completedJobs ?? 0} {(provider.completedJobs ?? 0) === 1 ? 'job' : 'jobs'}
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-pill bg-gray-100 text-gray-900">
             <MapPin className="w-3.5 h-3.5 text-gray-600" strokeWidth={2} />
@@ -157,7 +157,7 @@ export const ProviderCard = ({
       {/* Bottom Bar: Price & Book CTA */}
       <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
         <div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 block">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-600 block">
             Starting at
           </span>
           <span className="font-display font-bold text-ds-20 text-brand-ink">

@@ -102,10 +102,13 @@ export const Navbar = () => {
               type="button"
               onClick={() => setLocationSheetOpen(true)}
               aria-label="Change service location"
-              className="inline-flex items-center gap-1 min-h-[38px] min-w-0 max-w-[112px] sm:max-w-[180px] lg:max-w-[130px] xl:max-w-[180px] px-2 sm:px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 hover:border-brand-yellow text-brand-ink transition-colors duration-150 cursor-pointer overflow-hidden"
+              className="inline-flex items-center gap-1 min-h-[38px] min-w-0 max-w-[128px] sm:max-w-[180px] lg:max-w-[130px] xl:max-w-[180px] px-2.5 sm:px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 hover:border-brand-yellow text-brand-ink transition-colors duration-150 cursor-pointer overflow-hidden"
             >
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-ink shrink-0" strokeWidth={2.2} />
-              <span className="text-ds-12 font-semibold truncate">
+              <span className="text-ds-12 font-semibold truncate sm:hidden">
+                {location?.city === 'Your Location (GPS)' ? 'GPS Nearby' : (location?.city || 'Location')}
+              </span>
+              <span className="text-ds-12 font-semibold truncate hidden sm:inline">
                 {location?.city || 'Location'}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-gray-600 shrink-0" strokeWidth={2} />
@@ -151,7 +154,7 @@ export const Navbar = () => {
                     <div className="bg-brand-white rounded-sheet shadow-sheet border border-gray-200 p-5 space-y-4">
                       <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                         <div>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600">
                             Browse Categories
                           </span>
                           <h3 className="font-display font-bold text-ds-16 text-brand-ink">
@@ -295,7 +298,7 @@ export const Navbar = () => {
                     />
                     <div className="absolute right-0 mt-2 w-60 bg-brand-white rounded-sheet shadow-sheet border border-gray-200 py-2 z-50">
                       <div className="px-4 py-2.5 border-b border-gray-100">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">
                           Signed in as
                         </p>
                         <p className="font-display font-bold text-ds-14 text-brand-ink truncate mt-0.5">

@@ -3,11 +3,11 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProviderLayout } from '../layouts/ProviderLayout';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import { Skeleton, SkeletonCard } from '../components/ui';
+import { ErrorPage } from '../pages/ErrorPage';
 
 const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
-const ErrorPage = lazy(() => import('../pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
 
 const ProviderDashboard = lazy(() => import('../pages/provider/ProviderDashboard').then((m) => ({ default: m.ProviderDashboard })));
 const ProviderRequests = lazy(() => import('../pages/provider/ProviderRequests').then((m) => ({ default: m.ProviderRequests })));

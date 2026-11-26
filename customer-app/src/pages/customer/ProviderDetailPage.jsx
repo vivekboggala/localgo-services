@@ -437,7 +437,7 @@ export const ProviderDetailPage = () => {
                             <h4 className="font-display font-bold text-ds-14 text-brand-ink">
                               {rev.customerName || 'Customer'}
                             </h4>
-                            <p className="text-[11px] text-gray-400">
+                            <p className="text-[11px] text-gray-600">
                               {rev.createdAt
                                 ? new Date(rev.createdAt).toLocaleDateString(undefined, {
                                     year: 'numeric',
@@ -479,7 +479,7 @@ export const ProviderDetailPage = () => {
             <div className="bg-brand-white rounded-sheet border border-gray-200 shadow-sheet p-6 space-y-5">
               <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block">
                     Starting price
                   </span>
                   <span className="font-display font-extrabold text-ds-32 text-brand-ink">
@@ -493,7 +493,7 @@ export const ProviderDetailPage = () => {
 
               {selectedService && (
                 <div className="bg-gray-50 rounded-card p-3.5 border border-gray-200 space-y-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block">
                     Selected Service
                   </span>
                   <div className="font-display font-bold text-ds-14 text-brand-ink">
@@ -541,7 +541,7 @@ export const ProviderDetailPage = () => {
                 ) : (
                   <div
                     title="Direct call unlocks after your booking is accepted"
-                    className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-3 rounded-card bg-gray-100 text-gray-400 text-ds-12 font-semibold border border-gray-200 text-center"
+                    className="inline-flex items-center justify-center gap-1.5 min-h-[48px] px-3 rounded-card bg-gray-100 text-gray-600 text-ds-12 font-semibold border border-gray-200 text-center"
                   >
                     <Phone className="w-3.5 h-3.5 shrink-0" /> Post-Accept Call
                   </div>
@@ -558,10 +558,10 @@ export const ProviderDetailPage = () => {
       </div>
 
       {/* Mobile Sticky Bottom CTA Bar (< lg) */}
-      <div className="lg:hidden fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-brand-white/95 backdrop-blur-md border-t border-gray-200 shadow-sheet px-4 py-3">
+      <div className="lg:hidden fixed bottom-16 lg:bottom-0 left-0 right-0 z-30 bg-brand-white/95 backdrop-blur-md border-t border-gray-200 shadow-sheet px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block">
               Starting price
             </span>
             <span className="font-display font-bold text-ds-24 text-brand-ink">

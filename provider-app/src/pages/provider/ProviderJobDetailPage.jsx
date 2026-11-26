@@ -602,7 +602,7 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
 
       {/* Mobile Sticky Bottom CTA Bar (< lg, standalone only) */}
       {!embedded && primaryCta && (
-        <div className="lg:hidden fixed bottom-[68px] md:bottom-0 left-0 right-0 z-30 bg-brand-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-600/30 shadow-sheet px-4 py-3">
+        <div className="lg:hidden fixed bottom-[68px] lg:bottom-0 left-0 right-0 z-30 bg-brand-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-600/30 shadow-sheet px-4 py-3">
           {primaryCta}
         </div>
       )}

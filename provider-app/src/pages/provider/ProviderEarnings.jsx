@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../context/ThemeContext';
 import { providerPortalService } from '../../services/providerPortalService';
 import {
   Badge,
@@ -42,6 +43,7 @@ const PERIOD_TABS = [
 
 export const ProviderEarnings = () => {
   const { user, firebaseUser } = useAuth();
+  const { isDark } = useTheme();
   const uid = firebaseUser?.uid || user?.id;
   const navigate = useNavigate();
 
@@ -162,44 +164,50 @@ export const ProviderEarnings = () => {
       {error && <ErrorState compact message={error} onRetry={fetchEarningsData} />}
 
       {/* 4 Stat Cards + Period Segmented Hero */}
-      <div className="bg-gray-900 text-brand-white rounded-sheet p-6 border border-gray-600/30 shadow-sheet space-y-6 bg-dark-grid-pattern">
+      <div
+        className={`rounded-sheet p-6 border shadow-sheet space-y-6 ${
+          isDark
+            ? 'bg-gray-900 text-brand-white border-gray-600/30 bg-dark-grid-pattern'
+            : 'bg-brand-white text-brand-ink border-gray-200 bg-grid-pattern'
+        }`}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 block">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-gray-600 dark:text-gray-400 block">
               {days === 1 ? "Today's Earnings" : `Last ${days} Days Earnings`}
             </span>
-            <div className="font-display font-extrabold text-ds-40 text-brand-yellow mt-1 tracking-tight">
+            <div className="font-display font-extrabold text-ds-40 text-brand-ink dark:text-brand-yellow mt-1 tracking-tight">
               {formatCurrency(stats.net)}
             </div>
-            <p className="text-ds-12 text-gray-400 mt-1">
-              Net payout after ₹0 platform fees &bull; {stats.jobsCount} completed jobs
+            <p className="text-ds-12 text-gray-600 dark:text-gray-400 mt-1">
+              Net payout after ₹0 platform fees &bull; {stats.jobsCount} completed {stats.jobsCount === 1 ? 'job' : 'jobs'}
             </p>
           </div>
 
           <Tabs tabs={PERIOD_TABS} activeTab={periodKey} onChange={setPeriodKey} />
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-gray-600/25">
-          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
-            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
-              <Briefcase className="w-4 h-4 text-brand-yellow" /> Completed Jobs
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-gray-200 dark:border-gray-600/25">
+          <div className="bg-gray-50 dark:bg-brand-ink/80 rounded-card p-4 border border-gray-200 dark:border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4 text-brand-ink dark:text-brand-yellow" /> Completed Jobs
             </span>
-            <div className="font-display font-bold text-ds-24 text-brand-white mt-1.5">
+            <div className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white mt-1.5">
               {stats.jobsCount}
             </div>
           </div>
 
-          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
-            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-brand-yellow" /> Avg / Job
+          <div className="bg-gray-50 dark:bg-brand-ink/80 rounded-card p-4 border border-gray-200 dark:border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-brand-ink dark:text-brand-yellow" /> Avg / Job
             </span>
-            <div className="font-display font-bold text-ds-24 text-brand-white mt-1.5">
+            <div className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white mt-1.5">
               {formatCurrency(stats.avgPerJob)}
             </div>
           </div>
 
-          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
-            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
+          <div className="bg-gray-50 dark:bg-brand-ink/80 rounded-card p-4 border border-gray-200 dark:border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
               <Percent className="w-4 h-4 text-status-success" /> Platform Fees
             </span>
             <div className="font-display font-bold text-ds-24 text-status-success mt-1.5">
@@ -207,11 +215,11 @@ export const ProviderEarnings = () => {
             </div>
           </div>
 
-          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
-            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-brand-yellow" /> Net Payout
+          <div className="bg-brand-yellowSoft dark:bg-brand-ink/80 rounded-card p-4 border border-brand-yellow dark:border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-brand-ink dark:text-gray-400 flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-brand-ink dark:text-brand-yellow" /> Net Payout
             </span>
-            <div className="font-display font-bold text-ds-24 text-brand-yellow mt-1.5">
+            <div className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-yellow mt-1.5">
               {formatCurrency(stats.net)}
             </div>
           </div>
@@ -222,10 +230,10 @@ export const ProviderEarnings = () => {
       <div className="bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 rounded-card p-6 shadow-card space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-ds-20 text-brand-ink dark:text-brand-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-brand-yellow" />
+            <TrendingUp className="w-5 h-5 text-brand-ink dark:text-brand-yellow" />
             Daily Earnings Chart
           </h2>
-          <span className="text-ds-12 text-gray-400 font-semibold">Paid &amp; completed</span>
+          <span className="text-ds-12 text-gray-600 dark:text-gray-400 font-semibold">Paid &amp; completed</span>
         </div>
 
         {loading ? (
@@ -234,27 +242,38 @@ export const ProviderEarnings = () => {
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartBars} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a33" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9A9AA5' }} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#2a2a33' : '#EEEEF0'} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: isDark ? '#9A9AA5' : '#5B5B66' }} tickLine={false} axisLine={false} />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#9A9AA5' }}
+                  tick={{ fontSize: 11, fill: isDark ? '#9A9AA5' : '#5B5B66' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => `₹${v}`}
                 />
                 <Tooltip
-                  cursor={{ fill: 'rgba(255, 199, 0, 0.08)' }}
-                  contentStyle={{
-                    backgroundColor: '#0B0B0F',
-                    borderRadius: '12px',
-                    border: '1px solid #FFC700',
-                    color: '#FFFFFF',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                  }}
+                  cursor={{ fill: isDark ? 'rgba(255, 199, 0, 0.08)' : 'rgba(11, 11, 15, 0.04)' }}
+                  contentStyle={
+                    isDark
+                      ? {
+                          backgroundColor: '#0B0B0F',
+                          borderRadius: '12px',
+                          border: '1px solid #FFC700',
+                          color: '#FFFFFF',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }
+                      : {
+                          backgroundColor: '#FFFFFF',
+                          borderRadius: '12px',
+                          border: '1px solid #0B0B0F',
+                          color: '#0B0B0F',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }
+                  }
                   formatter={(value) => [`₹${value}`, 'Earnings']}
                 />
-                <Bar dataKey="earnings" fill="#FFC700" radius={[8, 8, 0, 0]} maxBarSize={44} />
+                <Bar dataKey="earnings" fill={isDark ? '#FFC700' : '#0B0B0F'} radius={[8, 8, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>

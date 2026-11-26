@@ -248,7 +248,13 @@ export const ProviderProfile = () => {
         {/* LEFT SUB-NAVIGATION (4 Cols on lg, 3 on xl) */}
         <aside className="lg:col-span-4 xl:col-span-3 space-y-5">
           {/* Profile Summary Card */}
-          <div className="bg-gray-900 text-brand-white rounded-sheet p-5 border border-gray-600/30 shadow-sheet bg-dark-grid-pattern space-y-4">
+          <div
+            className={`rounded-sheet p-5 border shadow-sheet space-y-4 ${
+              isDark
+                ? 'bg-gray-900 text-brand-white border-gray-600/30 bg-dark-grid-pattern'
+                : 'bg-brand-white text-brand-ink border-gray-200 bg-grid-pattern'
+            }`}
+          >
             <div className="flex items-center gap-3.5">
               <Avatar
                 name={profile?.name || user?.name || user?.email}
@@ -257,21 +263,21 @@ export const ProviderProfile = () => {
                 verified={profile?.verificationStatus === 'VERIFIED'}
               />
               <div className="min-w-0">
-                <h2 className="font-display font-bold text-ds-16 text-brand-white truncate">
+                <h2 className="font-display font-bold text-ds-16 text-brand-ink dark:text-brand-white truncate">
                   {profile?.name || user?.name || 'Partner'}
                 </h2>
-                <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
+                <p className="text-[11px] text-gray-600 dark:text-gray-400 truncate">{user?.email}</p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-600/25">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-600/25">
               <Badge tone={profile?.verificationStatus === 'VERIFIED' ? 'success' : 'warning'} dot>
                 {profile?.verificationStatus || 'PENDING'}
               </Badge>
-              <span className="inline-flex items-center gap-1 text-ds-12 font-bold text-brand-yellow">
-                <Star className="w-4 h-4 fill-brand-yellow" />
+              <span className="inline-flex items-center gap-1 text-ds-12 font-bold text-brand-ink dark:text-brand-yellow">
+                <Star className="w-4 h-4 fill-brand-yellow text-brand-yellow" />
                 {profile?.rating > 0 ? Number(profile.rating).toFixed(1) : 'New'}
-                <span className="text-gray-400 font-normal">({profile?.completedJobs ?? 0})</span>
+                <span className="text-gray-600 dark:text-gray-400 font-normal">({profile?.completedJobs ?? 0})</span>
               </span>
             </div>
           </div>

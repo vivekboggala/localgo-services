@@ -8,6 +8,7 @@ import {
   BottomSheet,
   Button,
   EmptyState,
+  ErrorState,
   Input,
   PageHeader,
   SkeletonTableRow,
@@ -52,18 +53,24 @@ export const AdminUsers = () => {
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const currentCursor = cursorStack[cursorStack.length - 1];
 
   const loadUsers = useCallback(() => {
     setLoading(true);
+    setLoadError('');
     adminService.getAllCustomers(roleFilter, 15, currentCursor)
       .then((data) => {
         setUsers(data?.content || []);
         setNextCursor(data?.nextCursor || null);
         setHasMore(Boolean(data?.hasMore));
       })
-      .catch((err) => showToast.error(err.response?.data?.message || 'Failed to load users.'))
+      .catch((err) => {
+        const msg = err.response?.data?.message || 'Failed to load users.';
+        setLoadError(msg);
+        showToast.error(msg);
+      })
       .finally(() => setLoading(false));
   }, [roleFilter, currentCursor]);
 
@@ -131,6 +138,8 @@ export const AdminUsers = () => {
         <div className="bg-brand-white rounded-card border border-gray-200 p-4 shadow-card">
           {[1, 2, 3, 4, 5].map((i) => <SkeletonTableRow key={i} />)}
         </div>
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={loadUsers} />
       ) : displayedUsers.length === 0 ? (
         <EmptyState
           icon={<Users className="w-7 h-7" />}
@@ -171,17 +180,17 @@ export const AdminUsers = () => {
                         <div className="font-display font-bold text-ds-14 text-brand-ink">
                           {u.name || 'Unnamed User'}
                         </div>
-                        <div className="text-[11px] text-gray-400 font-mono">#{String(u.id).slice(0, 10)}</div>
+                        <div className="text-[11px] text-gray-600 font-mono">#{String(u.id).slice(0, 10)}</div>
                       </div>
                     </div>
                   </td>
                   <td className="py-4 px-4 space-y-0.5">
                     <div className="flex items-center gap-1.5 text-brand-ink font-medium">
-                      <Mail className="w-3.5 h-3.5 text-gray-400" /> {u.email}
+                      <Mail className="w-3.5 h-3.5 text-gray-600" /> {u.email}
                     </div>
                     {u.phone && (
                       <div className="flex items-center gap-1.5 text-gray-600">
-                        <Phone className="w-3.5 h-3.5 text-gray-400" /> {u.phone}
+                        <Phone className="w-3.5 h-3.5 text-gray-600" /> {u.phone}
                       </div>
                     )}
                   </td>

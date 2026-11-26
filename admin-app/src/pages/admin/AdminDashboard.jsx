@@ -329,7 +329,7 @@ export const AdminDashboard = () => {
                     {card.trend.pct > 0 ? `+${card.trend.pct}%` : `${card.trend.pct}%`} ({days}d)
                   </span>
                 ) : (
-                  <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-400'}`}>
+                  <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                     {card.placeholderLabel}
                   </span>
                 )}
@@ -485,7 +485,7 @@ export const AdminDashboard = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-gray-600">
             Note: No backend user sign-up time-series endpoint exists yet; chart curve is a labeled UI placeholder.
           </p>
         </div>

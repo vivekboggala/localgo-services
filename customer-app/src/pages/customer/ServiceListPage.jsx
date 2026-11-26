@@ -168,7 +168,7 @@ export const ServiceListPage = () => {
           />
 
           <div className="space-y-1.5">
-            <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 px-1 mb-2">
+            <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 px-1 mb-2">
               Categories
             </span>
             {categories.map((cat) => {

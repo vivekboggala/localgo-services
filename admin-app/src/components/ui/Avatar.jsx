@@ -30,7 +30,7 @@ export const Avatar = ({
       : 'bg-brand-ink text-brand-white border border-gray-900';
 
   return (
-    <div className={`relative inline-flex shrink-0 ${className}`}>
+    <div className={`relative inline-flex w-fit self-start sm:self-auto shrink-0 ${className}`}>
       {src ? (
         <img
           src={src}

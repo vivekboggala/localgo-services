@@ -332,7 +332,7 @@ export const BookingDetailPage = () => {
                   verified
                 />
                 <div className="min-w-0">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block">
                     Assigned Professional
                   </span>
                   <h3 className="font-display font-bold text-ds-16 text-brand-ink truncate">

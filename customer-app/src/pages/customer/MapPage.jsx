@@ -110,7 +110,7 @@ export const MapPage = () => {
             <div>
               <h1 className="font-display font-bold text-ds-20 text-brand-ink">Live Service Map</h1>
               <p className="text-ds-12 text-gray-600">
-                {loading ? 'Scanning area...' : `${providers.length} pros within ${radius} km`}
+                {loading ? 'Scanning area...' : `${providers.length} ${providers.length === 1 ? 'pro' : 'pros'} within ${radius} km`}
               </p>
             </div>
             <button
@@ -260,7 +260,7 @@ export const MapPage = () => {
             ) : (
               <div className="lg:hidden px-4 py-2 rounded-pill bg-brand-white/95 backdrop-blur-md border border-gray-200 shadow-sheet text-ds-12 font-bold text-brand-ink flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-status-success animate-pulse" />
-                {loading ? 'Scanning area...' : `${providers.length} pros within ${radius} km`}
+                {loading ? 'Scanning area...' : `${providers.length} ${providers.length === 1 ? 'pro' : 'pros'} within ${radius} km`}
               </div>
             )}
           </div>
@@ -350,7 +350,7 @@ export const MapPage = () => {
                         {selectedProvider.rating > 0 ? Number(selectedProvider.rating).toFixed(1) : 'New'}
                       </span>
                       <span className="inline-flex items-center gap-1 text-gray-600">
-                        <Briefcase className="w-3.5 h-3.5" /> {selectedProvider.completedJobs ?? 0} jobs
+                        <Briefcase className="w-3.5 h-3.5" /> {selectedProvider.completedJobs ?? 0} {(selectedProvider.completedJobs ?? 0) === 1 ? 'job' : 'jobs'}
                       </span>
                       <span className="inline-flex items-center gap-1 text-gray-600">
                         <MapPin className="w-3.5 h-3.5" /> {selectedProvider.distanceKm ?? '—'} km

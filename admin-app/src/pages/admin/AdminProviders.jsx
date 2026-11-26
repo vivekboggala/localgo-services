@@ -25,6 +25,7 @@ import {
   Button,
   Chip,
   EmptyState,
+  ErrorState,
   Input,
   Modal,
   PageHeader,
@@ -85,6 +86,7 @@ export const AdminProviders = () => {
   const [hasMore, setHasMore] = useState(false);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -100,6 +102,7 @@ export const AdminProviders = () => {
 
   const fetchProviders = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const data = await adminService.getAllProviders(statusFilter, search, 15, currentCursor);
       setProviders(data?.content || []);
@@ -108,7 +111,9 @@ export const AdminProviders = () => {
       setTotalElements(typeof data?.totalElements === 'number' ? data.totalElements : (data?.content || []).length);
       if (data?.counts) setCounts(data.counts);
     } catch (err) {
-      showToast.error(err.response?.data?.message || 'Failed to load providers.');
+      const msg = err.response?.data?.message || 'Failed to load providers.';
+      setLoadError(msg);
+      showToast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -209,6 +214,8 @@ export const AdminProviders = () => {
         <div className="bg-brand-white rounded-card border border-gray-200 p-4 shadow-card">
           {[1, 2, 3, 4, 5].map((i) => <SkeletonTableRow key={i} />)}
         </div>
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={fetchProviders} />
       ) : providers.length === 0 ? (
         <EmptyState
           icon={<ShieldCheck className="w-7 h-7" />}
@@ -435,14 +442,14 @@ export const AdminProviders = () => {
             )}
 
             <div className="space-y-1.5">
-              <h4 className="font-bold text-gray-400 uppercase text-[11px] tracking-wider">Business Description</h4>
+              <h4 className="font-bold text-gray-600 uppercase text-[11px] tracking-wider">Business Description</h4>
               <p className="text-brand-ink leading-relaxed bg-gray-50 p-3.5 rounded-card border border-gray-200">
                 {selectedProvider.description || 'No description submitted.'}
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <h4 className="font-bold text-gray-400 uppercase text-[11px] tracking-wider">Services &amp; Coverage</h4>
+              <h4 className="font-bold text-gray-600 uppercase text-[11px] tracking-wider">Services &amp; Coverage</h4>
               <div className="flex flex-wrap gap-1.5">
                 {(selectedProvider.services || []).map((s) => (
                   <Badge key={s.id} tone="ink">{s.name}</Badge>
@@ -465,7 +472,7 @@ export const AdminProviders = () => {
 
             {selectedProvider.verificationNotes && (
               <div className="p-3.5 rounded-card bg-gray-50 border border-gray-200 text-brand-ink">
-                <span className="font-bold block text-[11px] uppercase tracking-wider text-gray-400 mb-0.5">
+                <span className="font-bold block text-[11px] uppercase tracking-wider text-gray-600 mb-0.5">
                   Last Review Notes
                 </span>
                 {selectedProvider.verificationNotes}

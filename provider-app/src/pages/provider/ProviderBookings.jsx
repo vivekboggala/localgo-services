@@ -234,7 +234,7 @@ export const ProviderBookings = () => {
               >
                 <div className="space-y-1.5 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-mono text-gray-400">#{b.id}</span>
+                    <span className="text-[11px] font-mono text-gray-600 dark:text-gray-400">#{b.id}</span>
                     <h2 className="font-display font-bold text-ds-16 text-brand-ink dark:text-brand-white">
                       {b.serviceName}
                     </h2>
@@ -308,11 +308,11 @@ export const ProviderBookings = () => {
                     >
                       <td className="py-4 px-5 whitespace-nowrap">
                         <div className="font-semibold text-brand-ink dark:text-brand-white">{b.scheduledDate}</div>
-                        <div className="text-[11px] text-gray-400">{b.scheduledTime}</div>
+                        <div className="text-[11px] text-gray-600 dark:text-gray-400">{b.scheduledTime}</div>
                       </td>
                       <td className="py-4 px-4">
                         <div className="font-semibold text-brand-ink dark:text-brand-white">{b.customerName}</div>
-                        <div className="text-[11px] text-gray-400 truncate max-w-[180px]">{b.address}</div>
+                        <div className="text-[11px] text-gray-600 dark:text-gray-400 truncate max-w-[180px]">{b.address}</div>
                       </td>
                       <td className="py-4 px-4 font-display font-bold text-brand-ink dark:text-brand-white">
                         {b.serviceName}
@@ -350,8 +350,8 @@ export const ProviderBookings = () => {
           {/* Pagination Bar */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
-              <span className="text-ds-12 text-gray-400 font-semibold">
-                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, displayedBookings.length)} of {displayedBookings.length} jobs
+              <span className="text-ds-12 text-gray-600 dark:text-gray-400 font-semibold">
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, displayedBookings.length)} of {displayedBookings.length} {displayedBookings.length === 1 ? 'job' : 'jobs'}
               </span>
               <div className="flex items-center gap-2">
                 <Button

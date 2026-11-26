@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../context/ThemeContext';
 import { providerPortalService } from '../../services/providerPortalService';
 import {
   useProviderPresence,
@@ -139,7 +140,7 @@ const SlideAvailabilityButton = ({ available, onlineSince, updating, onToggle })
           />
           {available ? `Online for ${durationText}` : 'Currently Offline'}
         </span>
-        <span className="text-gray-400 text-[11px]">Heartbeat synced</span>
+        <span className="text-gray-600 dark:text-gray-400 text-[11px]">Heartbeat synced</span>
       </div>
     </div>
   );
@@ -147,6 +148,7 @@ const SlideAvailabilityButton = ({ available, onlineSince, updating, onToggle })
 
 export const ProviderDashboard = () => {
   const { user, firebaseUser } = useAuth();
+  const { isDark } = useTheme();
   const uid = firebaseUser?.uid || user?.id;
   const navigate = useNavigate();
 
@@ -348,7 +350,7 @@ export const ProviderDashboard = () => {
           <div className="bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/25 rounded-card p-6 shadow-card space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 block">
                   Realized Revenue Trend
                 </span>
                 <h2 className="font-display font-extrabold text-ds-24 text-brand-ink dark:text-brand-white mt-0.5">
@@ -376,26 +378,36 @@ export const ProviderDashboard = () => {
 
             <div className="h-60 w-full">
               {trendData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-ds-12 text-gray-400">
+                <div className="h-full flex items-center justify-center text-ds-12 text-gray-600 dark:text-gray-400">
                   Complete jobs to see daily payout bars
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={trendData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a33" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9A9AA5' }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#9A9AA5' }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#2a2a33' : '#EEEEF0'} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: isDark ? '#9A9AA5' : '#5B5B66' }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: isDark ? '#9A9AA5' : '#5B5B66' }} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0B0B0F',
-                        border: '1px solid #FFC700',
-                        borderRadius: '10px',
-                        color: '#FFFFFF',
-                        fontSize: '12px',
-                      }}
+                      contentStyle={
+                        isDark
+                          ? {
+                              backgroundColor: '#0B0B0F',
+                              border: '1px solid #FFC700',
+                              borderRadius: '10px',
+                              color: '#FFFFFF',
+                              fontSize: '12px',
+                            }
+                          : {
+                              backgroundColor: '#FFFFFF',
+                              border: '1px solid #0B0B0F',
+                              borderRadius: '10px',
+                              color: '#0B0B0F',
+                              fontSize: '12px',
+                            }
+                      }
                       formatter={(val) => [`₹${val}`, 'Earnings']}
                     />
-                    <Bar dataKey="earnings" fill="#FFC700" radius={[6, 6, 0, 0]} maxBarSize={42} />
+                    <Bar dataKey="earnings" fill={isDark ? '#FFC700' : '#0B0B0F'} radius={[6, 6, 0, 0]} maxBarSize={42} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

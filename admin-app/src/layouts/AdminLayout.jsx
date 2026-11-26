@@ -194,10 +194,10 @@ export const AdminLayout = () => {
               </button>
 
               <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-ds-12 font-semibold min-w-0">
-                <Link to="/dashboard" className="text-gray-400 hover:text-brand-ink transition-colors hidden sm:inline">
+                <Link to="/dashboard" className="text-gray-600 hover:text-brand-ink transition-colors hidden sm:inline">
                   Admin Console
                 </Link>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-400 hidden sm:inline shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-gray-600 hidden sm:inline shrink-0" />
                 <span className="font-display font-bold text-ds-14 text-brand-ink truncate">
                   {currentSection}
                 </span>
@@ -249,7 +249,7 @@ export const AdminLayout = () => {
                     <div className="fixed inset-0 z-40" onClick={() => setAvatarOpen(false)} aria-hidden="true" />
                     <div className="absolute right-0 mt-2 w-56 bg-brand-white rounded-sheet border border-gray-200 shadow-sheet py-2 z-50">
                       <div className="px-4 py-2.5 border-b border-gray-100">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Administrator</div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Administrator</div>
                         <div className="font-display font-bold text-ds-14 text-brand-ink truncate mt-0.5">
                           {user?.name || 'Admin'}
                         </div>

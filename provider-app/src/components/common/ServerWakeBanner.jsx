@@ -20,7 +20,7 @@ export const ServerWakeBanner = () => {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-brand-white px-4 py-2.5 rounded-pill shadow-sheet border border-brand-yellow/40 flex items-center gap-2.5 text-ds-12 font-bold whitespace-nowrap"
+      className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-brand-ink text-brand-white px-4 py-2.5 rounded-pill shadow-sheet border border-brand-yellow/40 flex items-center gap-2.5 text-ds-12 font-semibold whitespace-nowrap"
     >
       <RotateCw className="w-4 h-4 text-brand-yellow animate-spin shrink-0" strokeWidth={2.5} />
       <span>

@@ -830,7 +830,7 @@ export const BookingFlow = () => {
       </div>
 
       {/* Mobile Sticky Bottom Wizard CTA Bar (< lg) */}
-      <div className="lg:hidden fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-brand-white/95 backdrop-blur-md border-t border-gray-200 shadow-sheet px-4 py-3">
+      <div className="lg:hidden fixed bottom-16 lg:bottom-0 left-0 right-0 z-30 bg-brand-white/95 backdrop-blur-md border-t border-gray-200 shadow-sheet px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           {step > 1 && (
             <Button

@@ -8,6 +8,7 @@ import {
   Button,
   Chip,
   EmptyState,
+  ErrorState,
   Input,
   PageHeader,
   SkeletonTableRow,
@@ -58,18 +59,24 @@ export const AdminBookings = () => {
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const currentCursor = cursorStack[cursorStack.length - 1];
 
   const loadBookings = useCallback(() => {
     setLoading(true);
+    setLoadError('');
     adminService.getAllBookings(statusFilter, 15, currentCursor)
       .then((data) => {
         setBookings(data?.content || []);
         setNextCursor(data?.nextCursor || null);
         setHasMore(Boolean(data?.hasMore));
       })
-      .catch((err) => showToast.error(err.response?.data?.message || 'Failed to load bookings.'))
+      .catch((err) => {
+        const msg = err.response?.data?.message || 'Failed to load bookings.';
+        setLoadError(msg);
+        showToast.error(msg);
+      })
       .finally(() => setLoading(false));
   }, [statusFilter, currentCursor]);
 
@@ -151,6 +158,8 @@ export const AdminBookings = () => {
         <div className="bg-brand-white rounded-card border border-gray-200 p-4 shadow-card">
           {[1, 2, 3, 4, 5].map((i) => <SkeletonTableRow key={i} />)}
         </div>
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={loadBookings} />
       ) : displayedBookings.length === 0 ? (
         <EmptyState
           icon={<Calendar className="w-7 h-7" />}
@@ -276,7 +285,7 @@ export const AdminBookings = () => {
 
             {selectedBooking.address && (
               <div className="space-y-1">
-                <span className="font-bold text-gray-400 uppercase text-[11px] flex items-center gap-1">
+                <span className="font-bold text-gray-600 uppercase text-[11px] flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" /> Address
                 </span>
                 <p className="font-semibold text-brand-ink bg-gray-50 p-3 rounded-card border border-gray-200">
@@ -287,7 +296,7 @@ export const AdminBookings = () => {
 
             {selectedBooking.description && (
               <div className="space-y-1">
-                <span className="font-bold text-gray-400 uppercase text-[11px] block">Issue Description</span>
+                <span className="font-bold text-gray-600 uppercase text-[11px] block">Issue Description</span>
                 <p className="text-brand-ink bg-gray-50 p-3 rounded-card border border-gray-200">
                   &ldquo;{selectedBooking.description}&rdquo;
                 </p>

@@ -236,7 +236,7 @@ export const NearbyProvidersPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
       <PageHeader
         title="Nearby Professionals"
-        subtitle={`${providers.length} verified pros within ${radius} km of ${location?.city || 'your location'}`}
+        subtitle={`${providers.length} verified ${providers.length === 1 ? 'pro' : 'pros'} within ${radius} km of ${location?.city || 'your location'}`}
         actions={
           <div className="lg:hidden inline-flex items-center bg-gray-100 p-1 rounded-pill border border-gray-200">
             <button

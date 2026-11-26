@@ -4,12 +4,12 @@ import { MainLayout } from '../layouts/MainLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import { Skeleton, SkeletonCard } from '../components/ui';
+import { ErrorPage } from '../pages/ErrorPage';
 
 const LandingPage = lazy(() => import('../pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
-const ErrorPage = lazy(() => import('../pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
 
 const ServiceListPage = lazy(() => import('../pages/customer/ServiceListPage').then((m) => ({ default: m.ServiceListPage })));
 const CustomerDashboard = lazy(() => import('../pages/customer/CustomerDashboard').then((m) => ({ default: m.CustomerDashboard })));

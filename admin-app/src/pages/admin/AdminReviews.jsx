@@ -9,6 +9,7 @@ import {
   Button,
   Chip,
   EmptyState,
+  ErrorState,
   Input,
   PageHeader,
   RatingStars,
@@ -53,18 +54,24 @@ export const AdminReviews = () => {
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const currentCursor = cursorStack[cursorStack.length - 1];
 
   const loadReviews = useCallback(() => {
     setLoading(true);
+    setLoadError('');
     adminService.getAllReviews(12, currentCursor)
       .then((data) => {
         setReviews(data?.content || []);
         setNextCursor(data?.nextCursor || null);
         setHasMore(Boolean(data?.hasMore));
       })
-      .catch((err) => showToast.error(err.response?.data?.message || 'Failed to load reviews.'))
+      .catch((err) => {
+        const msg = err.response?.data?.message || 'Failed to load reviews.';
+        setLoadError(msg);
+        showToast.error(msg);
+      })
       .finally(() => setLoading(false));
   }, [currentCursor]);
 
@@ -181,6 +188,8 @@ export const AdminReviews = () => {
         <div className="bg-brand-white rounded-card border border-gray-200 p-4 shadow-card">
           {[1, 2, 3, 4].map((i) => <SkeletonTableRow key={i} />)}
         </div>
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={loadReviews} />
       ) : displayedReviews.length === 0 ? (
         <EmptyState
           icon={<Star className="w-7 h-7" />}
@@ -320,7 +329,7 @@ export const AdminReviews = () => {
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">Full Comment</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block">Full Comment</span>
               <p className="p-4 rounded-card bg-gray-50 border border-gray-200 text-brand-ink leading-relaxed">
                 &ldquo;{selectedReview.comment || 'No written feedback submitted.'}&rdquo;
               </p>

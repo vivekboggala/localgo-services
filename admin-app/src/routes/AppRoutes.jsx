@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from '../layouts/AdminLayout';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import { Skeleton, SkeletonCard } from '../components/ui';
+import { ForbiddenPage } from '../pages/ForbiddenPage';
 
 const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
@@ -13,7 +14,6 @@ const AdminReviews = lazy(() => import('../pages/admin/AdminReviews').then((m) =
 const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
 const DesignPreviewPage = lazy(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
-const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage').then((m) => ({ default: m.ForbiddenPage })));
 const ErrorPage = lazy(() => import('../pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
 
 const RouteFallback = () => (

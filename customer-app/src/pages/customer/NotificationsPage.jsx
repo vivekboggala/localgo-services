@@ -331,7 +331,7 @@ export const NotificationsPage = () => {
       {/* Desktop 2-Column Filter Rail + Wide List */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <aside className="hidden lg:block lg:col-span-3 sticky top-24 bg-brand-white border border-gray-200 rounded-card p-4 shadow-card space-y-1.5">
-          <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 px-2 pb-1">
+          <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 px-2 pb-1">
             Inbox Filter
           </span>
           {filterItems.map((item) => {
