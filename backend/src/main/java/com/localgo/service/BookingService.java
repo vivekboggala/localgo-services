@@ -5,6 +5,7 @@ import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.Query;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.localgo.dto.request.BookingRequest;
+import com.localgo.dto.request.PaymentSelectionRequest;
 import com.localgo.dto.request.StatusUpdateRequest;
 import com.localgo.dto.response.BookingResponse;
 import com.localgo.enums.BookingStatus;
@@ -189,7 +190,9 @@ public class BookingService {
                         .estimatedDurationMins(reqDuration)
                         .status(BookingStatus.REQUESTED.name())
                         .amount(amountInPaise)
-                        .paymentMethod(request.getPaymentMethod())
+                        .paymentMethod(request.getPaymentMethod() != null && !request.getPaymentMethod().isBlank()
+                                ? request.getPaymentMethod().trim().toUpperCase()
+                                : "PAY_AFTER_SERVICE")
                         .paymentStatus(PaymentStatus.PENDING.name())
                         .startOtp(null)
                         .completionOtp(null)
@@ -415,6 +418,16 @@ public class BookingService {
                 doc.setCancellationReason(request.getCancellationReason());
             } else if (targetStatus == BookingStatus.COMPLETED) {
                 doc.setCompletedAt(now);
+                if (request.getExtraCharges() != null && request.getExtraCharges().compareTo(BigDecimal.ZERO) > 0) {
+                    long extraPaise = request.getExtraCharges()
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(0, RoundingMode.HALF_UP)
+                            .longValue();
+                    doc.setExtraAmountPaise(extraPaise);
+                }
+                if (request.getWorkSummary() != null && !request.getWorkSummary().isBlank()) {
+                    doc.setWorkSummary(request.getWorkSummary().trim());
+                }
                 // Do not auto-mark UPI or CASH as PAID at completion; CASH requires explicit provider confirmation.
                 if (doc.getPaymentStatus() == null || doc.getPaymentStatus().isBlank()) {
                     doc.setPaymentStatus(PaymentStatus.PENDING.name());
@@ -435,6 +448,70 @@ public class BookingService {
         }
     }
 
+    public BookingResponse submitPaymentSelection(String bookingId, PaymentSelectionRequest request, String customerId) {
+        try {
+            var docRef = firestore.collection("bookings").document(bookingId);
+            var snap = docRef.get().get();
+            if (!snap.exists()) {
+                throw new ResourceNotFoundException("Booking not found: " + bookingId);
+            }
+            BookingDoc doc = snap.toObject(BookingDoc.class);
+            if (doc == null) {
+                throw new ResourceNotFoundException("Booking not found: " + bookingId);
+            }
+            doc.setId(bookingId);
+
+            if (!Objects.equals(customerId, doc.getCustomerId())) {
+                throw new UnauthorizedException("You are not authorized to update payment for this booking.");
+            }
+            if (!BookingStatus.COMPLETED.name().equalsIgnoreCase(doc.getStatus())) {
+                throw new BadRequestException("Payment option can only be selected after the service is completed.");
+            }
+            if (PaymentStatus.PAID.name().equalsIgnoreCase(doc.getPaymentStatus())) {
+                throw new BadRequestException("This booking is already marked as PAID.");
+            }
+
+            String method = request.getPaymentMethod() != null ? request.getPaymentMethod().trim().toUpperCase() : "";
+            if (!"CASH".equals(method) && !"UPI".equals(method)) {
+                throw new BadRequestException("Payment method must be CASH or UPI.");
+            }
+
+            String utr = request.getUtr() != null ? request.getUtr().trim() : null;
+            if ("UPI".equals(method)) {
+                if (utr == null || utr.length() < 6) {
+                    throw new BadRequestException("Please enter a valid UTR / transaction reference number (at least 6 characters).");
+                }
+                doc.setPaymentUtr(utr);
+            } else {
+                doc.setPaymentUtr(null);
+            }
+
+            doc.setPaymentMethod(method);
+            doc.setPaymentStatus(PaymentStatus.PENDING.name());
+            doc.setPaymentSubmittedAt(new Date());
+            docRef.set(doc).get();
+
+            String serviceLabel = doc.getServiceName() != null ? doc.getServiceName() : "service";
+            String msg = "UPI".equals(method)
+                    ? "Customer submitted UPI payment (UTR: " + utr + ") for " + serviceLabel + ". Please verify and confirm."
+                    : "Customer chose Cash payment for " + serviceLabel + ". Confirm once collected.";
+            notifyUser(
+                    doc.getProviderId(),
+                    NotificationType.PAYMENT_CONFIRMED,
+                    "UPI".equals(method) ? "Verify UPI Payment" : "Cash Payment Selected",
+                    msg,
+                    bookingId
+            );
+
+            return mapToResponse(doc, null, true, null);
+        } catch (ResourceNotFoundException | UnauthorizedException | BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to submit payment selection for booking {}: {}", bookingId, e.getMessage());
+            throw new RuntimeException("Error submitting payment details: " + e.getMessage());
+        }
+    }
+
     public BookingResponse confirmCashReceived(String bookingId, String providerId) {
         try {
             var docRef = firestore.collection("bookings").document(bookingId);
@@ -449,22 +526,23 @@ public class BookingService {
             doc.setId(bookingId);
 
             if (!Objects.equals(providerId, doc.getProviderId())) {
-                throw new ForbiddenException("You are not authorized to confirm cash payment for this booking.");
+                throw new ForbiddenException("You are not authorized to confirm payment for this booking.");
             }
             if (!BookingStatus.COMPLETED.name().equalsIgnoreCase(doc.getStatus())) {
-                throw new BadRequestException("Cash payment can only be confirmed after the booking is COMPLETED.");
+                throw new BadRequestException("Payment can only be confirmed after the booking is COMPLETED.");
             }
-            if (!"CASH".equalsIgnoreCase(doc.getPaymentMethod())) {
-                throw new BadRequestException("Cash confirmation applies only to CASH bookings.");
+            if (doc.getPaymentMethod() == null || "PAY_AFTER_SERVICE".equalsIgnoreCase(doc.getPaymentMethod())) {
+                doc.setPaymentMethod("CASH");
             }
             if (!PaymentStatus.PAID.name().equalsIgnoreCase(doc.getPaymentStatus())) {
                 doc.setPaymentStatus(PaymentStatus.PAID.name());
                 docRef.set(doc).get();
+                boolean isUpi = "UPI".equalsIgnoreCase(doc.getPaymentMethod());
                 notifyUser(
                         doc.getCustomerId(),
                         NotificationType.PAYMENT_CONFIRMED,
-                        "Cash Payment Confirmed",
-                        "Your provider confirmed cash payment received for " + (doc.getServiceName() != null ? doc.getServiceName() : "service") + ".",
+                        isUpi ? "UPI Payment Verified" : "Cash Payment Confirmed",
+                        "Your provider verified " + (isUpi ? "UPI" : "cash") + " payment for " + (doc.getServiceName() != null ? doc.getServiceName() : "service") + ".",
                         bookingId
                 );
             }
@@ -472,8 +550,8 @@ public class BookingService {
         } catch (ResourceNotFoundException | ForbiddenException | BadRequestException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to confirm cash receipt for booking {}: {}", bookingId, e.getMessage());
-            throw new RuntimeException("Error confirming cash payment: " + e.getMessage());
+            log.error("Failed to confirm payment receipt for booking {}: {}", bookingId, e.getMessage());
+            throw new RuntimeException("Error confirming payment: " + e.getMessage());
         }
     }
 
@@ -635,8 +713,16 @@ public class BookingService {
                 .cancelledBy(doc.getCancelledBy())
                 .cancellationReason(doc.getCancellationReason())
                 .amount(amountRupees)
+                .extraAmount(doc.getExtraAmountPaise() != null
+                        ? BigDecimal.valueOf(doc.getExtraAmountPaise()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO)
+                .totalAmount(amountRupees.add(doc.getExtraAmountPaise() != null
+                        ? BigDecimal.valueOf(doc.getExtraAmountPaise()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO))
+                .workSummary(doc.getWorkSummary())
                 .paymentMethod(doc.getPaymentMethod())
                 .paymentStatus(doc.getPaymentStatus() != null ? PaymentStatus.valueOf(doc.getPaymentStatus()) : PaymentStatus.PENDING)
+                .paymentUtr(doc.getPaymentUtr())
                 .startOtp(visibleStartOtp)
                 .completionOtp(null)
                 .acceptedAt(toLocalDateTime(doc.getAcceptedAt()))

@@ -73,12 +73,20 @@ export const ProviderLayout = () => {
       return undefined;
     }
 
-    providerPortalService.getPendingRequests(0, 50)
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data?.content || []);
-        setPendingRequestCount(list.length);
-      })
-      .catch(() => {});
+    let cancelled = false;
+    let snapshotActive = false;
+
+    const refreshCount = () => {
+      providerPortalService.getPendingRequests(0, 50)
+        .then((data) => {
+          if (cancelled || snapshotActive) return;
+          const list = Array.isArray(data) ? data : (data?.content || []);
+          setPendingRequestCount(list.length);
+        })
+        .catch(() => {});
+    };
+
+    refreshCount();
 
     const q = query(
       collection(db, 'bookings'),
@@ -88,12 +96,28 @@ export const ProviderLayout = () => {
 
     const unsubscribe = onSnapshot(
       q,
-      (snap) => setPendingRequestCount(snap.size),
-      () => {}
+      (snap) => {
+        snapshotActive = true;
+        setPendingRequestCount(snap.size);
+      },
+      () => {
+        // Fallback if Firestore listener errors: keep API count refreshed
+        snapshotActive = false;
+      }
     );
 
-    return () => unsubscribe();
-  }, [uid]);
+    const handleRequestsUpdated = () => {
+      snapshotActive = false;
+      refreshCount();
+    };
+    window.addEventListener('localgo:requests-updated', handleRequestsUpdated);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      window.removeEventListener('localgo:requests-updated', handleRequestsUpdated);
+    };
+  }, [uid, pathname]);
 
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);

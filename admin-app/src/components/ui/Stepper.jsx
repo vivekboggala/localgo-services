@@ -13,11 +13,21 @@ const DEFAULT_BOOKING_STEPS = [
 const formatStepTime = (val) => {
   if (!val) return null;
   try {
-    const d = typeof val?.toDate === 'function'
-      ? val.toDate()
-      : val?.seconds != null
-        ? new Date(val.seconds * 1000)
-        : new Date(val);
+    let d;
+    if (typeof val?.toDate === 'function') {
+      d = val.toDate();
+    } else if (val?.seconds != null) {
+      d = new Date(val.seconds * 1000);
+    } else if (
+      typeof val === 'string' &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(val) &&
+      !/([+-]\d{2}:?\d{2}|Z)$/i.test(val)
+    ) {
+      // Backend LocalDateTime serializes in UTC without 'Z'; append 'Z' so browser converts to local time
+      d = new Date(`${val}Z`);
+    } else {
+      d = new Date(val);
+    }
     if (isNaN(d.getTime())) return null;
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch {

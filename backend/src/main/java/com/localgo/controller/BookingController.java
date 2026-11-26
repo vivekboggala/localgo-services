@@ -1,6 +1,7 @@
 package com.localgo.controller;
 
 import com.localgo.dto.request.BookingRequest;
+import com.localgo.dto.request.PaymentSelectionRequest;
 import com.localgo.dto.response.ApiResponse;
 import com.localgo.dto.response.BookingResponse;
 import com.localgo.service.BookingService;
@@ -53,5 +54,15 @@ public class BookingController {
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         BookingResponse booking = bookingService.cancelBooking(id, authentication.getName(), reason, isAdmin);
         return ResponseEntity.ok(ApiResponse.success("Booking cancelled successfully", booking));
+    }
+
+    @PutMapping("/{id}/payment")
+    public ResponseEntity<ApiResponse<BookingResponse>> submitPayment(
+            @PathVariable String id,
+            @Valid @RequestBody PaymentSelectionRequest request,
+            Authentication authentication) {
+
+        BookingResponse booking = bookingService.submitPaymentSelection(id, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Payment details submitted", booking));
     }
 }

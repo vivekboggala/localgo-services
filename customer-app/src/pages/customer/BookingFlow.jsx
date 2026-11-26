@@ -38,7 +38,7 @@ const WIZARD_STEPS = [
   { id: 1, title: 'Service & Issue', icon: Wrench },
   { id: 2, title: 'Date & Slot', icon: Calendar },
   { id: 3, title: 'Address', icon: MapPin },
-  { id: 4, title: 'Pay & Confirm', icon: Wallet },
+  { id: 4, title: 'Review & Confirm', icon: Wallet },
 ];
 
 const QUICK_ISSUE_CHIPS = [
@@ -68,7 +68,10 @@ const getUpcomingDates = () => {
   for (let i = 0; i < 7; i += 1) {
     const d = new Date(base);
     d.setDate(base.getDate() + i);
-    const iso = d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const iso = `${year}-${month}-${day}`;
     days.push({
       iso,
       dayShort: i === 0 ? 'Today' : i === 1 ? 'Tmrw' : d.toLocaleDateString(undefined, { weekday: 'short' }),
@@ -138,7 +141,7 @@ export const BookingFlow = () => {
   const [address, setAddress] = useState(prefillState.prefillAddress || savedAddresses[0]?.address || user?.address || '');
   const [city, setCity] = useState(savedAddresses[0]?.city || user?.city || location?.city || '');
   const [postalCode, setPostalCode] = useState(savedAddresses[0]?.postalCode || user?.postalCode || '');
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paymentMethod] = useState('PAY_AFTER_SERVICE');
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -282,7 +285,7 @@ export const BookingFlow = () => {
         scheduledDate,
         scheduledTime: scheduledTime.length === 5 ? `${scheduledTime}:00` : scheduledTime,
         estimatedDurationMins: selectedService?.defaultDurationMins || 60,
-        paymentMethod: paymentMethod || 'CASH',
+        paymentMethod: 'PAY_AFTER_SERVICE',
         amount: bookingAmount,
       });
 
@@ -345,7 +348,7 @@ export const BookingFlow = () => {
             <div className="flex justify-between">
               <span className="text-gray-600">Payment</span>
               <span className="font-bold text-brand-ink">
-                {formatCurrency(confirmedBooking.amount ?? totalAmount)} ({paymentMethod})
+                {formatCurrency(confirmedBooking.amount ?? totalAmount)} (Pay after service)
               </span>
             </div>
           </div>
@@ -378,7 +381,7 @@ export const BookingFlow = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-32 lg:pb-12 space-y-6">
       <PageHeader
         title={`Book ${provider.name}`}
-        subtitle={`Step ${step} of 4 • ${WIZARD_STEPS[step - 1].title}`}
+        subtitle={WIZARD_STEPS[step - 1].title}
         onBack={() => (step > 1 ? setStep((s) => s - 1) : navigate(-1))}
       />
 
@@ -409,7 +412,7 @@ export const BookingFlow = () => {
                         active || done ? 'text-brand-ink' : 'text-gray-400'
                       }`}
                     >
-                      {s.id}. {s.title}
+                      {s.title}
                     </span>
                   </button>
                 );
@@ -667,53 +670,20 @@ export const BookingFlow = () => {
             </div>
           )}
 
-          {/* STEP 4: Payment */}
+          {/* STEP 4: Review & Confirm */}
           {step === 4 && (
             <div className="bg-brand-white border border-gray-200 rounded-card p-6 space-y-4 shadow-card">
-              <h2 className="font-display font-bold text-ds-20 text-brand-ink">Select payment method</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  {
-                    key: 'CASH',
-                    title: 'Cash After Service',
-                    desc: 'Pay cash once job finishes',
-                    icon: Wallet,
-                  },
-                  {
-                    key: 'UPI',
-                    title: 'UPI Transfer',
-                    desc: 'GPay / PhonePe / Paytm QR at door',
-                    icon: Smartphone,
-                  },
-                ].map((method) => {
-                  const Icon = method.icon;
-                  const active = paymentMethod === method.key;
-                  return (
-                    <button
-                      key={method.key}
-                      type="button"
-                      onClick={() => setPaymentMethod(method.key)}
-                      className={`p-4 rounded-card border text-left transition-all duration-150 flex items-start gap-3 cursor-pointer ${
-                        active
-                          ? 'bg-brand-yellowSoft border-brand-yellow shadow-card'
-                          : 'bg-brand-white border-gray-200 hover:border-brand-ink'
-                      }`}
-                    >
-                      <div
-                        className={`w-10 h-10 rounded-card flex items-center justify-center shrink-0 ${
-                          active ? 'bg-brand-ink text-brand-yellow' : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" strokeWidth={2} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display font-bold text-ds-14 text-brand-ink">{method.title}</div>
-                        <div className="text-ds-12 text-gray-600 mt-0.5">{method.desc}</div>
-                      </div>
-                      {active && <Check className="w-5 h-5 text-brand-ink shrink-0" strokeWidth={2.5} />}
-                    </button>
-                  );
-                })}
+              <h2 className="font-display font-bold text-ds-20 text-brand-ink">Review &amp; confirm booking</h2>
+              <div className="p-4 rounded-card border border-brand-yellow bg-brand-yellowSoft flex items-start gap-3">
+                <div className="w-10 h-10 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
+                  <Wallet className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-bold text-ds-14 text-brand-ink">Pay After Service Completion</div>
+                  <div className="text-ds-12 text-gray-800 mt-0.5">
+                    You can choose <strong>UPI</strong> (QR / UTR) or <strong>Cash</strong> after the professional finishes the job.
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 text-ds-12 text-gray-600 pt-1">
@@ -796,12 +766,12 @@ export const BookingFlow = () => {
               <div className="flex justify-between gap-2">
                 <span className="text-gray-600">Address</span>
                 <span className="font-semibold text-brand-ink text-right truncate max-w-[200px]">
-                  {address || 'Pending step 3'}
+                  {address || 'Pending'}
                 </span>
               </div>
               <div className="flex justify-between gap-2">
                 <span className="text-gray-600">Payment</span>
-                <span className="font-bold text-brand-ink">{paymentMethod}</span>
+                <span className="font-bold text-brand-ink">Pay after service</span>
               </div>
             </div>
 

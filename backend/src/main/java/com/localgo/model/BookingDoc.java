@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 @Builder
@@ -15,6 +16,9 @@ import java.util.Date;
 @AllArgsConstructor
 @IgnoreExtraProperties
 public class BookingDoc {
+    private List<String> offeredProviderIds; // providers already sent an offer for this booking
+    private List<String> rejectedProviderIds; // providers that rejected an offer
+
     private String id;
     private String customerId;
     private String customerName;
@@ -32,12 +36,15 @@ public class BookingDoc {
     private String scheduledTime; // string HH:mm
     private Integer estimatedDurationMins;
     private String status;
-    private Integer flowVersion; // 1 = legacy, 2 = new workflow
     private String cancelledBy;
     private String cancellationReason;
     private Long amount; // stored in paise (100 paise = 1 INR)
+    private Long extraAmountPaise; // optional extra charges in paise
+    private String workSummary;
     private String paymentMethod;
     private String paymentStatus;
+    private String paymentUtr;
+    private Date paymentSubmittedAt;
     @Exclude
     private String startOtp;
     @Exclude

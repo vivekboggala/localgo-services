@@ -19,7 +19,9 @@ public class ServiceController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ServiceResponse>>> getAllActiveServices() {
         List<ServiceResponse> services = serviceCategoryService.getAllActiveServices();
-        return ResponseEntity.ok(ApiResponse.success("Active services fetched", services));
+        return ResponseEntity.ok()
+                .header("Cache-Control", "public, max-age=300")
+                .body(ApiResponse.success("Active services fetched", services));
     }
 
     @GetMapping("/{id}")

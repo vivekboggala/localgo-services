@@ -21,4 +21,8 @@ export const bookingService = {
     const res = await api.put(`/bookings/${id}/cancel?reason=${encodeURIComponent(reason)}`);
     return res.data.data;
   },
+  submitPayment: async (id, paymentMethod, utr = null) => {
+    const res = await api.put(`/bookings/${id}/payment`, { paymentMethod, utr });
+    return res.data.data;
+  },
 };

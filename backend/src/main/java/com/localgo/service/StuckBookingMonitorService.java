@@ -35,7 +35,7 @@ public class StuckBookingMonitorService {
             List<BookingDoc> stuck = query.getDocuments().stream()
                     .map(doc -> doc.toObject(BookingDoc.class))
                     .filter(b -> b.getCreatedAt() != null &&
-                            Instant.now().minusSeconds(stuckTimeoutSeconds).isAfter(b.getCreatedAt()))
+                            Instant.now().minusSeconds(stuckTimeoutSeconds).isAfter(b.getCreatedAt().toInstant()))
                     .collect(Collectors.toList());
             if (!stuck.isEmpty()) {
                 log.warn("Stuck bookings detected: count={}", stuck.size());

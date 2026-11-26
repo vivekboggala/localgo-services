@@ -91,12 +91,18 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
         if (docSnap.exists()) {
           const live = docSnap.data();
           setJob((prev) => {
-            const amountInRupees = live.amount != null ? Number(live.amount) / 100 : prev?.amount;
+            const amountInRupees = live.amount != null ? Number(live.amount) / 100 : (prev?.amount ?? 0);
+            const extraInRupees =
+              live.extraAmountPaise != null
+                ? Number(live.extraAmountPaise) / 100
+                : (prev?.extraAmount ?? 0);
             return {
               ...(prev || {}),
               ...live,
               id: docSnap.id,
-              amount: amountInRupees ?? prev?.amount,
+              amount: amountInRupees,
+              extraAmount: extraInRupees,
+              totalAmount: amountInRupees + extraInRupees,
               startOtp: undefined,
               completionOtp: undefined,
             };
@@ -123,7 +129,14 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
     setSubmitting(true);
     setOtpError('');
     try {
-      const updated = await providerPortalService.updateBookingStatus(jobId, targetStatus, reason, otp);
+      const updated = await providerPortalService.updateBookingStatus(
+        jobId,
+        targetStatus,
+        reason,
+        otp,
+        targetStatus === 'COMPLETED' ? Number(extraCharges) || 0 : null,
+        targetStatus === 'COMPLETED' ? workSummary.trim() : null
+      );
       if (updated) {
         setJob(updated);
       } else {
@@ -194,7 +207,7 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
     if (raw) savedNotes = JSON.parse(raw);
   } catch {}
 
-  const extraAmountNum = Number(extraCharges) || savedNotes?.extraCharges || 0;
+  const extraAmountNum = Number(job.extraAmount || 0) || Number(extraCharges) || savedNotes?.extraCharges || 0;
   const totalDisplayAmount = Number(job.amount || 0) + extraAmountNum;
 
   const renderPrimaryCta = () => {
@@ -271,7 +284,13 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
         </Button>
       );
     }
-    if (job.status === 'COMPLETED' && job.paymentMethod === 'CASH' && job.paymentStatus !== 'PAID') {
+    if (job.status === 'COMPLETED' && job.paymentStatus !== 'PAID') {
+      const label =
+        job.paymentMethod === 'UPI' && job.paymentUtr
+          ? `Verify UTR (${job.paymentUtr}) & Confirm Paid`
+          : job.paymentMethod === 'UPI'
+          ? 'Confirm UPI Payment Received'
+          : 'Collect Cash & Confirm Paid';
       return (
         <Button
           variant="accent"
@@ -281,7 +300,7 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
           leftIcon={<Wallet className="w-5 h-5" strokeWidth={2.4} />}
           onClick={handleConfirmCashReceived}
         >
-          Collect Cash &bull; {formatCurrency(job.amount)}
+          {label} &bull; {formatCurrency(totalDisplayAmount)}
         </Button>
       );
     }
@@ -511,9 +530,15 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
                   Price Summary
                 </h3>
                 <Badge tone={job.paymentStatus === 'PAID' ? 'success' : 'warning'} dot>
-                  {job.paymentMethod} • {job.paymentStatus || 'PENDING'}
+                  {job.paymentMethod === 'PAY_AFTER_SERVICE' ? 'AWAITING METHOD' : job.paymentMethod} • {job.paymentStatus || 'PENDING'}
                 </Badge>
               </div>
+              {job.paymentUtr && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-700/40 rounded-card px-3 py-2 text-ds-12">
+                  <span className="text-emerald-800 dark:text-emerald-300 font-semibold">Customer UTR: </span>
+                  <span className="font-mono font-bold text-emerald-900 dark:text-emerald-200">{job.paymentUtr}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-1">
                 <span className="text-ds-14 text-gray-600 dark:text-gray-400">Total Job Value</span>
                 <span className="font-display font-extrabold text-ds-24 text-brand-ink dark:text-brand-yellow">
@@ -562,9 +587,15 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
                   Price Summary
                 </h3>
                 <Badge tone={job.paymentStatus === 'PAID' ? 'success' : 'warning'} dot>
-                  {job.paymentMethod} • {job.paymentStatus || 'PENDING'}
+                  {job.paymentMethod === 'PAY_AFTER_SERVICE' ? 'AWAITING METHOD' : job.paymentMethod} • {job.paymentStatus || 'PENDING'}
                 </Badge>
               </div>
+              {job.paymentUtr && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-700/40 rounded-card px-3 py-2 text-ds-12">
+                  <span className="text-emerald-800 dark:text-emerald-300 font-semibold">Customer UTR: </span>
+                  <span className="font-mono font-bold text-emerald-900 dark:text-emerald-200">{job.paymentUtr}</span>
+                </div>
+              )}
 
               <div className="space-y-2 text-ds-14">
                 <div className="flex justify-between text-gray-600 dark:text-gray-400">

@@ -138,6 +138,7 @@ export const ProviderRequests = () => {
   const handleAccept = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'ACCEPTED');
+      window.dispatchEvent(new Event('localgo:requests-updated'));
       showToast.success('Request accepted! Opening job screen...');
       navigate(`/jobs/${id}`);
     } catch (err) {
@@ -148,6 +149,7 @@ export const ProviderRequests = () => {
   const handleReject = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'REJECTED');
+      window.dispatchEvent(new Event('localgo:requests-updated'));
       showToast.success('Request rejected.');
       fetchRequests();
     } catch (err) {
