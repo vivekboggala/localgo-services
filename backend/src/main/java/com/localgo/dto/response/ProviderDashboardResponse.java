@@ -16,6 +16,7 @@ public class ProviderDashboardResponse {
     private String providerId;
     private String providerName;
     private String verificationStatus;
+    private String verificationNotes;
     private Boolean available;
     private Boolean manualOffline;
     private Long lastSeenAt;

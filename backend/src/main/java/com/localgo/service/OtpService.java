@@ -128,10 +128,6 @@ public class OtpService {
             otpDoc.setVerified(true);
             otpDoc.setVerifiedAt(new Date());
             otpDoc.setVerificationToken(verificationToken);
-            // Password reset consumes immediately on verifyOtp call
-            if (purpose == OtpPurpose.PASSWORD_RESET) {
-                otpDoc.setUsed(true);
-            }
             docRef.set(otpDoc).get();
             return verificationToken;
         } catch (BadRequestException e) {
@@ -143,45 +139,69 @@ public class OtpService {
     }
 
     public void validateVerifiedRegistrationToken(String email, String verificationToken) {
+        validateVerifiedToken(email, OtpPurpose.EMAIL_VERIFICATION, verificationToken, false,
+                "Email verification is required before creating an account.");
+    }
+
+    public void validateAndConsumeResetToken(String email, String verificationToken) {
+        validateVerifiedToken(email, OtpPurpose.PASSWORD_RESET, verificationToken, true,
+                "OTP verification is required before resetting your password.");
+    }
+
+    public void consumeResetOtp(String email) {
+        markTokenUsed(email, OtpPurpose.PASSWORD_RESET);
+    }
+
+    private void validateVerifiedToken(String email, OtpPurpose purpose, String verificationToken,
+                                       boolean consumeOnSuccess, String missingMessage) {
         if (verificationToken == null || verificationToken.isBlank()) {
-            throw new BadRequestException("Email verification is required before creating an account.");
+            throw new BadRequestException(missingMessage);
         }
 
         String cleanEmail = normalizeEmail(email);
-        DocumentReference docRef = getDocRef(cleanEmail, OtpPurpose.EMAIL_VERIFICATION);
+        DocumentReference docRef = getDocRef(cleanEmail, purpose);
 
         try {
             DocumentSnapshot snap = docRef.get().get();
             if (!snap.exists()) {
-                throw new BadRequestException("Email verification is required before creating an account.");
+                throw new BadRequestException(missingMessage);
             }
 
             OtpDoc otpDoc = snap.toObject(OtpDoc.class);
             if (otpDoc == null || !otpDoc.isVerified() || otpDoc.isUsed()) {
-                throw new BadRequestException("Email OTP verification has not been completed or was already used.");
+                throw new BadRequestException("OTP verification has not been completed or was already used.");
             }
 
             if (!verificationToken.trim().equals(otpDoc.getVerificationToken())) {
-                throw new BadRequestException("Invalid email verification token. Please verify your email again.");
+                throw new BadRequestException("Invalid verification token. Please verify the OTP again.");
             }
 
             if (otpDoc.getVerifiedAt() == null
                     || System.currentTimeMillis() - otpDoc.getVerifiedAt().getTime() > VERIFIED_TOKEN_TTL_MS) {
                 otpDoc.setUsed(true);
                 docRef.set(otpDoc).get();
-                throw new BadRequestException("Email verification expired. Please request a new OTP.");
+                throw new BadRequestException("Verification expired. Please request a new OTP.");
+            }
+
+            if (consumeOnSuccess) {
+                otpDoc.setUsed(true);
+                docRef.set(otpDoc).get();
             }
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to validate verification token for {}: {}", cleanEmail, e.getMessage());
-            throw new RuntimeException("Unable to validate email verification: " + e.getMessage());
+            throw new RuntimeException("Unable to validate OTP verification: " + e.getMessage());
         }
     }
 
     public void markRegistrationTokenUsed(String email) {
+        markTokenUsed(email, OtpPurpose.EMAIL_VERIFICATION);
+    }
+
+    private void markTokenUsed(String email, OtpPurpose purpose) {
         String cleanEmail = normalizeEmail(email);
-        DocumentReference docRef = getDocRef(cleanEmail, OtpPurpose.EMAIL_VERIFICATION);
+        DocumentReference docRef = getDocRef(cleanEmail, purpose);
         try {
             DocumentSnapshot snap = docRef.get().get();
             if (snap.exists()) {
@@ -192,7 +212,7 @@ public class OtpService {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to mark registration OTP token used for {}: {}", cleanEmail, e.getMessage());
+            log.warn("Failed to mark OTP token used for {}: {}", cleanEmail, e.getMessage());
         }
     }
 

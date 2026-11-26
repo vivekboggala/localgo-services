@@ -201,9 +201,25 @@ public class AuthService {
         return "If an account exists for this email, a verification code has been sent.";
     }
 
+    public Map<String, Object> verifyPasswordResetOtp(VerifyOtpRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        String verificationToken = otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.PASSWORD_RESET);
+        return Map.of(
+                "verified", true,
+                "verificationToken", verificationToken
+        );
+    }
+
     public void resetPassword(ResetPasswordRequest request) {
         String cleanEmail = request.getEmail().trim().toLowerCase();
-        otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.PASSWORD_RESET);
+        if (request.getVerificationToken() != null && !request.getVerificationToken().isBlank()) {
+            otpService.validateAndConsumeResetToken(cleanEmail, request.getVerificationToken());
+        } else if (request.getOtp() != null && !request.getOtp().isBlank()) {
+            otpService.verifyOtp(cleanEmail, request.getOtp(), OtpPurpose.PASSWORD_RESET);
+            otpService.consumeResetOtp(cleanEmail);
+        } else {
+            throw new BadRequestException("OTP verification is required before resetting your password.");
+        }
 
         try {
             UserRecord record = firebaseAuth.getUserByEmail(cleanEmail);
@@ -384,8 +400,12 @@ public class AuthService {
 
     private UserResponse mapToUserResponse(UserDoc doc) {
         Role r = Role.CUSTOMER;
-        if (doc.getRole() != null && doc.getRole().equalsIgnoreCase(Role.PROVIDER.name())) {
-            r = Role.PROVIDER;
+        if (doc.getRole() != null) {
+            if (doc.getRole().equalsIgnoreCase(Role.ADMIN.name())) {
+                r = Role.ADMIN;
+            } else if (doc.getRole().equalsIgnoreCase(Role.PROVIDER.name())) {
+                r = Role.PROVIDER;
+            }
         }
         return UserResponse.builder()
                 .id(doc.getId())

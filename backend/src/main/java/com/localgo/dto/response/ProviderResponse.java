@@ -31,6 +31,8 @@ public class ProviderResponse {
     private String serviceArea;
     private Double serviceRadiusKm;
     private String verificationStatus;
+    private String verificationNotes;
+    private Long reviewedAt;
     private Boolean available;
     private Boolean manualOffline;
     private Long lastSeenAt;

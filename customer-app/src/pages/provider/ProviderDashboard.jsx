@@ -120,6 +120,10 @@ export const ProviderDashboard = () => {
               <span className="flex items-center gap-1 text-emerald-400 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified
               </span>
+            ) : stats?.verificationStatus === 'REJECTED' ? (
+              <span className="flex items-center gap-1 text-rose-300 font-medium bg-rose-500/15 px-2 py-0.5 rounded border border-rose-500/30" title={stats?.verificationNotes || ''}>
+                <Clock className="w-3.5 h-3.5 text-rose-300" /> Verification Rejected{stats?.verificationNotes ? `: ${stats.verificationNotes}` : ''}
+              </span>
             ) : (
               <span className="flex items-center gap-1 text-amber-300 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                 <Clock className="w-3.5 h-3.5 text-amber-300" /> Verification Pending

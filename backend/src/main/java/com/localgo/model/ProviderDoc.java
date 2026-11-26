@@ -25,6 +25,9 @@ public class ProviderDoc {
     private Double serviceRadiusKm;
     private String geohash;
     private String verificationStatus; // PENDING, VERIFIED, REJECTED
+    private String verificationNotes;
+    private String reviewedBy;
+    private Long reviewedAt;
     private Double rating;
     private Integer completedJobs;
     private Boolean available;

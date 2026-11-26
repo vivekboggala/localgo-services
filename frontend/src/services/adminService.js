@@ -5,40 +5,29 @@ export const adminService = {
     const res = await api.get('/admin/dashboard');
     return res.data.data;
   },
-  getAllCustomers: async (page = 0, size = 10) => {
-    const res = await api.get(`/admin/users?page=${page}&size=${size}`);
+  getAllCustomers: async () => {
+    const res = await api.get('/admin/users');
     return res.data.data;
   },
-  getAllProviders: async (status = null, page = 0, size = 10) => {
-    let url = `/admin/providers?page=${page}&size=${size}`;
-    if (status) url += `&status=${status}`;
-    const res = await api.get(url);
+  getAllProviders: async (status = 'ALL', search = '') => {
+    const params = new URLSearchParams();
+    if (status && status !== 'ALL') params.set('status', status);
+    if (search?.trim()) params.set('search', search.trim());
+    const qs = params.toString();
+    const res = await api.get(`/admin/providers${qs ? `?${qs}` : ''}`);
     return res.data.data;
   },
-  verifyProvider: async (id, status) => {
-    const res = await api.put(`/admin/providers/${id}/verify?status=${status}`);
+  verifyProvider: async (id, status, reason = '') => {
+    const res = await api.put(`/admin/providers/${id}/verify`, { status, reason });
     return res.data.data;
   },
-  getAllBookings: async (status = null, page = 0, size = 10) => {
-    let url = `/admin/bookings?page=${page}&size=${size}`;
-    if (status) url += `&status=${status}`;
-    const res = await api.get(url);
+  getAllBookings: async (status = 'ALL') => {
+    const qs = status && status !== 'ALL' ? `?status=${encodeURIComponent(status)}` : '';
+    const res = await api.get(`/admin/bookings${qs}`);
     return res.data.data;
   },
-  createServiceCategory: async (serviceData) => {
-    const res = await api.post('/admin/services', serviceData);
-    return res.data.data;
-  },
-  updateServiceCategory: async (id, serviceData) => {
-    const res = await api.put(`/admin/services/${id}`, serviceData);
-    return res.data.data;
-  },
-  deactivateServiceCategory: async (id) => {
-    const res = await api.delete(`/admin/services/${id}`);
-    return res.data.data;
-  },
-  getAllReviews: async (page = 0, size = 10) => {
-    const res = await api.get(`/admin/reviews?page=${page}&size=${size}`);
+  getAllReviews: async () => {
+    const res = await api.get('/admin/reviews');
     return res.data.data;
   },
   toggleHideReview: async (id) => {

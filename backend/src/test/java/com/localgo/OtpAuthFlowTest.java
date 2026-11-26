@@ -9,8 +9,11 @@ import com.google.cloud.firestore.Query;
 import com.google.cloud.firestore.QuerySnapshot;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
+import com.localgo.dto.request.ForgotPasswordRequest;
 import com.localgo.dto.request.RegisterRequest;
 import com.localgo.dto.request.ResendOtpRequest;
+import com.localgo.dto.request.ResetPasswordRequest;
 import com.localgo.dto.request.VerifyOtpRequest;
 import com.localgo.dto.response.AuthResponse;
 import com.localgo.enums.OtpPurpose;
@@ -164,5 +167,42 @@ class OtpAuthFlowTest {
 
         // Reusing the same verification token is rejected
         assertThrows(BadRequestException.class, () -> authService.registerCustomerWithOtp(regReq, "uid-verified"));
+    }
+
+    @Test
+    void twoStepPasswordResetRequiresVerifiedOtpThenConsumesTokenOnce() throws Exception {
+        String email = "reset.user@example.com";
+        UserRecord record = mock(UserRecord.class);
+        when(record.getUid()).thenReturn("uid-reset");
+        when(firebaseAuth.getUserByEmail(email)).thenReturn(record);
+
+        ForgotPasswordRequest forgotReq = new ForgotPasswordRequest();
+        forgotReq.setEmail(email);
+        authService.forgotPassword(forgotReq);
+
+        ArgumentCaptor<String> otpCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendOtpEmail(eq(email), otpCaptor.capture(), eq(OtpPurpose.PASSWORD_RESET));
+        String otp = otpCaptor.getValue();
+
+        VerifyOtpRequest verifyReq = new VerifyOtpRequest();
+        verifyReq.setEmail(email);
+        verifyReq.setOtp(otp);
+        verifyReq.setPurpose(OtpPurpose.PASSWORD_RESET);
+
+        Map<String, Object> verifyResp = authService.verifyPasswordResetOtp(verifyReq);
+        assertEquals(true, verifyResp.get("verified"));
+        String resetToken = (String) verifyResp.get("verificationToken");
+        assertNotNull(resetToken);
+
+        ResetPasswordRequest resetReq = new ResetPasswordRequest();
+        resetReq.setEmail(email);
+        resetReq.setVerificationToken(resetToken);
+        resetReq.setNewPassword("NewPass@123");
+
+        authService.resetPassword(resetReq);
+        verify(firebaseAuth).updateUser(any(UserRecord.UpdateRequest.class));
+
+        // Reset token cannot be reused twice
+        assertThrows(BadRequestException.class, () -> authService.resetPassword(resetReq));
     }
 }

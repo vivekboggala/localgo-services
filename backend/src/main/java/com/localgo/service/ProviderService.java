@@ -247,7 +247,7 @@ public class ProviderService {
         return doc.getAvailable() != null ? doc.getAvailable() : true;
     }
 
-    private ProviderResponse mapToResponse(ProviderDoc doc, Double distanceKm) {
+    public ProviderResponse mapToResponse(ProviderDoc doc, Double distanceKm) {
         List<ServiceResponse> serviceResponses = new ArrayList<>();
         BigDecimal lowestPrice = null;
 
@@ -285,6 +285,8 @@ public class ProviderService {
                 .longitude(doc.getLongitude())
                 .serviceRadiusKm(doc.getServiceRadiusKm())
                 .verificationStatus(doc.getVerificationStatus() != null ? doc.getVerificationStatus() : "PENDING")
+                .verificationNotes(doc.getVerificationNotes())
+                .reviewedAt(doc.getReviewedAt())
                 .available(isEffectivelyAvailable(doc))
                 .manualOffline(Boolean.TRUE.equals(doc.getManualOffline()))
                 .lastSeenAt(doc.getLastSeenAt())

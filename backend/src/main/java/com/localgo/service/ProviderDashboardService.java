@@ -92,6 +92,7 @@ public class ProviderDashboardService {
                     .providerId(providerId)
                     .providerName(provider.getName())
                     .verificationStatus(provider.getVerificationStatus() != null ? provider.getVerificationStatus() : "PENDING")
+                    .verificationNotes(provider.getVerificationNotes())
                     .available(providerService.isEffectivelyAvailable(provider))
                     .manualOffline(Boolean.TRUE.equals(provider.getManualOffline()))
                     .lastSeenAt(provider.getLastSeenAt())

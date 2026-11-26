@@ -25,6 +25,8 @@ import java.util.List;
 public class DataSeeder implements CommandLineRunner {
 
     private static final String DEMO_MARKER_PROVIDER_ID = "demo-prov-plmnr-4";
+    private static final String DEMO_ADMIN_ID = "demo-admin-1";
+    private static final String DEMO_ADMIN_EMAIL = "admin@localgo.com";
     private static final String DEFAULT_DEMO_PROVIDER_PASSWORD = "LocalGo@123";
 
     private final Firestore firestore;
@@ -37,6 +39,7 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) throws Exception {
         seedServices();
         seedDemoProviders();
+        seedAdminAccount();
     }
 
     private void seedServices() throws Exception {
@@ -91,7 +94,7 @@ public class DataSeeder implements CommandLineRunner {
 
             boolean hasUserDoc = usersCollection.document(provider.getId()).get().get().exists();
             if (!hasUserDoc) {
-                String uid = ensureFirebaseProviderAccount(provider);
+                String uid = ensureFirebaseAccount(provider.getId(), provider.getEmail(), provider.getName());
                 UserDoc userDoc = UserDoc.builder()
                         .id(uid)
                         .name(provider.getName())
@@ -108,13 +111,32 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Seeded {} verified demo providers and {} new login accounts successfully.", demoProviders.size(), seededCount);
     }
 
-    private String ensureFirebaseProviderAccount(ProviderDoc provider) {
+    public void seedAdminAccount() throws Exception {
+        var usersCollection = firestore.collection("users");
+        if (usersCollection.document(DEMO_ADMIN_ID).get().get().exists()) {
+            return;
+        }
+        String uid = ensureFirebaseAccount(DEMO_ADMIN_ID, DEMO_ADMIN_EMAIL, "LocalGo Admin");
+        UserDoc adminDoc = UserDoc.builder()
+                .id(uid)
+                .name("LocalGo Admin")
+                .email(DEMO_ADMIN_EMAIL)
+                .phone("+91 90000 00000")
+                .role(Role.ADMIN.name())
+                .emailVerified(true)
+                .createdAt(new Date())
+                .build();
+        usersCollection.document(uid).set(adminDoc).get();
+        log.info("Seeded admin verification account: {}", DEMO_ADMIN_EMAIL);
+    }
+
+    private String ensureFirebaseAccount(String defaultUid, String email, String displayName) {
         String password = (demoProviderPassword != null && !demoProviderPassword.isBlank())
                 ? demoProviderPassword
                 : DEFAULT_DEMO_PROVIDER_PASSWORD;
 
         try {
-            UserRecord existingById = firebaseAuth.getUser(provider.getId());
+            UserRecord existingById = firebaseAuth.getUser(defaultUid);
             if (existingById != null) {
                 return existingById.getUid();
             }
@@ -122,7 +144,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         try {
-            UserRecord existingByEmail = firebaseAuth.getUserByEmail(provider.getEmail());
+            UserRecord existingByEmail = firebaseAuth.getUserByEmail(email);
             if (existingByEmail != null) {
                 return existingByEmail.getUid();
             }
@@ -132,17 +154,16 @@ public class DataSeeder implements CommandLineRunner {
         try {
             UserRecord created = firebaseAuth.createUser(
                     new UserRecord.CreateRequest()
-                            .setUid(provider.getId())
-                            .setEmail(provider.getEmail())
+                            .setUid(defaultUid)
+                            .setEmail(email)
                             .setPassword(password)
-                            .setDisplayName(provider.getName())
+                            .setDisplayName(displayName)
                             .setEmailVerified(true)
             );
-            return created != null && created.getUid() != null ? created.getUid() : provider.getId();
+            return created != null && created.getUid() != null ? created.getUid() : defaultUid;
         } catch (FirebaseAuthException e) {
-            log.warn("Could not create Firebase Auth account for demo provider {}: {}",
-                    provider.getEmail(), e.getMessage());
-            return provider.getId();
+            log.warn("Could not create Firebase Auth account for {}: {}", email, e.getMessage());
+            return defaultUid;
         }
     }
 

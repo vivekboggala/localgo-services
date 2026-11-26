@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/providers/{id}").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/providers/{id}/reviews").permitAll()
                 .requestMatchers("/api/provider/**").hasRole("PROVIDER")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             );
 

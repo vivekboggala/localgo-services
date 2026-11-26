@@ -8,7 +8,12 @@ export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
-  const dashboardPath = user?.role === 'PROVIDER' ? '/provider/dashboard' : '/dashboard';
+  const dashboardPath =
+    user?.role === 'ADMIN'
+      ? '/admin/dashboard'
+      : user?.role === 'PROVIDER'
+        ? '/provider/dashboard'
+        : '/dashboard';
 
   const handleLogout = () => {
     logout();

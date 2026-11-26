@@ -21,5 +21,6 @@ public class ReviewDoc {
     private String providerId;
     private Double rating;
     private String comment;
+    private Boolean hidden;
     private Date createdAt;
 }

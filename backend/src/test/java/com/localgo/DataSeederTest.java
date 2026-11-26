@@ -116,5 +116,14 @@ class DataSeederTest {
         // Second run is a no-op
         seeder.seedDemoProviders();
         verify(firebaseAuth, times(22)).createUser(any(UserRecord.CreateRequest.class));
+
+        // Admin account is seeded once
+        seeder.seedAdminAccount();
+        UserDoc adminUser = userStore.get("demo-admin-1");
+        assertNotNull(adminUser);
+        assertEquals("ADMIN", adminUser.getRole());
+        assertEquals("admin@localgo.com", adminUser.getEmail());
+        seeder.seedAdminAccount();
+        verify(firebaseAuth, times(23)).createUser(any(UserRecord.CreateRequest.class));
     }
 }

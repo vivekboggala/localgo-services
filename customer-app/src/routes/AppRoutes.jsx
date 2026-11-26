@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
 import { ProviderLayout } from '../layouts/ProviderLayout';
+import { AdminLayout } from '../layouts/AdminLayout';
 
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -25,6 +26,11 @@ import { ProviderJobDetailPage } from '../pages/provider/ProviderJobDetailPage';
 import { ProviderBookings } from '../pages/provider/ProviderBookings';
 import { ProviderEarnings } from '../pages/provider/ProviderEarnings';
 import { ProviderProfile } from '../pages/provider/ProviderProfile';
+import { AdminDashboard } from '../pages/admin/AdminDashboard';
+import { AdminProviders } from '../pages/admin/AdminProviders';
+import { AdminUsers } from '../pages/admin/AdminUsers';
+import { AdminBookings } from '../pages/admin/AdminBookings';
+import { AdminReviews } from '../pages/admin/AdminReviews';
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
@@ -60,6 +66,14 @@ export const AppRoutes = () => {
         <Route path="/provider/bookings" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderBookings /></ProtectedRoute>} />
         <Route path="/provider/earnings" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderEarnings /></ProtectedRoute>} />
         <Route path="/provider/profile" element={<ProtectedRoute allowedRoles={['PROVIDER']}><ProviderProfile /></ProtectedRoute>} />
+      </Route>
+
+      <Route element={<AdminLayout />}>
+        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/providers" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminProviders /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
+        <Route path="/admin/bookings" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminBookings /></ProtectedRoute>} />
+        <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReviews /></ProtectedRoute>} />
       </Route>
 
       <Route path="/login" element={<LoginPage />} />
