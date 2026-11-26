@@ -28,7 +28,6 @@ import {
   ArrowRight,
   AlertTriangle,
   Activity,
-  Info,
   Star,
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
@@ -48,48 +47,42 @@ const STATUS_COLORS = {
   EXPIRED: '#5B5B66',
 };
 
-const USER_GROWTH_PLACEHOLDER = [
-  { label: 'W1', customers: 12, providers: 4 },
-  { label: 'W2', customers: 19, providers: 7 },
-  { label: 'W3', customers: 27, providers: 10 },
-  { label: 'W4', customers: 34, providers: 14 },
-];
-
-const computeWindowTrend = (series, key) => {
-  if (!Array.isArray(series) || series.length < 2) return null;
-  const mid = Math.floor(series.length / 2);
-  const firstHalf = series.slice(0, mid).reduce((acc, row) => acc + (Number(row[key]) || 0), 0);
-  const secondHalf = series.slice(mid).reduce((acc, row) => acc + (Number(row[key]) || 0), 0);
-  if (firstHalf === 0 && secondHalf === 0) return { pct: 0, positive: true };
-  if (firstHalf === 0) return { pct: 100, positive: true };
-  const pct = Math.round(((secondHalf - firstHalf) / firstHalf) * 100);
-  return { pct, positive: pct >= 0 };
-};
-
 export const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [pendingProviders, setPendingProviders] = useState([]);
   const [recentBookings, setRecentBookings] = useState([]);
   const [recentReviews, setRecentReviews] = useState([]);
   const [trends, setTrends] = useState([]);
+  const [usersTrend, setUsersTrend] = useState([]);
+  const [breakdown, setBreakdown] = useState(null);
+  const [breakdownError, setBreakdownError] = useState('');
+  const [usersTrendError, setUsersTrendError] = useState('');
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadDashboard = () => {
+  const loadDashboard = (windowDays = days) => {
     setLoading(true);
     setError('');
+    setBreakdownError('');
     Promise.all([
-      adminService.getDashboardStats(),
+      adminService.getDashboardStats(windowDays),
       adminService.getAllProviders('PENDING', '', 8, null).catch(() => ({ content: [] })),
-      adminService.getAllBookings('ALL', 100, null).catch(() => ({ content: [] })),
+      adminService.getAllBookings('ALL', 10, null).catch(() => ({ content: [] })),
       adminService.getAllReviews(10, null).catch(() => ({ content: [] })),
+      adminService.getBookingsBreakdown().catch((err) => {
+        setBreakdownError(err.response?.data?.message || 'Bookings breakdown unavailable.');
+        return null;
+      }),
     ])
-      .then(([overview, provData, bookData, revData]) => {
+      .then(([overview, provData, bookData, revData, breakdownData]) => {
         setStats(overview);
         setPendingProviders(provData?.content || []);
         setRecentBookings(bookData?.content || []);
         setRecentReviews(revData?.content || []);
+        if (breakdownData) {
+          setBreakdown(breakdownData);
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load admin overview.');
@@ -98,40 +91,42 @@ export const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    loadDashboard();
+    loadDashboard(7);
   }, []);
 
   useEffect(() => {
-    adminService.getAdminTrends(days)
-      .then((data) => setTrends(Array.isArray(data) ? data : []))
-      .catch(() => setTrends([]));
+    setUsersTrendError('');
+    Promise.all([
+      adminService.getDashboardStats(days).catch(() => null),
+      adminService.getAdminTrends(days).catch(() => []),
+      adminService.getUsersTrend(days).catch((err) => {
+        setUsersTrendError(err.response?.data?.message || 'User growth analytics unavailable.');
+        return [];
+      }),
+    ]).then(([overview, revData, userGrowthData]) => {
+      if (overview) setStats(overview);
+      setTrends(Array.isArray(revData) ? revData : []);
+      setUsersTrend(Array.isArray(userGrowthData) ? userGrowthData : []);
+    });
   }, [days]);
 
   const bookingsByStatus = useMemo(() => {
-    const map = new Map();
-    recentBookings.forEach((b) => {
-      const s = b.status || 'UNKNOWN';
-      map.set(s, (map.get(s) || 0) + 1);
-    });
-    return Array.from(map.entries()).map(([name, value]) => ({
-      name: name.replace(/_/g, ' '),
-      rawStatus: name,
-      value,
-      color: STATUS_COLORS[name] || '#0B0B0F',
+    const raw = breakdown?.byStatus || [];
+    return raw.map((item) => ({
+      name: item.label || String(item.status || 'UNKNOWN').replace(/_/g, ' '),
+      rawStatus: item.status,
+      value: Number(item.count || 0),
+      color: STATUS_COLORS[item.status] || '#0B0B0F',
     }));
-  }, [recentBookings]);
+  }, [breakdown]);
 
-  const bookingsByService = useMemo(() => {
-    const map = new Map();
-    recentBookings.forEach((b) => {
-      const svc = b.serviceName || 'General';
-      map.set(svc, (map.get(svc) || 0) + 1);
-    });
-    return Array.from(map.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-  }, [recentBookings]);
+  const bookingsByCategory = useMemo(() => {
+    const categories = breakdown?.byCategory;
+    if (Array.isArray(categories) && categories.length > 0) {
+      return categories.map((c) => ({ name: c.category, count: Number(c.count || 0) })).slice(0, 8);
+    }
+    return (breakdown?.byService || []).map((s) => ({ name: s.name, count: Number(s.count || 0) })).slice(0, 8);
+  }, [breakdown]);
 
   const lowRatedReviews = useMemo(
     () => recentReviews.filter((r) => Number(r.rating) <= 2 && !r.hidden),
@@ -160,8 +155,7 @@ export const AdminDashboard = () => {
     return items.sort((a, b) => (isNaN(b.ts) ? 0 : b.ts) - (isNaN(a.ts) ? 0 : a.ts)).slice(0, 8);
   }, [recentBookings, recentReviews]);
 
-  const bookingTrend = useMemo(() => computeWindowTrend(trends, 'bookings'), [trends]);
-  const revenueTrend = useMemo(() => computeWindowTrend(trends, 'revenue'), [trends]);
+  const kpiDeltas = stats?.deltas || {};
 
   if (loading) {
     return (
@@ -187,7 +181,7 @@ export const AdminDashboard = () => {
       accent: true,
       to: '/providers?status=PENDING',
       trend: null,
-      placeholderLabel: 'Live queue count',
+      footerLabel: 'Live queue count',
     },
     {
       label: 'Verified Providers',
@@ -195,8 +189,8 @@ export const AdminDashboard = () => {
       sub: `Of ${stats?.totalProviders ?? 0} registered pros`,
       icon: ShieldCheck,
       to: '/providers?status=VERIFIED',
-      trend: null,
-      placeholderLabel: 'No period delta endpoint',
+      trend: kpiDeltas.newProviders || null,
+      footerLabel: 'New pros vs prior period',
     },
     {
       label: 'Total Customers',
@@ -204,8 +198,8 @@ export const AdminDashboard = () => {
       sub: `${stats?.rejectedProviders ?? 0} rejected pros`,
       icon: Users,
       to: '/users',
-      trend: null,
-      placeholderLabel: 'No period delta endpoint',
+      trend: kpiDeltas.newCustomers || null,
+      footerLabel: 'New signups vs prior period',
     },
     {
       label: 'Active Bookings',
@@ -213,7 +207,8 @@ export const AdminDashboard = () => {
       sub: 'In pipeline right now',
       icon: Wrench,
       to: '/bookings',
-      trend: bookingTrend,
+      trend: kpiDeltas.bookings || null,
+      footerLabel: 'Bookings vs prior period',
     },
     {
       label: 'Completed Jobs',
@@ -221,7 +216,8 @@ export const AdminDashboard = () => {
       sub: `Of ${stats?.totalBookings ?? 0} lifetime bookings`,
       icon: CheckCircle2,
       to: '/bookings',
-      trend: bookingTrend,
+      trend: kpiDeltas.completedBookings || null,
+      footerLabel: 'Completed vs prior period',
     },
     {
       label: 'Realized Revenue',
@@ -230,7 +226,8 @@ export const AdminDashboard = () => {
       icon: DollarSign,
       dark: true,
       to: '/bookings',
-      trend: revenueTrend,
+      trend: kpiDeltas.revenue || null,
+      footerLabel: 'Revenue vs prior period',
     },
   ];
 
@@ -330,7 +327,7 @@ export const AdminDashboard = () => {
                   </span>
                 ) : (
                   <span className={`text-[10px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {card.placeholderLabel}
+                    {card.footerLabel}
                   </span>
                 )}
               </div>
@@ -381,12 +378,19 @@ export const AdminDashboard = () => {
 
         {/* 2. Bookings-by-Status Donut (4 Cols) */}
         <div className="lg:col-span-4 bg-brand-white rounded-card border border-gray-200 p-6 shadow-card space-y-4">
-          <div>
-            <h2 className="font-display font-bold text-ds-20 text-brand-ink">Bookings by Status</h2>
-            <p className="text-ds-12 text-gray-600">Latest {recentBookings.length} sampled bookings</p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="font-display font-bold text-ds-20 text-brand-ink">Bookings by Status</h2>
+              <p className="text-ds-12 text-gray-600">
+                {breakdown?.totalBookings ?? 0} total bookings across full catalog
+              </p>
+            </div>
+            <Badge tone="success" dot>Live API</Badge>
           </div>
 
-          {bookingsByStatus.length === 0 ? (
+          {breakdownError ? (
+            <ErrorState compact message={breakdownError} onRetry={() => loadDashboard(days)} />
+          ) : bookingsByStatus.length === 0 ? (
             <EmptyState title="No booking data" description="Status distribution renders once bookings exist." />
           ) : (
             <>
@@ -426,22 +430,24 @@ export const AdminDashboard = () => {
           )}
         </div>
 
-        {/* 3. Bookings-by-Service Bar Chart (6 Cols) */}
+        {/* 3. Bookings-by-Category Bar Chart (6 Cols) */}
         <div className="lg:col-span-6 bg-brand-white rounded-card border border-gray-200 p-6 shadow-card space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h2 className="font-display font-bold text-ds-20 text-brand-ink">Bookings by Service</h2>
-              <p className="text-ds-12 text-gray-600">Derived from latest 100 bookings (no service aggregate endpoint)</p>
+              <h2 className="font-display font-bold text-ds-20 text-brand-ink">Bookings by Category</h2>
+              <p className="text-ds-12 text-gray-600">Server-side Firestore count aggregations per service category</p>
             </div>
-            <Badge tone="neutral">Sampled</Badge>
+            <Badge tone="success" dot>Live API</Badge>
           </div>
 
-          {bookingsByService.length === 0 ? (
-            <EmptyState title="No service bookings" description="Service bar breakdown appears after bookings are created." />
+          {breakdownError ? (
+            <ErrorState compact message={breakdownError} onRetry={() => loadDashboard(days)} />
+          ) : bookingsByCategory.length === 0 ? (
+            <EmptyState title="No category bookings" description="Category bar breakdown appears after bookings are created." />
           ) : (
             <div className="h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={bookingsByService} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                <BarChart data={bookingsByCategory} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEEEF0" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#5B5B66' }} tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#5B5B66' }} tickLine={false} axisLine={false} />
@@ -461,33 +467,36 @@ export const AdminDashboard = () => {
           )}
         </div>
 
-        {/* 4. New Users Line Chart (6 Cols - Explicitly Labeled Placeholder) */}
+        {/* 4. New Users Growth Line Chart (6 Cols - Live Endpoint) */}
         <div className="lg:col-span-6 bg-brand-white rounded-card border border-gray-200 p-6 shadow-card space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h2 className="font-display font-bold text-ds-20 text-brand-ink">New Users Growth</h2>
+              <h2 className="font-display font-bold text-ds-20 text-brand-ink">New Users Growth ({days}d)</h2>
               <p className="text-ds-12 text-gray-600">
-                Placeholder preview &bull; totals: {stats?.totalCustomers ?? 0} customers, {stats?.totalProviders ?? 0} pros
+                Daily registrations &bull; {stats?.totalCustomers ?? 0} customers, {stats?.totalProviders ?? 0} pros total
               </p>
             </div>
-            <Badge tone="warning" icon={<Info className="w-3 h-3" />}>Placeholder Data</Badge>
+            <Badge tone="success" dot>Live API</Badge>
           </div>
 
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={USER_GROWTH_PLACEHOLDER} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEEEF0" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#5B5B66' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#5B5B66' }} tickLine={false} axisLine={false} />
-                <Tooltip />
-                <Line type="monotone" dataKey="customers" name="Customers (Placeholder)" stroke="#0B0B0F" strokeWidth={2.5} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="providers" name="Providers (Placeholder)" stroke="#FFC700" strokeWidth={2.5} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="text-[11px] text-gray-600">
-            Note: No backend user sign-up time-series endpoint exists yet; chart curve is a labeled UI placeholder.
-          </p>
+          {usersTrendError ? (
+            <ErrorState compact message={usersTrendError} onRetry={() => loadDashboard(days)} />
+          ) : usersTrend.length === 0 ? (
+            <EmptyState title="No recent user signups" description="Daily registration curve appears once accounts are created." />
+          ) : (
+            <div className="h-60 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={usersTrend} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEEEF0" />
+                  <XAxis dataKey="date" tickFormatter={(d) => String(d).slice(5)} tick={{ fontSize: 11, fill: '#5B5B66' }} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#5B5B66' }} tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="customers" name="New Customers" stroke="#0B0B0F" strokeWidth={2.5} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="providers" name="New Providers" stroke="#FFC700" strokeWidth={2.5} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 

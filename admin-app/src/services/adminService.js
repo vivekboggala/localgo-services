@@ -1,8 +1,8 @@
 import api from '../api/axios';
 
 export const adminService = {
-  getDashboardStats: async () => {
-    const res = await api.get('/admin/dashboard');
+  getDashboardStats: async (days = 7) => {
+    const res = await api.get(`/admin/dashboard?days=${days}`);
     return res.data.data;
   },
   getAllProviders: async (status = 'ALL', search = '', limit = 15, cursor = null) => {
@@ -47,6 +47,14 @@ export const adminService = {
   },
   getAdminTrends: async (days = 7) => {
     const res = await api.get(`/admin/analytics/trends?days=${days}`);
+    return res.data.data;
+  },
+  getUsersTrend: async (days = 7) => {
+    const res = await api.get(`/admin/analytics/users-trend?days=${days}`);
+    return res.data.data;
+  },
+  getBookingsBreakdown: async () => {
+    const res = await api.get('/admin/analytics/bookings-breakdown');
     return res.data.data;
   },
 };

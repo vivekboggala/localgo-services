@@ -25,16 +25,23 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @Slf4j
 public class AdminService {
 
+    private static final long BREAKDOWN_CACHE_TTL_MS = 60_000L;
+
+    private record CachedBreakdown(long fetchedAtMs, Map<String, Object> data) {}
+
     private final Firestore firestore;
     private final ProviderService providerService;
     private final BookingService bookingService;
     private final ReviewService reviewService;
+    private final AtomicReference<CachedBreakdown> breakdownCache = new AtomicReference<>();
 
     public AdminService(Firestore firestore, ProviderService providerService, BookingService bookingService) {
         this(firestore, providerService, bookingService, null);
@@ -49,16 +56,46 @@ public class AdminService {
     }
 
     public Map<String, Object> getDashboardOverview() {
+        return getDashboardOverview(7);
+    }
+
+    public Map<String, Object> getDashboardOverview(int days) {
+        int window = normalizeWindowDays(days);
+        LocalDate end = LocalDate.now();
+        LocalDate currentStart = end.minusDays(window - 1L);
+        LocalDate previousEnd = currentStart.minusDays(1L);
+        LocalDate previousStart = previousEnd.minusDays(window - 1L);
+        ZoneId zone = ZoneId.systemDefault();
+
         try {
             var usersSnap = firestore.collection("users").get().get();
             var providersSnap = firestore.collection("providers").get().get();
             var bookingsSnap = firestore.collection("bookings").get().get();
 
             long totalCustomers = 0;
+            long currentCustomers = 0;
+            long previousCustomers = 0;
+            long currentProvidersJoined = 0;
+            long previousProvidersJoined = 0;
+
             for (var doc : usersSnap.getDocuments()) {
                 String role = doc.getString("role");
-                if (role == null || Role.CUSTOMER.name().equalsIgnoreCase(role)) {
+                boolean isCustomer = role == null || Role.CUSTOMER.name().equalsIgnoreCase(role);
+                boolean isProvider = Role.PROVIDER.name().equalsIgnoreCase(role);
+                if (isCustomer) {
                     totalCustomers++;
+                }
+
+                Date createdAt = doc.getDate("createdAt");
+                if (createdAt != null) {
+                    LocalDate createdDate = createdAt.toInstant().atZone(zone).toLocalDate();
+                    if (!createdDate.isBefore(currentStart) && !createdDate.isAfter(end)) {
+                        if (isCustomer) currentCustomers++;
+                        if (isProvider) currentProvidersJoined++;
+                    } else if (!createdDate.isBefore(previousStart) && !createdDate.isAfter(previousEnd)) {
+                        if (isCustomer) previousCustomers++;
+                        if (isProvider) previousProvidersJoined++;
+                    }
                 }
             }
 
@@ -78,6 +115,14 @@ public class AdminService {
             long activeBookings = 0;
             long completedBookings = 0;
             long totalRevenuePaise = 0;
+
+            long currentBookingsCount = 0;
+            long previousBookingsCount = 0;
+            long currentCompletedCount = 0;
+            long previousCompletedCount = 0;
+            long currentRevenuePaise = 0;
+            long previousRevenuePaise = 0;
+
             Set<String> activeStatuses = Set.of(
                     BookingStatus.REQUESTED.name(),
                     BookingStatus.ACCEPTED.name(),
@@ -88,15 +133,34 @@ public class AdminService {
 
             for (var doc : bookingsSnap.getDocuments()) {
                 String status = doc.getString("status");
+                boolean isCompleted = BookingStatus.COMPLETED.name().equals(status);
+                boolean isPaid = "PAID".equalsIgnoreCase(doc.getString("paymentStatus"));
+                Long amount = doc.getLong("amount");
+                long amt = amount != null ? amount : 0L;
+
                 if (status != null && activeStatuses.contains(status)) {
                     activeBookings++;
                 }
-                if (BookingStatus.COMPLETED.name().equals(status)) {
+                if (isCompleted) {
                     completedBookings++;
-                    if ("PAID".equalsIgnoreCase(doc.getString("paymentStatus"))) {
-                        Long amount = doc.getLong("amount");
-                        if (amount != null) {
-                            totalRevenuePaise += amount;
+                    if (isPaid) {
+                        totalRevenuePaise += amt;
+                    }
+                }
+
+                LocalDate bookingDate = resolveBookingDate(doc.getString("scheduledDate"), doc.getDate("createdAt"), zone);
+                if (bookingDate != null) {
+                    if (!bookingDate.isBefore(currentStart) && !bookingDate.isAfter(end)) {
+                        currentBookingsCount++;
+                        if (isCompleted) {
+                            currentCompletedCount++;
+                            if (isPaid) currentRevenuePaise += amt;
+                        }
+                    } else if (!bookingDate.isBefore(previousStart) && !bookingDate.isAfter(previousEnd)) {
+                        previousBookingsCount++;
+                        if (isCompleted) {
+                            previousCompletedCount++;
+                            if (isPaid) previousRevenuePaise += amt;
                         }
                     }
                 }
@@ -104,6 +168,18 @@ public class AdminService {
 
             BigDecimal totalRealizedRevenue = BigDecimal.valueOf(totalRevenuePaise)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal currentRevInr = BigDecimal.valueOf(currentRevenuePaise)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal previousRevInr = BigDecimal.valueOf(previousRevenuePaise)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+            Map<String, Object> deltas = new LinkedHashMap<>();
+            deltas.put("windowDays", window);
+            deltas.put("revenue", buildDecimalDelta(currentRevInr, previousRevInr));
+            deltas.put("bookings", buildCountDelta(currentBookingsCount, previousBookingsCount));
+            deltas.put("completedBookings", buildCountDelta(currentCompletedCount, previousCompletedCount));
+            deltas.put("newCustomers", buildCountDelta(currentCustomers, previousCustomers));
+            deltas.put("newProviders", buildCountDelta(currentProvidersJoined, previousProvidersJoined));
 
             Map<String, Object> overview = new LinkedHashMap<>();
             overview.put("totalCustomers", totalCustomers);
@@ -115,6 +191,7 @@ public class AdminService {
             overview.put("completedBookings", completedBookings);
             overview.put("totalBookings", bookingsSnap.size());
             overview.put("totalRealizedRevenue", totalRealizedRevenue);
+            overview.put("deltas", deltas);
             return overview;
         } catch (Exception e) {
             log.error("Failed to load admin overview: {}", e.getMessage());
@@ -486,6 +563,199 @@ public class AdminService {
             trend.add(point);
         }
         return trend;
+    }
+
+    public List<Map<String, Object>> getUsersTrend(int days) {
+        int window = normalizeWindowDays(days);
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusDays(window - 1L);
+        ZoneId zone = ZoneId.systemDefault();
+
+        Date startDate = Date.from(start.atStartOfDay(zone).toInstant());
+        Date endExclusive = Date.from(end.plusDays(1L).atStartOfDay(zone).toInstant());
+
+        Map<LocalDate, Integer> customersByDate = new LinkedHashMap<>();
+        Map<LocalDate, Integer> providersByDate = new LinkedHashMap<>();
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            customersByDate.put(d, 0);
+            providersByDate.put(d, 0);
+        }
+
+        try {
+            var snapshot = firestore.collection("users")
+                    .whereGreaterThanOrEqualTo("createdAt", startDate)
+                    .whereLessThan("createdAt", endExclusive)
+                    .get().get();
+
+            for (var doc : snapshot.getDocuments()) {
+                Date createdAt = doc.getDate("createdAt");
+                if (createdAt == null) continue;
+                LocalDate d = createdAt.toInstant().atZone(zone).toLocalDate();
+                if (!customersByDate.containsKey(d)) continue;
+                String role = doc.getString("role");
+                if (Role.PROVIDER.name().equalsIgnoreCase(role)) {
+                    providersByDate.put(d, providersByDate.get(d) + 1);
+                } else if (role == null || Role.CUSTOMER.name().equalsIgnoreCase(role)) {
+                    customersByDate.put(d, customersByDate.get(d) + 1);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to build user growth trend: {}", e.getMessage());
+            throw new RuntimeException("Error building user growth trend: " + e.getMessage());
+        }
+
+        List<Map<String, Object>> series = new ArrayList<>();
+        for (LocalDate d : customersByDate.keySet()) {
+            Map<String, Object> point = new LinkedHashMap<>();
+            point.put("date", d.toString());
+            point.put("customers", customersByDate.get(d));
+            point.put("providers", providersByDate.get(d));
+            series.add(point);
+        }
+        return series;
+    }
+
+    public Map<String, Object> getBookingsBreakdown() {
+        CachedBreakdown cached = breakdownCache.get();
+        long now = System.currentTimeMillis();
+        if (cached != null && (now - cached.fetchedAtMs()) < BREAKDOWN_CACHE_TTL_MS) {
+            return cached.data();
+        }
+
+        try {
+            var bookingsCol = firestore.collection("bookings");
+
+            // 1. Server-side count() aggregation per BookingStatus (no full document download)
+            List<Map<String, Object>> byStatus = new ArrayList<>();
+            long totalFromStatus = 0L;
+            for (BookingStatus status : BookingStatus.values()) {
+                long count = executeCountQuery(bookingsCol.whereEqualTo("status", status.name()));
+                totalFromStatus += count;
+                if (count > 0) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("status", status.name());
+                    row.put("label", status.name().replace('_', ' '));
+                    row.put("count", count);
+                    byStatus.add(row);
+                }
+            }
+
+            // 2. Server-side count() aggregation per service catalog item, grouped also by category
+            var servicesCol = firestore.collection("services");
+            var serviceDocs = servicesCol != null ? servicesCol.limit(50).get().get().getDocuments() : List.<com.google.cloud.firestore.QueryDocumentSnapshot>of();
+
+            List<Map<String, Object>> byService = new ArrayList<>();
+            Map<String, Long> categoryTotals = new LinkedHashMap<>();
+            for (var svcDoc : serviceDocs) {
+                String serviceId = svcDoc.getId();
+                String name = svcDoc.getString("name");
+                String category = svcDoc.getString("category");
+                String safeName = (name != null && !name.isBlank()) ? name : serviceId;
+                String safeCategory = (category != null && !category.isBlank()) ? category : "General";
+
+                long count = executeCountQuery(bookingsCol.whereEqualTo("serviceId", serviceId));
+                if (count > 0) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("serviceId", serviceId);
+                    row.put("name", safeName);
+                    row.put("category", safeCategory);
+                    row.put("count", count);
+                    byService.add(row);
+                    categoryTotals.merge(safeCategory, count, Long::sum);
+                }
+            }
+
+            byService.sort((a, b) -> Long.compare(((Number) b.get("count")).longValue(), ((Number) a.get("count")).longValue()));
+
+            List<Map<String, Object>> byCategory = categoryTotals.entrySet().stream()
+                    .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+                    .map(e -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("category", e.getKey());
+                        row.put("count", e.getValue());
+                        return row;
+                    })
+                    .toList();
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("byStatus", byStatus);
+            payload.put("byService", byService);
+            payload.put("byCategory", byCategory);
+            payload.put("totalBookings", totalFromStatus);
+            payload.put("cachedAt", now);
+
+            breakdownCache.set(new CachedBreakdown(now, payload));
+            return payload;
+        } catch (Exception e) {
+            log.error("Failed to build bookings breakdown: {}", e.getMessage());
+            throw new RuntimeException("Error building bookings breakdown: " + e.getMessage());
+        }
+    }
+
+    public void invalidateBreakdownCache() {
+        breakdownCache.set(null);
+    }
+
+    private long executeCountQuery(Query query) throws Exception {
+        if (query == null) return 0L;
+        var agg = query.count();
+        if (agg == null) return 0L;
+        var snap = agg.get().get();
+        return snap != null ? snap.getCount() : 0L;
+    }
+
+    private int normalizeWindowDays(int days) {
+        if (days <= 0) return 7;
+        return Math.min(days, 90);
+    }
+
+    private LocalDate resolveBookingDate(String scheduledDate, Date createdAt, ZoneId zone) {
+        if (scheduledDate != null && !scheduledDate.isBlank()) {
+            try {
+                return LocalDate.parse(scheduledDate.trim());
+            } catch (Exception ignored) {}
+        }
+        if (createdAt != null) {
+            return createdAt.toInstant().atZone(zone).toLocalDate();
+        }
+        return null;
+    }
+
+    private Map<String, Object> buildCountDelta(long current, long previous) {
+        int pct;
+        if (previous == 0 && current == 0) {
+            pct = 0;
+        } else if (previous == 0) {
+            pct = 100;
+        } else {
+            pct = (int) Math.round(((current - previous) * 100.0) / previous);
+        }
+        Map<String, Object> delta = new LinkedHashMap<>();
+        delta.put("current", current);
+        delta.put("previous", previous);
+        delta.put("pct", pct);
+        delta.put("positive", pct >= 0);
+        return delta;
+    }
+
+    private Map<String, Object> buildDecimalDelta(BigDecimal current, BigDecimal previous) {
+        int pct;
+        if (previous.compareTo(BigDecimal.ZERO) == 0 && current.compareTo(BigDecimal.ZERO) == 0) {
+            pct = 0;
+        } else if (previous.compareTo(BigDecimal.ZERO) == 0) {
+            pct = 100;
+        } else {
+            pct = current.subtract(previous)
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(previous, 0, RoundingMode.HALF_UP)
+                    .intValue();
+        }
+        Map<String, Object> delta = new LinkedHashMap<>();
+        delta.put("current", current);
+        delta.put("previous", previous);
+        delta.put("pct", pct);
+        delta.put("positive", pct >= 0);
+        return delta;
     }
 
     private void createVerificationNotification(String providerId, String status, String notes) {

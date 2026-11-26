@@ -21,8 +21,9 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/dashboard")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard() {
-        return ResponseEntity.ok(ApiResponse.success("Admin dashboard fetched", adminService.getDashboardOverview()));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard(
+            @RequestParam(value = "days", defaultValue = "7") int days) {
+        return ResponseEntity.ok(ApiResponse.success("Admin dashboard fetched", adminService.getDashboardOverview(days)));
     }
 
     @GetMapping("/providers")
@@ -81,5 +82,16 @@ public class AdminController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTrends(
             @RequestParam(value = "days", defaultValue = "7") int days) {
         return ResponseEntity.ok(ApiResponse.success("Admin analytics fetched", adminService.getAnalyticsTrends(days)));
+    }
+
+    @GetMapping("/analytics/users-trend")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUsersTrend(
+            @RequestParam(value = "days", defaultValue = "7") int days) {
+        return ResponseEntity.ok(ApiResponse.success("Admin user trend fetched", adminService.getUsersTrend(days)));
+    }
+
+    @GetMapping("/analytics/bookings-breakdown")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBookingsBreakdown() {
+        return ResponseEntity.ok(ApiResponse.success("Admin bookings breakdown fetched", adminService.getBookingsBreakdown()));
     }
 }
