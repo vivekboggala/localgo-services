@@ -14,38 +14,38 @@ export const AuthSplitLayout = ({ children, badgeText = 'LocalGo Partner', wideF
   const { isDark } = useTheme();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-brand-ink grid grid-cols-1 lg:grid-cols-12">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-gray-50 dark:bg-brand-ink grid grid-cols-1 lg:grid-cols-12">
       {/* Left Brand Panel (Desktop) */}
-      <div className="hidden lg:flex lg:col-span-5 bg-brand-ink text-brand-white bg-dark-grid-pattern p-10 xl:p-14 flex-col justify-between border-r border-gray-600/20">
-        <div className="space-y-8">
+      <div className="hidden lg:flex lg:col-span-5 lg:h-screen bg-brand-ink text-brand-white bg-dark-grid-pattern p-8 xl:p-10 flex-col justify-between border-r border-gray-600/20">
+        <div className="space-y-5">
           <Link to="/" className="inline-flex">
-            <Logo variant="dark" size="lg" subtitle="Partner" />
+            <Logo variant="dark" size="md" subtitle="Partner" />
           </Link>
 
-          <div className="space-y-4 pt-4">
-            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-pill bg-brand-yellow text-brand-ink text-ds-12 font-extrabold">
+          <div className="space-y-3 pt-1">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-brand-yellow text-brand-ink text-ds-12 font-extrabold">
               <ShieldCheck className="w-4 h-4" strokeWidth={2.4} />
               {badgeText}
             </span>
-            <h1 className="font-display font-bold text-ds-40 tracking-tight leading-tight text-brand-white">
+            <h1 className="font-display font-bold text-[32px] xl:text-ds-40 tracking-tight leading-[1.1] text-brand-white">
               Go online. <span className="text-brand-yellow">Earn more</span> on every job.
             </h1>
-            <p className="text-ds-16 text-gray-400 leading-relaxed max-w-md">
+            <p className="text-ds-14 text-gray-400 leading-relaxed max-w-md">
               Built for field technicians. Large outdoor controls, live request alerts, OTP-verified starts, and clear earnings tracking.
             </p>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {PARTNER_PERKS.map((perk) => {
             const Icon = perk.icon;
             return (
               <div
                 key={perk.title}
-                className="flex items-center gap-3.5 bg-gray-900 border border-gray-600/25 rounded-card p-4"
+                className="flex items-center gap-3 bg-gray-900 border border-gray-600/25 rounded-card p-3"
               >
-                <div className="w-11 h-11 rounded-card bg-brand-yellow text-brand-ink flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5" strokeWidth={2.2} />
+                <div className="w-9 h-9 rounded-card bg-brand-yellow text-brand-ink flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4" strokeWidth={2.2} />
                 </div>
                 <div>
                   <div className="font-display font-bold text-ds-14 text-brand-white">{perk.title}</div>
@@ -58,8 +58,8 @@ export const AuthSplitLayout = ({ children, badgeText = 'LocalGo Partner', wideF
       </div>
 
       {/* Right Column */}
-      <div className="lg:col-span-7 flex flex-col justify-center items-center px-4 py-8 sm:px-8 bg-gray-50 dark:bg-brand-ink">
-        <div className={`w-full space-y-6 ${wideForm ? 'max-w-2xl' : 'max-w-lg'}`}>
+      <div className="lg:col-span-7 lg:h-screen lg:overflow-y-auto flex flex-col justify-center items-center px-4 py-6 sm:px-8 bg-gray-50 dark:bg-brand-ink">
+        <div className={`w-full space-y-5 my-auto ${wideForm ? 'max-w-2xl' : 'max-w-lg'}`}>
           <div className="flex lg:hidden justify-center">
             <Link to="/">
               <Logo variant={isDark ? 'dark' : 'light'} size="md" subtitle="Partner" />
