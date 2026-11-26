@@ -235,7 +235,9 @@ export const LandingPage = () => {
     ];
   }, [providers, location?.city, predefinedLocations.length]);
 
-  const providerPortalUrl = import.meta.env.VITE_PROVIDER_APP_URL || 'http://localhost:5174';
+  const isDev = import.meta.env.DEV;
+  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : '');
+  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : '';
 
   return (
     <div className="bg-brand-white">
@@ -684,14 +686,20 @@ export const LandingPage = () => {
           </div>
 
           <div className="lg:col-span-4 flex lg:justify-end">
-            <a
-              href={providerPortalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 min-h-[52px] px-7 py-3.5 rounded-card bg-brand-yellow hover:bg-brand-yellowHover text-brand-ink font-display font-bold text-ds-16 transition-all duration-150 shadow-card shrink-0"
-            >
-              Open Partner Portal <ArrowRight className="w-5 h-5" strokeWidth={2.2} />
-            </a>
+            {providerPortalUrl ? (
+              <a
+                href={providerPortalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 min-h-[52px] px-7 py-3.5 rounded-card bg-brand-yellow hover:bg-brand-yellowHover text-brand-ink font-display font-bold text-ds-16 transition-all duration-150 shadow-card shrink-0"
+              >
+                Open Partner Portal <ArrowRight className="w-5 h-5" strokeWidth={2.2} />
+              </a>
+            ) : (
+              <span className="inline-flex items-center justify-center gap-2 min-h-[52px] px-6 py-3.5 rounded-card bg-brand-yellow/15 border border-brand-yellow/40 text-brand-yellow font-display font-bold text-ds-14 shrink-0">
+                Partner Portal Coming Soon
+              </span>
+            )}
           </div>
         </div>
       </section>

@@ -4,8 +4,11 @@ import { Globe, Mail, ShieldCheck, Share2 } from 'lucide-react';
 import { Logo } from '../ui';
 
 export const Footer = () => {
-  const providerPortalUrl = import.meta.env.VITE_PROVIDER_APP_URL || 'http://localhost:5174';
-  const adminPortalUrl = import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5175';
+  const isDev = import.meta.env.DEV;
+  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : '');
+  const rawAdminUrl = import.meta.env.VITE_ADMIN_APP_URL || (isDev ? 'http://localhost:5175' : '');
+  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : '';
+  const adminPortalUrl = rawAdminUrl && (isDev || !rawAdminUrl.includes('localhost')) ? rawAdminUrl : '';
 
   return (
     <footer className="bg-brand-ink text-gray-400 pt-14 pb-24 lg:pb-10 border-t border-gray-900">
@@ -18,26 +21,30 @@ export const Footer = () => {
           </p>
           <ul className="space-y-2 text-ds-12 pt-1">
             <li><Link to="/" className="hover:text-brand-yellow transition-colors">About LocalGo</Link></li>
-            <li>
-              <a
-                href={providerPortalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand-yellow font-semibold hover:underline"
-              >
-                Partner With Us (Provider App) &rarr;
-              </a>
-            </li>
-            <li>
-              <a
-                href={adminPortalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-brand-yellow font-semibold hover:underline transition-colors"
-              >
-                Admin Console &rarr;
-              </a>
-            </li>
+            {providerPortalUrl && (
+              <li>
+                <a
+                  href={providerPortalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-yellow font-semibold hover:underline"
+                >
+                  Partner With Us (Provider App) &rarr;
+                </a>
+              </li>
+            )}
+            {adminPortalUrl && (
+              <li>
+                <a
+                  href={adminPortalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-300 hover:text-brand-yellow font-semibold hover:underline transition-colors"
+                >
+                  Admin Console &rarr;
+                </a>
+              </li>
+            )}
           </ul>
         </div>
 
