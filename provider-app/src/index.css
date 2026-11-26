@@ -32,6 +32,18 @@
     outline: 2px solid #FFC700;
     outline-offset: 2px;
   }
+
+  select.appearance-none {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    background-image: none !important;
+  }
+
+  select.appearance-none::picker-icon,
+  select.appearance-none::-ms-expand {
+    display: none !important;
+  }
 }
 
 /* Subtle architectural grid surfaces */

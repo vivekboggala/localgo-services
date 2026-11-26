@@ -303,7 +303,7 @@ export const LandingPage = () => {
                       id="hero-service"
                       value={selectedServiceId}
                       onChange={(e) => setSelectedServiceId(e.target.value)}
-                      className="w-full min-h-[48px] pl-10 pr-4 rounded-input border border-gray-200 focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/10 bg-gray-50 text-ds-14 font-semibold text-brand-ink outline-none cursor-pointer"
+                      className="w-full h-12 pl-10 pr-4 py-0 leading-[46px] rounded-input border border-gray-200 focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/10 bg-gray-50 text-ds-14 font-semibold text-brand-ink outline-none cursor-pointer"
                     >
                       <option value="">All Home Services</option>
                       {categoryTiles.map((svc) => (

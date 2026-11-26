@@ -1,5 +1,4 @@
 import React, { useId } from 'react';
-import { ChevronDown } from 'lucide-react';
 
 export const Select = React.forwardRef(({
   label,
@@ -31,7 +30,7 @@ export const Select = React.forwardRef(({
           id={selectId}
           required={required}
           aria-invalid={Boolean(error)}
-          className={`w-full min-h-[52px] appearance-none bg-brand-white dark:bg-brand-ink text-ds-14 font-semibold text-brand-ink dark:text-brand-white rounded-input border pl-4 pr-10 transition-all duration-150 outline-none ${
+          className={`w-full h-[52px] bg-brand-white dark:bg-brand-ink text-ds-14 font-semibold text-brand-ink dark:text-brand-white rounded-input border pl-4 pr-3 py-0 leading-[50px] transition-all duration-150 outline-none cursor-pointer ${
             error
               ? 'border-status-danger focus:ring-2 focus:ring-status-danger/20'
               : 'border-gray-200 dark:border-gray-600/50 focus:border-brand-ink dark:focus:border-brand-yellow focus:ring-2 focus:ring-brand-ink/10 dark:focus:ring-brand-yellow/20'
@@ -46,11 +45,6 @@ export const Select = React.forwardRef(({
               </option>
             ))}
         </select>
-        <ChevronDown
-          className="w-5 h-5 text-gray-600 dark:text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-          strokeWidth={2}
-          aria-hidden="true"
-        />
       </div>
 
       {error ? (

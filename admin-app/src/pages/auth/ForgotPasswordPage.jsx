@@ -157,8 +157,9 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-ink via-gray-900 to-brand-ink bg-dark-grid-pattern flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-md bg-brand-white rounded-sheet shadow-sheet border border-gray-200 p-7 sm:p-8 space-y-6">
+    <div className="relative min-h-screen bg-brand-ink bg-gradient-to-br from-brand-ink via-gray-900 to-brand-ink flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-dark-grid-pattern opacity-80" />
+      <div className="relative z-10 w-full max-w-md bg-brand-white rounded-sheet shadow-sheet border border-gray-200 p-7 sm:p-8 space-y-6">
         <div className="text-center space-y-3">
           <div className="flex justify-center">
             <Logo size="md" subtitle="Admin Console" />

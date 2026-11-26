@@ -34,8 +34,9 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-ink via-gray-900 to-brand-ink bg-dark-grid-pattern flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-md bg-brand-white rounded-sheet shadow-sheet border border-gray-200 p-7 sm:p-8 space-y-6">
+    <div className="relative min-h-screen bg-brand-ink bg-gradient-to-br from-brand-ink via-gray-900 to-brand-ink flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-dark-grid-pattern opacity-80" />
+      <div className="relative z-10 w-full max-w-md bg-brand-white rounded-sheet shadow-sheet border border-gray-200 p-7 sm:p-8 space-y-6">
         <div className="text-center space-y-3">
           <div className="flex justify-center">
             <Logo size="md" subtitle="Admin Console" />
@@ -80,12 +81,16 @@ export const LoginPage = () => {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-ds-12 font-semibold text-gray-900">Password</span>
+              <label htmlFor="admin-login-password" className="text-ds-12 font-semibold text-gray-900 tracking-wide">
+                Password <span className="text-status-danger ml-0.5">*</span>
+              </label>
               <Link to="/forgot-password" className="text-ds-12 font-bold text-brand-ink hover:underline">
                 Forgot Password?
               </Link>
             </div>
             <PasswordInput
+              id="admin-login-password"
+              label=""
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

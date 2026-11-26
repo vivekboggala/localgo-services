@@ -48,7 +48,7 @@ export const DesignPreviewPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 text-brand-ink pb-24">
+    <div className="min-h-screen bg-gray-50 dark:bg-brand-ink text-brand-ink dark:text-brand-white pb-24">
       <div className="bg-brand-ink text-brand-white border-b border-gray-900 px-4 sm:px-8 py-5">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Logo variant="dark" size="lg" subtitle="Design System Preview • Step 1" />
@@ -89,10 +89,12 @@ export const DesignPreviewPage = () => {
                 <div className="p-3 bg-brand-white rounded-card border border-gray-200">
                   <Logo variant="light" size="md" subtitle="Customer App" />
                 </div>
-                <div className="p-3 bg-brand-ink rounded-card">
+                <div className="p-3 bg-brand-ink rounded-card border border-gray-900">
                   <Logo variant="dark" size="md" subtitle="Provider Studio" />
                 </div>
-                <Logo variant="light" size="sm" />
+                <div className="p-2.5 bg-brand-white rounded-card border border-gray-200">
+                  <Logo variant="light" size="sm" />
+                </div>
               </CardContent>
             </Card>
 

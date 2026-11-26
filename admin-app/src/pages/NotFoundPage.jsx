@@ -1,9 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Compass, ArrowLeft } from 'lucide-react';
 import { Button, Logo } from '../components/ui';
 
 export const NotFoundPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
       <div className="max-w-md w-full bg-brand-white rounded-sheet border border-gray-200 shadow-sheet p-8 space-y-6">
@@ -20,11 +22,14 @@ export const NotFoundPage = () => {
             This console route does not exist or may have moved.
           </p>
         </div>
-        <Link to="/dashboard" className="block">
-          <Button variant="accent" fullWidth leftIcon={<ArrowLeft className="w-4 h-4" strokeWidth={2.2} />}>
-            Return to Dashboard
-          </Button>
-        </Link>
+        <Button
+          variant="accent"
+          fullWidth
+          leftIcon={<ArrowLeft className="w-4 h-4" strokeWidth={2.2} />}
+          onClick={() => navigate('/dashboard')}
+        >
+          Return to Dashboard
+        </Button>
       </div>
     </div>
   );

@@ -91,9 +91,9 @@ export const Navbar = () => {
   return (
     <>
       <header className="sticky top-0 z-40 bg-brand-white/95 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
           {/* Left: Logo + Location Chip */}
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 lg:flex-initial">
             <Link to={homePath} className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink rounded-card">
               <Logo size="sm" subtitle={null} />
             </Link>
@@ -102,7 +102,7 @@ export const Navbar = () => {
               type="button"
               onClick={() => setLocationSheetOpen(true)}
               aria-label="Change service location"
-              className="inline-flex items-center gap-1 min-h-[38px] min-w-0 max-w-[130px] sm:max-w-[175px] md:max-w-[140px] lg:max-w-[190px] px-2.5 sm:px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 hover:border-brand-yellow text-brand-ink transition-colors duration-150 cursor-pointer overflow-hidden"
+              className="inline-flex items-center gap-1 min-h-[38px] min-w-0 max-w-[112px] sm:max-w-[180px] lg:max-w-[130px] xl:max-w-[180px] px-2 sm:px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 hover:border-brand-yellow text-brand-ink transition-colors duration-150 cursor-pointer overflow-hidden"
             >
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-ink shrink-0" strokeWidth={2.2} />
               <span className="text-ds-12 font-semibold truncate">
@@ -112,14 +112,14 @@ export const Navbar = () => {
             </button>
           </div>
 
-          {/* Center: Desktop Navigation + Mega Services Dropdown + XL Search */}
-          <div className="hidden md:flex items-center gap-1.5 lg:gap-2 flex-1 justify-center min-w-0">
-            <nav aria-label="Primary navigation" className="flex items-center gap-0.5 lg:gap-1 shrink-0">
+          {/* Center: Desktop Navigation + Mega Services Dropdown + XL Search (1024px+ matches BottomNav lg:hidden) */}
+          <div className="hidden lg:flex items-center gap-1 xl:gap-2 flex-1 justify-center min-w-0">
+            <nav aria-label="Primary navigation" className="flex items-center gap-0.5 xl:gap-1 shrink-0">
               <NavLink
                 to={homePath}
                 end={homePath === '/'}
                 className={({ isActive }) =>
-                  `px-2.5 lg:px-3 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
+                  `px-2 xl:px-3 py-2 rounded-pill text-ds-12 xl:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
                     isActive
                       ? 'bg-brand-ink text-brand-white shadow-card'
                       : 'text-gray-600 hover:text-brand-ink hover:bg-gray-100'
@@ -139,9 +139,9 @@ export const Navbar = () => {
                   type="button"
                   onClick={() => setMegaOpen((p) => !p)}
                   aria-expanded={megaOpen}
-                  className="inline-flex items-center gap-1 px-2.5 lg:px-3 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold text-gray-600 hover:text-brand-ink hover:bg-gray-100 whitespace-nowrap transition-all duration-150 cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 xl:px-3 py-2 rounded-pill text-ds-12 xl:text-ds-14 font-semibold text-gray-600 hover:text-brand-ink hover:bg-gray-100 whitespace-nowrap transition-all duration-150 cursor-pointer"
                 >
-                  <Wrench className="w-3.5 h-3.5 hidden lg:inline" strokeWidth={2} />
+                  <Wrench className="w-3.5 h-3.5 hidden xl:inline" strokeWidth={2} />
                   <span>Services</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${megaOpen ? 'rotate-180' : ''}`} strokeWidth={2} />
                 </button>
@@ -210,7 +210,7 @@ export const Navbar = () => {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `px-2.5 lg:px-3 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
+                    `px-2 xl:px-3 py-2 rounded-pill text-ds-12 xl:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
                       isActive
                         ? 'bg-brand-ink text-brand-white shadow-card'
                         : 'text-gray-600 hover:text-brand-ink hover:bg-gray-100'
@@ -264,7 +264,7 @@ export const Navbar = () => {
                 <Button
                   variant="accent"
                   onClick={() => navigate('/signup')}
-                  className="min-h-[40px] py-2 px-3 sm:px-4 text-ds-12 sm:text-ds-14 whitespace-nowrap"
+                  className="min-h-[38px] py-1.5 px-2.5 sm:px-4 text-ds-12 xl:text-ds-14 whitespace-nowrap"
                 >
                   <span className="sm:hidden">Sign Up</span>
                   <span className="hidden sm:inline">Get Started</span>

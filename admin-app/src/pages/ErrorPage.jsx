@@ -1,9 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ServerCrash, RotateCw } from 'lucide-react';
 import { Button, Logo } from '../components/ui';
 
 export const ErrorPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
       <div className="max-w-md w-full bg-brand-white rounded-sheet border border-gray-200 shadow-sheet p-8 space-y-6">
@@ -28,11 +30,9 @@ export const ErrorPage = () => {
           >
             Try Again
           </Button>
-          <Link to="/dashboard" className="block">
-            <Button variant="secondary" fullWidth>
-              Go to Dashboard
-            </Button>
-          </Link>
+          <Button variant="secondary" fullWidth onClick={() => navigate('/dashboard')}>
+            Go to Dashboard
+          </Button>
         </div>
       </div>
     </div>

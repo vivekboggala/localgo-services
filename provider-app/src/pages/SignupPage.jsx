@@ -286,7 +286,7 @@ export const SignupPage = () => {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Rajesh Kumar - Master Electrician"
+                placeholder="e.g. Rajesh Electric Works"
                 leftIcon={<User className="w-5 h-5" strokeWidth={2} />}
               />
 

@@ -102,7 +102,7 @@ export const MapPage = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row w-full h-[calc(100dvh-132px)] lg:h-[calc(100dvh-64px)] overflow-hidden bg-gray-100">
+    <div className="flex flex-col lg:flex-row w-full h-[calc(100dvh-148px)] lg:h-[calc(100dvh-64px)] overflow-hidden bg-gray-100">
       {/* DESKTOP LEFT PANEL (380px Split View) */}
       <aside className="hidden lg:flex lg:w-[380px] shrink-0 bg-brand-white border-r border-gray-200 flex-col h-full">
         <div className="p-4 border-b border-gray-200 space-y-2.5 bg-brand-white">

@@ -122,8 +122,11 @@ export const LoginPage = () => {
             autoComplete="email"
           />
 
-          <div className="space-y-1">
-            <div className="flex items-center justify-end">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="customer-login-password" className="text-ds-12 font-semibold text-gray-900 tracking-wide">
+                Password <span className="text-status-danger ml-0.5">*</span>
+              </label>
               <Link
                 to="/forgot-password"
                 className="text-ds-12 font-bold text-brand-ink hover:underline"
@@ -132,7 +135,8 @@ export const LoginPage = () => {
               </Link>
             </div>
             <PasswordInput
-              label="Password"
+              id="customer-login-password"
+              label=""
               required
               value={password}
               onChange={(e) => {
