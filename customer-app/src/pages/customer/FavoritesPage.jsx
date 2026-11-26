@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, RotateCw, Search } from 'lucide-react';
+import { Heart, RotateCw } from 'lucide-react';
 import { favoriteService } from '../../services/favoriteService';
 import { ProviderCard } from '../../components/customer/ProviderCard';
 import {
@@ -59,8 +59,8 @@ export const FavoritesPage = () => {
       {error ? (
         <ErrorState message={error} onRetry={loadFavorites} />
       ) : loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {[1, 2, 3, 4].map((i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -74,7 +74,7 @@ export const FavoritesPage = () => {
           onAction={() => navigate('/providers')}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {favorites.map((provider) => (
             <ProviderCard
               key={provider.id}

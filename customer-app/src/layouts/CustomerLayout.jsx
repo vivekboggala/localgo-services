@@ -11,7 +11,7 @@ export const CustomerLayout = () => {
   return (
     <div className="min-h-screen flex flex-col bg-brand-white">
       <Navbar />
-      <main className={`flex-grow ${isMapScreen ? 'pb-0' : 'pb-20 md:pb-0'}`}>
+      <main className={`flex-grow ${isMapScreen ? 'pb-0' : 'pb-20 lg:pb-0'}`}>
         <Outlet />
       </main>
       {!isMapScreen && <Footer />}

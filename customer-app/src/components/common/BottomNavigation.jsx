@@ -15,7 +15,7 @@ export const BottomNavigation = () => {
   ];
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <BottomNav items={items} fixed={true} />
     </div>
   );

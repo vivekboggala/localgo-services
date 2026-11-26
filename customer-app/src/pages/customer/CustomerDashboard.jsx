@@ -7,12 +7,11 @@ import {
   ChevronDown,
   ArrowRight,
   Clock,
-  Star,
   RotateCcw,
   ShieldCheck,
   Navigation,
-  Briefcase,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,9 +20,9 @@ import { useLiveSync } from '../../hooks/useLiveSync';
 import { providerService } from '../../services/providerService';
 import { serviceService } from '../../services/serviceService';
 import { bookingService } from '../../services/bookingService';
+import { ProviderMap } from '../../components/map/ProviderMap';
+import { ProviderCard } from '../../components/customer/ProviderCard';
 import {
-  Avatar,
-  Badge,
   Button,
   EmptyState,
   ErrorState,
@@ -34,7 +33,6 @@ import {
 import { LocationSheet } from '../../components/customer/LocationSheet';
 import {
   formatCurrency,
-  getProviderAvatar,
   getServiceIconComponent,
   getServiceStartingPrice,
 } from '../../utils/helpers';
@@ -146,7 +144,7 @@ export const CustomerDashboard = () => {
   );
 
   const recentBookings = useMemo(
-    () => bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'CANCELLED').slice(0, 5),
+    () => bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'CANCELLED').slice(0, 6),
     [bookings]
   );
 
@@ -160,335 +158,345 @@ export const CustomerDashboard = () => {
     greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-7">
-      {/* Greeting + Location Chip + Quick Search */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-ds-12 font-semibold text-gray-600">{greetingPrefix}</p>
-            <h1 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight">
-              Hi, {user?.name?.split(' ')[0] || 'there'}
-            </h1>
-          </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* LEFT COLUMN (8 Cols): Greeting, Search, Categories, Nearby Pros, Book Again */}
+        <div className="lg:col-span-8 space-y-8">
+          <section className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-ds-12 font-semibold text-gray-600">{greetingPrefix}</p>
+                <h1 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight">
+                  Welcome back, {user?.name?.split(' ')[0] || 'there'}
+                </h1>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setLocationSheetOpen(true)}
-            className="inline-flex items-center gap-2 self-start sm:self-auto min-h-[44px] px-4 py-2 rounded-pill bg-brand-yellowSoft border border-brand-yellow text-brand-ink font-semibold text-ds-12 hover:bg-brand-yellow transition-colors duration-150 cursor-pointer"
-          >
-            <MapPin className="w-4 h-4 shrink-0" strokeWidth={2.2} />
-            <span className="truncate max-w-[200px]">
-              {location?.city || 'Select Location'}
-            </span>
-            {usingGPS && (
-              <span className="px-2 py-0.5 rounded-pill bg-status-success text-brand-white text-[10px] font-bold">
-                GPS
-              </span>
+              <button
+                type="button"
+                onClick={() => setLocationSheetOpen(true)}
+                className="lg:hidden inline-flex items-center gap-2 self-start min-h-[44px] px-4 py-2 rounded-pill bg-brand-yellowSoft border border-brand-yellow text-brand-ink font-semibold text-ds-12 hover:bg-brand-yellow transition-colors cursor-pointer"
+              >
+                <MapPin className="w-4 h-4 shrink-0" strokeWidth={2.2} />
+                <span className="truncate max-w-[180px]">{location?.city || 'Select Location'}</span>
+                <ChevronDown className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                navigate(searchQuery.trim() ? `/services?q=${encodeURIComponent(searchQuery)}` : '/services');
+              }}
+              className="flex gap-2.5"
+            >
+              <div className="flex-1">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for AC repair, plumber, electrician..."
+                  aria-label="Search home services"
+                  leftIcon={<Search className="w-5 h-5" strokeWidth={2} />}
+                />
+              </div>
+              <Button type="submit" variant="primary" className="shrink-0 px-6">
+                Search
+              </Button>
+            </form>
+          </section>
+
+          {apiError && (
+            <ErrorState
+              compact
+              message={apiError}
+              onRetry={() => {
+                loadServices();
+                fetchNearbyProviders();
+              }}
+            />
+          )}
+
+          {/* Category Tiles */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display font-bold text-ds-20 text-brand-ink tracking-tight">
+                What do you need?
+              </h2>
+              <Link
+                to="/services"
+                className="text-ds-14 font-bold text-brand-ink hover:underline inline-flex items-center gap-1"
+              >
+                See all <ArrowRight className="w-4 h-4" strokeWidth={2} />
+              </Link>
+            </div>
+
+            {loadingServices ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                {[1, 2, 3, 4].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                {services.slice(0, 8).map((s) => {
+                  const Icon = getServiceIconComponent(s);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => navigate(`/providers/nearby?serviceId=${s.id}`)}
+                      className="bg-brand-white border border-gray-200 hover:border-brand-ink rounded-card p-3.5 text-left flex items-center gap-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink"
+                    >
+                      <div className="w-11 h-11 rounded-card bg-brand-yellowSoft border border-brand-yellow text-brand-ink group-hover:bg-brand-ink group-hover:text-brand-yellow group-hover:border-brand-ink flex items-center justify-center shrink-0 transition-colors">
+                        <Icon className="w-5 h-5" strokeWidth={2} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-display font-bold text-ds-14 text-brand-ink truncate">
+                          {s.name}
+                        </div>
+                        <div className="text-[11px] font-semibold text-gray-600">
+                          from Rs {getServiceStartingPrice(s)}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
-            <ChevronDown className="w-4 h-4 shrink-0" strokeWidth={2} />
-          </button>
+          </section>
+
+          {/* Nearby Pros Online Now Grid */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-bold text-ds-20 text-brand-ink tracking-tight">
+                  Nearby pros online now
+                </h2>
+                <p className="text-ds-12 text-gray-600">
+                  Live verified pros near {location?.city || 'your area'}
+                </p>
+              </div>
+              <Link
+                to="/providers"
+                className="text-ds-14 font-bold text-brand-ink hover:underline inline-flex items-center gap-1"
+              >
+                All pros <ArrowRight className="w-4 h-4" strokeWidth={2} />
+              </Link>
+            </div>
+
+            {loadingProviders ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : onlineProviders.length === 0 ? (
+              <EmptyState
+                icon={<Navigation className="w-7 h-7" strokeWidth={2} />}
+                title="No providers nearby yet"
+                description="Try expanding your search area or picking another city."
+                actionLabel="Change Location"
+                actionVariant="accent"
+                onAction={() => setLocationSheetOpen(true)}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {onlineProviders.slice(0, 6).map((p) => (
+                  <ProviderCard key={p.id} provider={p} compact />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Recent Bookings / Book Again */}
+          {recentBookings.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display font-bold text-ds-20 text-brand-ink tracking-tight">
+                  Book again
+                </h2>
+                <Link
+                  to="/my-bookings"
+                  className="text-ds-14 font-bold text-brand-ink hover:underline inline-flex items-center gap-1"
+                >
+                  History <ArrowRight className="w-4 h-4" strokeWidth={2} />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {recentBookings.slice(0, 4).map((b) => (
+                  <div
+                    key={b.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/bookings/${b.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/bookings/${b.id}`);
+                      }
+                    }}
+                    className="bg-brand-white border border-gray-200 hover:border-brand-ink rounded-card p-4 shadow-card hover:shadow-card-hover flex items-center justify-between gap-3 cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display font-bold text-ds-14 text-brand-ink truncate">
+                          {b.serviceName}
+                        </h3>
+                        <StatusBadge status={b.status} showDot={false} />
+                      </div>
+                      <p className="text-ds-12 text-gray-600 truncate">
+                        {b.providerName} &bull; {formatCurrency(b.amount)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/book/${b.providerId}?serviceId=${b.serviceId}`, {
+                          state: { prefillDescription: b.description, prefillAddress: b.address },
+                        });
+                      }}
+                      leftIcon={<RotateCcw className="w-3.5 h-3.5 text-brand-yellow" />}
+                      className="min-h-[40px] py-1.5 px-3 text-ds-12 shrink-0"
+                    >
+                      Book again
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            navigate(searchQuery.trim() ? `/services?q=${encodeURIComponent(searchQuery)}` : '/services');
-          }}
-          className="flex gap-2"
-        >
-          <div className="flex-1">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for AC repair, plumber, electrician..."
-              aria-label="Search home services"
-              leftIcon={<Search className="w-5 h-5" strokeWidth={2} />}
-            />
-          </div>
-          <Button type="submit" variant="primary" className="shrink-0 px-5">
-            Search
-          </Button>
-        </form>
-      </section>
-
-      {apiError && (
-        <ErrorState
-          compact
-          message={apiError}
-          onRetry={() => {
-            loadServices();
-            fetchNearbyProviders();
-          }}
-        />
-      )}
-
-      {/* Active Booking Banner Card */}
-      {activeBooking && (
-        <section aria-label="Active booking">
-          <div className="bg-brand-ink text-brand-white rounded-sheet p-5 border border-gray-900 shadow-sheet flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
+        {/* RIGHT COLUMN (4 Cols, Sticky): Active Booking, Saved Location Map Preview, Promo */}
+        <aside className="lg:col-span-4 lg:sticky lg:top-24 space-y-5">
+          {/* Active Booking Card */}
+          {activeBooking ? (
+            <div className="bg-brand-ink text-brand-white rounded-sheet p-5 border border-gray-900 shadow-sheet space-y-4">
+              <div className="flex items-center justify-between gap-2">
                 <StatusBadge status={activeBooking.status} />
                 <span className="inline-flex items-center gap-1 text-ds-12 text-brand-yellow font-semibold">
                   <Clock className="w-3.5 h-3.5" strokeWidth={2.2} />
                   {activeBooking.status === 'ON_THE_WAY'
-                    ? 'Arriving in ~15 mins'
-                    : `${activeBooking.scheduledDate} at ${activeBooking.scheduledTime}`}
+                    ? 'ETA ~15 mins'
+                    : `${activeBooking.scheduledDate}`}
                 </span>
               </div>
-              <div>
+
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  Active Booking
+                </span>
                 <h2 className="font-display font-bold text-ds-20 text-brand-white">
                   {activeBooking.serviceName || 'Ongoing Service'}
                 </h2>
                 <p className="text-ds-12 text-gray-400">
                   Pro: <strong className="text-brand-white">{activeBooking.providerName}</strong>
-                  {activeBooking.startOtp && ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(activeBooking.status)
-                    ? ` • Start OTP: ${activeBooking.startOtp}`
-                    : ''}
                 </p>
               </div>
+
+              {activeBooking.startOtp && ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(activeBooking.status) && (
+                <div className="bg-gray-900 border border-gray-600/30 rounded-card p-3 flex items-center justify-between">
+                  <span className="text-ds-12 text-gray-400 font-semibold">Start OTP</span>
+                  <span className="font-display font-extrabold text-ds-20 text-brand-yellow tracking-widest">
+                    {activeBooking.startOtp}
+                  </span>
+                </div>
+              )}
+
+              <Button
+                variant="accent"
+                fullWidth
+                onClick={() => navigate(`/bookings/${activeBooking.id}`)}
+                rightIcon={<ArrowRight className="w-4 h-4" strokeWidth={2.2} />}
+              >
+                Track Live Trip
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-brand-white border border-gray-200 rounded-card p-5 shadow-card space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-card bg-brand-yellowSoft border border-brand-yellow text-brand-ink flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-display font-bold text-ds-16 text-brand-ink">No active bookings</h2>
+                  <p className="text-ds-12 text-gray-600">Pick a pro and schedule a visit anytime</p>
+                </div>
+              </div>
+              <Button variant="accent" fullWidth onClick={() => navigate('/providers')}>
+                Browse Nearby Pros
+              </Button>
+            </div>
+          )}
+
+          {/* Saved Location Card with Mini Live Map Preview */}
+          <div className="bg-brand-white border border-gray-200 rounded-card p-5 shadow-card space-y-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                  Current Service Zone
+                </span>
+                <h3 className="font-display font-bold text-ds-16 text-brand-ink truncate mt-0.5 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-brand-ink shrink-0" />
+                  {location?.city || 'Bengaluru'}
+                  {usingGPS && (
+                    <span className="px-2 py-0.5 rounded-pill bg-status-success text-brand-white text-[10px] font-bold">
+                      GPS
+                    </span>
+                  )}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLocationSheetOpen(true)}
+                className="text-ds-12 font-bold text-brand-ink px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 cursor-pointer shrink-0 transition-colors"
+              >
+                Change
+              </button>
             </div>
 
-            <Button
-              variant="accent"
-              onClick={() => navigate(`/bookings/${activeBooking.id}`)}
-              rightIcon={<ArrowRight className="w-4 h-4" strokeWidth={2.2} />}
-              className="w-full sm:w-auto shrink-0"
-            >
-              View Live Trip
+            <div className="h-44 rounded-card overflow-hidden border border-gray-200">
+              <ProviderMap
+                customerLocation={location}
+                providers={onlineProviders.slice(0, 6)}
+              />
+            </div>
+
+            <Button variant="secondary" fullWidth onClick={() => navigate('/map')}>
+              Open Full Interactive Map
             </Button>
           </div>
-        </section>
-      )}
 
-      {/* What do you need? Top 8 Categories */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display font-bold text-ds-20 text-brand-ink tracking-tight">
-            What do you need?
-          </h2>
-          <Link
-            to="/services"
-            className="text-ds-12 font-bold text-brand-ink hover:underline inline-flex items-center gap-1"
-          >
-            See all <ArrowRight className="w-4 h-4" strokeWidth={2} />
-          </Link>
-        </div>
-
-        {loadingServices ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[1, 2, 3, 4].map((i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {services.slice(0, 8).map((s) => {
-              const Icon = getServiceIconComponent(s);
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => navigate(`/providers/nearby?serviceId=${s.id}`)}
-                  className="bg-brand-white border border-gray-200 hover:border-brand-ink rounded-card p-3.5 text-left flex items-center gap-3 shadow-card hover:shadow-card-hover active:scale-[0.98] transition-all duration-150 group"
-                >
-                  <div className="w-11 h-11 rounded-card bg-brand-yellowSoft border border-brand-yellow text-brand-ink group-hover:bg-brand-ink group-hover:text-brand-yellow group-hover:border-brand-ink flex items-center justify-center shrink-0 transition-colors">
-                    <Icon className="w-5 h-5" strokeWidth={2} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-display font-bold text-ds-14 text-brand-ink truncate">
-                      {s.name}
-                    </div>
-                    <div className="text-[11px] font-semibold text-gray-600">
-                      from Rs {getServiceStartingPrice(s)}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Nearby Pros Online Now Horizontal List */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display font-bold text-ds-20 text-brand-ink tracking-tight">
-              Nearby pros online now
-            </h2>
-            <p className="text-ds-12 text-gray-600">Tap to book or open live map view</p>
-          </div>
-          <Link
-            to="/providers"
-            className="text-ds-12 font-bold text-brand-ink hover:underline inline-flex items-center gap-1"
-          >
-            All pros <ArrowRight className="w-4 h-4" strokeWidth={2} />
-          </Link>
-        </div>
-
-        {loadingProviders ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        ) : onlineProviders.length === 0 ? (
-          <EmptyState
-            icon={<Navigation className="w-7 h-7" strokeWidth={2} />}
-            title="No providers nearby yet"
-            description="Try expanding your search area or picking another city."
-            actionLabel="Change Location"
-            actionVariant="accent"
-            onAction={() => setLocationSheetOpen(true)}
-          />
-        ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-            {onlineProviders.slice(0, 10).map((p) => (
-              <div
-                key={p.id}
-                onClick={() => navigate(`/providers/${p.id}`)}
-                className="min-w-[270px] sm:min-w-[300px] snap-start bg-brand-white border border-gray-200 hover:border-brand-ink rounded-card p-4 shadow-card hover:shadow-card-hover transition-all duration-150 cursor-pointer flex flex-col justify-between gap-3 shrink-0"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar
-                      src={getProviderAvatar(p.name)}
-                      name={p.name}
-                      size="md"
-                      status={p.available ? 'online' : 'offline'}
-                      verified={p.verificationStatus === 'VERIFIED'}
-                    />
-                    <div className="min-w-0">
-                      <h3 className="font-display font-bold text-ds-14 text-brand-ink truncate">
-                        {p.name}
-                      </h3>
-                      <p className="text-ds-12 text-gray-600 truncate">
-                        {p.services?.[0]?.name || 'Verified Pro'}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge tone={p.available ? 'success' : 'neutral'} dot>
-                    {p.available ? 'Online' : 'Offline'}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between text-ds-12 font-semibold text-gray-600 bg-gray-50 rounded-card px-3 py-2">
-                  <span className="inline-flex items-center gap-1 text-brand-ink">
-                    <Star className="w-3.5 h-3.5 fill-brand-yellow text-brand-yellow" />
-                    {p.rating > 0 ? Number(p.rating).toFixed(1) : 'New'}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Briefcase className="w-3.5 h-3.5" /> {p.completedJobs ?? 0}
-                  </span>
-                  <span>
-                    {p.distanceKm != null ? `${Number(p.distanceKm).toFixed(1)} km` : p.serviceArea}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span className="font-display font-bold text-ds-16 text-brand-ink">
-                    {formatCurrency(p.startingPrice)}
-                  </span>
-                  <Button
-                    variant={p.available ? 'accent' : 'secondary'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(p.available ? `/book/${p.id}` : `/providers/${p.id}`);
-                    }}
-                    className="min-h-[40px] py-1.5 px-4 text-ds-12"
-                  >
-                    {p.available ? 'Book' : 'View'}
-                  </Button>
-                </div>
+          {/* Promo Card */}
+          <div className="bg-brand-yellow rounded-sheet p-5 border border-brand-yellowHover shadow-card space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5" strokeWidth={2} />
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Recent Bookings / Book Again */}
-      {recentBookings.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display font-bold text-ds-20 text-brand-ink tracking-tight">
-              Recent bookings &bull; Book again
-            </h2>
-            <Link
-              to="/my-bookings"
-              className="text-ds-12 font-bold text-brand-ink hover:underline inline-flex items-center gap-1"
-            >
-              History <ArrowRight className="w-4 h-4" strokeWidth={2} />
-            </Link>
-          </div>
-
-          <div className="flex gap-3 overflow-x-auto pb-1 snap-x">
-            {recentBookings.map((b) => (
-              <div
-                key={b.id}
-                onClick={() => navigate(`/bookings/${b.id}`)}
-                className="min-w-[260px] snap-start bg-gray-50 border border-gray-200 hover:border-brand-ink rounded-card p-4 flex flex-col justify-between gap-3 cursor-pointer shrink-0 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-display font-bold text-ds-14 text-brand-ink truncate">
-                      {b.serviceName}
-                    </h3>
-                    <p className="text-ds-12 text-gray-600 truncate">{b.providerName}</p>
-                  </div>
-                  <StatusBadge status={b.status} showDot={false} />
+              <div>
+                <div className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-brand-ink">
+                  <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2.5} /> Zero Hidden Visit Fees
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-gray-200/70">
-                  <span className="font-display font-bold text-ds-14 text-brand-ink">
-                    {formatCurrency(b.amount)}
-                  </span>
-                  <Button
-                    variant="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/book/${b.providerId}?serviceId=${b.serviceId}`, {
-                        state: { prefillDescription: b.description, prefillAddress: b.address },
-                      });
-                    }}
-                    leftIcon={<RotateCcw className="w-3.5 h-3.5 text-brand-yellow" />}
-                    className="min-h-[38px] py-1.5 px-3 text-ds-12"
-                  >
-                    Book again
-                  </Button>
-                </div>
+                <h3 className="font-display font-bold text-ds-16 text-brand-ink">
+                  OTP-Secured Doorstep Service
+                </h3>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Promo Banner */}
-      <section className="bg-brand-yellow rounded-sheet p-5 sm:p-7 border border-brand-yellowHover shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="w-12 h-12 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6" strokeWidth={2} />
-          </div>
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-brand-ink">
-              <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2.5} /> Zero Hidden Visit Fees
             </div>
-            <h3 className="font-display font-bold text-ds-20 text-brand-ink">
-              Explore pros near you on the live map
-            </h3>
-            <p className="text-ds-12 text-gray-900">
-              See who is online in your neighborhood right now and book in 60 seconds.
+            <p className="text-ds-12 text-gray-900 leading-relaxed">
+              Verified arrival with 4-digit Start OTP and upfront starting prices before you book.
             </p>
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => navigate('/services')}
+              rightIcon={<ArrowRight className="w-4 h-4" strokeWidth={2.2} />}
+            >
+              Book a Service
+            </Button>
           </div>
-        </div>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/map')}
-          rightIcon={<ArrowRight className="w-4 h-4" strokeWidth={2.2} />}
-          className="shrink-0"
-        >
-          Open Live Map
-        </Button>
-      </section>
+        </aside>
+      </div>
 
       <LocationSheet
         open={locationSheetOpen}

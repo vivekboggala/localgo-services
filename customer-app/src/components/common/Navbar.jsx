@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
   MapPin,
@@ -11,12 +11,29 @@ import {
   User,
   LogOut,
   Map,
+  Search,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useNotifications } from '../../hooks/useNotifications';
+import { serviceService } from '../../services/serviceService';
+import { getServiceIconComponent, getServiceStartingPrice } from '../../utils/helpers';
 import { Logo, Avatar, Button } from '../ui';
 import { LocationSheet } from '../customer/LocationSheet';
+
+const FALLBACK_CATEGORIES = [
+  { id: 'ac-repair', name: 'AC Repair & Service', startingPrice: 399 },
+  { id: 'electrician', name: 'Electrician', startingPrice: 199 },
+  { id: 'plumber', name: 'Plumber', startingPrice: 199 },
+  { id: 'mobile-repair', name: 'Mobile Repair', startingPrice: 299 },
+  { id: 'computer-repair', name: 'Computer & Laptop Repair', startingPrice: 349 },
+  { id: 'refrigerator-repair', name: 'Refrigerator Repair', startingPrice: 299 },
+  { id: 'washing-machine-repair', name: 'Washing Machine Repair', startingPrice: 299 },
+  { id: 'vehicle-service', name: 'Bike & Car Service', startingPrice: 399 },
+  { id: 'cleaning', name: 'Home Cleaning', startingPrice: 499 },
+  { id: 'painting', name: 'Painting & Waterproofing', startingPrice: 699 },
+];
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -30,11 +47,27 @@ export const Navbar = () => {
     predefinedLocations,
   } = useLocation();
   const { unreadCount } = useNotifications();
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
   const [locationSheetOpen, setLocationSheetOpen] = useState(false);
+  const [servicesMenu, setServicesMenu] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   const homePath = isAuthenticated ? '/dashboard' : '/';
+
+  useEffect(() => {
+    serviceService.getAllServices()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setServicesMenu(data.slice(0, 10));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const megaCategories = servicesMenu.length > 0 ? servicesMenu : FALLBACK_CATEGORIES;
 
   const handleLogout = () => {
     logout();
@@ -42,21 +75,26 @@ export const Navbar = () => {
     navigate('/');
   };
 
+  const handleHeaderSearch = (e) => {
+    e.preventDefault();
+    const q = searchTerm.trim();
+    navigate(q ? `/services?q=${encodeURIComponent(q)}` : '/services');
+  };
+
   const navLinks = [
     { to: homePath, label: 'Home', icon: Home },
-    { to: '/services', label: 'Services', icon: Wrench },
+    { to: '/providers', label: 'Find Pros', icon: MapPin },
     { to: '/my-bookings', label: 'Bookings', icon: Calendar },
     { to: '/favorites', label: 'Favorites', icon: Heart },
-    { to: '/profile', label: 'Profile', icon: User },
   ];
 
   return (
     <>
       <header className="sticky top-0 z-40 bg-brand-white/95 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 h-16 flex items-center justify-between gap-2 lg:gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
           {/* Left: Logo + Location Chip */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 md:flex-initial">
-            <Link to={homePath} className="shrink-0 focus-visible:outline-none">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 shrink-0">
+            <Link to={homePath} className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink rounded-card">
               <Logo size="sm" subtitle={null} />
             </Link>
 
@@ -64,7 +102,7 @@ export const Navbar = () => {
               type="button"
               onClick={() => setLocationSheetOpen(true)}
               aria-label="Change service location"
-              className="inline-flex items-center gap-1 min-h-[38px] min-w-0 max-w-[130px] sm:max-w-[165px] md:max-w-[130px] lg:max-w-[200px] px-2.5 sm:px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 hover:border-brand-yellow text-brand-ink transition-colors duration-150 cursor-pointer overflow-hidden"
+              className="inline-flex items-center gap-1 min-h-[38px] min-w-0 max-w-[130px] sm:max-w-[175px] md:max-w-[140px] lg:max-w-[190px] px-2.5 sm:px-3 py-1.5 rounded-pill bg-gray-100 hover:bg-brand-yellowSoft border border-gray-200 hover:border-brand-yellow text-brand-ink transition-colors duration-150 cursor-pointer overflow-hidden"
             >
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-ink shrink-0" strokeWidth={2.2} />
               <span className="text-ds-12 font-semibold truncate">
@@ -74,25 +112,129 @@ export const Navbar = () => {
             </button>
           </div>
 
-          {/* Center: Clean Desktop Navigation Links */}
-          <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-0.5 lg:gap-1 shrink-0">
-            {navLinks.map((item) => (
+          {/* Center: Desktop Navigation + Mega Services Dropdown + XL Search */}
+          <div className="hidden md:flex items-center gap-1.5 lg:gap-2 flex-1 justify-center min-w-0">
+            <nav aria-label="Primary navigation" className="flex items-center gap-0.5 lg:gap-1 shrink-0">
               <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
+                to={homePath}
+                end={homePath === '/'}
                 className={({ isActive }) =>
-                  `px-2.5 lg:px-3.5 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
+                  `px-2.5 lg:px-3 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
                     isActive
                       ? 'bg-brand-ink text-brand-white shadow-card'
                       : 'text-gray-600 hover:text-brand-ink hover:bg-gray-100'
                   }`
                 }
               >
-                {item.label}
+                Home
               </NavLink>
-            ))}
-          </nav>
+
+              {/* Mega-Style Services Dropdown Trigger */}
+              <div
+                className="relative"
+                onMouseEnter={() => setMegaOpen(true)}
+                onMouseLeave={() => setMegaOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => setMegaOpen((p) => !p)}
+                  aria-expanded={megaOpen}
+                  className="inline-flex items-center gap-1 px-2.5 lg:px-3 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold text-gray-600 hover:text-brand-ink hover:bg-gray-100 whitespace-nowrap transition-all duration-150 cursor-pointer"
+                >
+                  <Wrench className="w-3.5 h-3.5 hidden lg:inline" strokeWidth={2} />
+                  <span>Services</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${megaOpen ? 'rotate-180' : ''}`} strokeWidth={2} />
+                </button>
+
+                {megaOpen && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 w-[540px] lg:w-[640px] z-50">
+                    <div className="bg-brand-white rounded-sheet shadow-sheet border border-gray-200 p-5 space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Browse Categories
+                          </span>
+                          <h3 className="font-display font-bold text-ds-16 text-brand-ink">
+                            Home Services Near {location?.city || 'You'}
+                          </h3>
+                        </div>
+                        <Link
+                          to="/services"
+                          onClick={() => setMegaOpen(false)}
+                          className="inline-flex items-center gap-1 text-ds-12 font-bold text-brand-ink px-3 py-1.5 rounded-pill bg-brand-yellowSoft hover:bg-brand-yellow transition-colors"
+                        >
+                          View All <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.2} />
+                        </Link>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {megaCategories.map((svc) => {
+                          const Icon = getServiceIconComponent(svc);
+                          const hasRealId = servicesMenu.some((s) => s.id === svc.id);
+                          return (
+                            <button
+                              key={svc.id}
+                              type="button"
+                              onClick={() => {
+                                setMegaOpen(false);
+                                navigate(
+                                  hasRealId
+                                    ? `/providers/nearby?serviceId=${svc.id}`
+                                    : `/services?q=${encodeURIComponent(svc.name)}`
+                                );
+                              }}
+                              className="flex items-center gap-3 p-2.5 rounded-card hover:bg-gray-50 border border-transparent hover:border-gray-200 text-left transition-all cursor-pointer group"
+                            >
+                              <div className="w-9 h-9 rounded-card bg-brand-yellowSoft border border-brand-yellow/60 text-brand-ink group-hover:bg-brand-ink group-hover:text-brand-yellow flex items-center justify-center shrink-0 transition-colors">
+                                <Icon className="w-4 h-4" strokeWidth={2} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-display font-bold text-ds-12 text-brand-ink truncate">
+                                  {svc.name}
+                                </div>
+                                <div className="text-[11px] text-gray-600">
+                                  from Rs {getServiceStartingPrice(svc)}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {navLinks.slice(1).map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `px-2.5 lg:px-3 py-2 rounded-pill text-ds-12 lg:text-ds-14 font-semibold whitespace-nowrap transition-all duration-150 ${
+                      isActive
+                        ? 'bg-brand-ink text-brand-white shadow-card'
+                        : 'text-gray-600 hover:text-brand-ink hover:bg-gray-100'
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* XL Screen Inline Search Box */}
+            <form onSubmit={handleHeaderSearch} className="hidden xl:flex items-center relative w-64 ml-2">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" strokeWidth={2} />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search service or pro..."
+                aria-label="Quick service search"
+                className="w-full h-10 pl-9 pr-3 rounded-pill bg-gray-100 focus:bg-brand-white border border-gray-200 focus:border-brand-ink text-ds-12 font-medium text-brand-ink placeholder:text-gray-400 outline-none transition-colors"
+              />
+            </form>
+          </div>
 
           {/* Right: Notification Bell + Account Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">

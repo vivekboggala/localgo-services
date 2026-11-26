@@ -143,7 +143,7 @@ export const BookingDetailPage = () => {
 
   useEffect(() => {
     if (!booking?.providerId) return;
-    if (['ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(booking.status)) {
+    if (['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'REQUESTED', 'IN_PROGRESS'].includes(booking.status)) {
       providerService.getProviderById(booking.providerId)
         .then((p) => setLiveProvider(p))
         .catch(() => {});
@@ -190,7 +190,7 @@ export const BookingDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -199,7 +199,7 @@ export const BookingDetailPage = () => {
 
   if (error || !booking) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <ErrorState
           title="Booking Unavailable"
           message={error || 'Booking not found.'}
@@ -214,247 +214,243 @@ export const BookingDetailPage = () => {
   const otpDigits = String(booking.startOtp || '').padEnd(4, ' ').slice(0, 4).split('');
 
   return (
-    <div className="bg-gray-100 min-h-[calc(100vh-64px)] pb-12">
-      {/* Top Uber-Style Map Header when ON_THE_WAY (or concise dark trip header otherwise) */}
-      {booking.status === 'ON_THE_WAY' ? (
-        <div className="relative h-64 sm:h-72 w-full bg-gray-200 border-b border-gray-200">
-          <ProviderMap
-            customerLocation={
-              booking.latitude && booking.longitude
-                ? { lat: booking.latitude, lng: booking.longitude }
-                : null
-            }
-            providers={liveProvider ? [liveProvider] : []}
-            selectedProvider={liveProvider}
+    <div className="bg-gray-50 min-h-[calc(100vh-64px)] pb-14">
+      {/* Full-Width Dark Header */}
+      <div className="bg-brand-ink text-brand-white bg-dark-grid-pattern border-b border-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <PageHeader
+            title={booking.serviceName || 'Booking Trip'}
+            subtitle={`Booking #${booking.id}`}
+            onBack={() => navigate(-1)}
+            actions={<StatusBadge status={booking.status} />}
+            className="text-brand-white [&_h1]:text-brand-white [&_p]:text-gray-400 [&_button]:bg-gray-900 [&_button]:text-brand-white [&_button]:border-gray-600/30"
           />
-          <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between gap-2 pointer-events-none">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="pointer-events-auto min-h-[42px] px-3.5 rounded-pill bg-brand-white/95 border border-gray-200 shadow-sheet text-ds-12 font-bold text-brand-ink"
-            >
-              &larr; Back
-            </button>
-            <div className="pointer-events-auto px-3.5 py-2 rounded-pill bg-brand-ink text-brand-yellow shadow-sheet text-ds-12 font-bold inline-flex items-center gap-1.5">
-              <Navigation className="w-4 h-4 animate-pulse" />
-              Pro is on the way
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-brand-ink text-brand-white bg-dark-grid-pattern px-4 pt-5 pb-10">
-          <div className="max-w-3xl mx-auto">
-            <PageHeader
-              title={booking.serviceName || 'Booking Trip'}
-              subtitle={`Booking #${booking.id}`}
-              onBack={() => navigate(-1)}
-              actions={<StatusBadge status={booking.status} />}
-              className="text-brand-white [&_h1]:text-brand-white [&_p]:text-gray-400 [&_button]:bg-gray-900 [&_button]:text-brand-white [&_button]:border-gray-600/30"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Sheet Trip Container */}
-      <div className={`max-w-3xl mx-auto px-4 ${booking.status === 'ON_THE_WAY' ? '-mt-6 relative z-20' : '-mt-6 relative z-20'}`}>
-        <div className="bg-brand-white rounded-t-sheet sm:rounded-sheet border border-gray-200 shadow-sheet p-5 sm:p-7 space-y-6">
-          <div className="w-10 h-1.5 rounded-pill bg-gray-200 mx-auto" aria-hidden="true" />
-
-          {isJustConfirmed && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-card p-4 text-emerald-900 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-status-success shrink-0" strokeWidth={2.2} />
-              <div>
-                <h2 className="font-display font-bold text-ds-14">Booking request sent!</h2>
-                <p className="text-ds-12 text-emerald-800">
-                  We&apos;ve notified {booking.providerName}. Live updates appear below.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Large 4-Digit Start OTP Card */}
-          {['ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(booking.status) && booking.startOtp && (
-            <div className="bg-brand-ink text-brand-white rounded-sheet p-5 space-y-4 border border-gray-900 shadow-card">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-card bg-brand-yellow text-brand-ink flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-brand-yellow">
-                    Arrival Security Code
-                  </span>
-                  <h3 className="font-display font-bold text-ds-16 text-brand-white">
-                    Start OTP
-                  </h3>
-                  <p className="text-ds-12 text-gray-400 mt-0.5">
-                    Share only when the pro arrives at your doorstep
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2.5 sm:gap-4 pt-1">
-                {otpDigits.map((d, i) => (
-                  <div
-                    key={i}
-                    className="h-14 sm:h-16 rounded-card bg-brand-yellow text-brand-ink font-display font-extrabold text-ds-24 sm:text-ds-32 flex items-center justify-center shadow-card"
-                  >
-                    {d}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Provider Card with Call Button */}
-          <div className="bg-gray-50 rounded-card p-4 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar
-                src={getProviderAvatar(booking.providerName)}
-                name={booking.providerName || 'Provider'}
-                size="lg"
-                verified
-              />
-              <div className="min-w-0">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
-                  Assigned Professional
-                </span>
-                <h3 className="font-display font-bold text-ds-16 text-brand-ink truncate">
-                  {booking.providerName}
-                </h3>
-                <p className="text-ds-12 text-gray-600 truncate">{booking.serviceName}</p>
-              </div>
-            </div>
-
-            {canCallProvider && booking.providerPhone && (
-              <a
-                href={`tel:${booking.providerPhone}`}
-                className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-2.5 rounded-card bg-brand-ink hover:bg-gray-900 text-brand-white font-semibold text-ds-14 transition-colors shrink-0"
-              >
-                <Phone className="w-4 h-4 text-brand-yellow" strokeWidth={2.2} />
-                Call Pro
-              </a>
-            )}
-          </div>
-
-          {/* Vertical Animated StatusTimeline */}
-          <div className="space-y-2.5">
-            <h3 className="font-display font-bold text-ds-16 text-brand-ink">Live progress</h3>
-            <StatusTimeline
-              currentStatus={booking.status}
-              cancelledBy={booking.cancelledBy}
-              reason={booking.cancellationReason}
-              timestamps={{
-                createdAt: booking.createdAt,
-                acceptedAt: booking.acceptedAt,
-                onTheWayAt: booking.onTheWayAt,
-                arrivedAt: booking.arrivedAt,
-                inProgressAt: booking.inProgressAt,
-                completedAt: booking.completedAt,
-              }}
-            />
-          </div>
-
-          {/* Completed Booking Rate Prompt */}
-          {booking.status === 'COMPLETED' && (
-            <div className="bg-brand-yellowSoft border border-brand-yellow rounded-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
-                  <Star className="w-5 h-5 fill-brand-yellow" />
-                </div>
-                <div>
-                  <h4 className="font-display font-bold text-ds-16 text-brand-ink">
-                    Rate your service
-                  </h4>
-                  <p className="text-ds-12 text-gray-900">
-                    Share feedback for {booking.providerName}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                disabled={reviewSubmitted}
-                onClick={() => setShowReviewModal(true)}
-                className="shrink-0"
-              >
-                {reviewSubmitted ? 'Review Submitted' : 'Rate & Review'}
-              </Button>
-            </div>
-          )}
-
-          {/* Price & Appointment Summary */}
-          <div className="bg-brand-white rounded-card border border-gray-200 p-5 space-y-4">
-            <h3 className="font-display font-bold text-ds-16 text-brand-ink">Trip &amp; Price Summary</h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-ds-14">
-              <div className="space-y-0.5">
-                <span className="text-ds-12 text-gray-600 font-medium block">Scheduled Time</span>
-                <span className="font-bold text-brand-ink inline-flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-gray-600" />
-                  {booking.scheduledDate} at {booking.scheduledTime}
-                </span>
-              </div>
-
-              <div className="space-y-0.5">
-                <span className="text-ds-12 text-gray-600 font-medium block">Est. Duration</span>
-                <span className="font-bold text-brand-ink inline-flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-gray-600" />
-                  {booking.estimatedDurationMins || 60} mins
-                </span>
-              </div>
-
-              <div className="space-y-0.5">
-                <span className="text-ds-12 text-gray-600 font-medium block">Total Amount</span>
-                <span className="font-display font-extrabold text-ds-20 text-brand-ink">
-                  {formatCurrency(booking.amount)}
-                </span>
-                <span className="text-ds-12 text-gray-600 ml-1.5">({booking.paymentMethod})</span>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-ds-12 text-gray-600 font-medium block">Payment Status</span>
-                <Badge tone={booking.paymentStatus === 'PAID' ? 'success' : 'warning'} dot>
-                  {booking.paymentStatus || 'PENDING'}
-                </Badge>
-                {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && booking.paymentMethod === 'CASH' && (
-                  <p className="text-[11px] text-amber-800">Awaiting provider cash confirmation</p>
-                )}
-                {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && booking.paymentMethod === 'UPI' && (
-                  <p className="text-[11px] text-gray-600">UPI payment pending verification</p>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-gray-100 space-y-1">
-              <span className="text-ds-12 font-semibold text-gray-600 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5" /> Doorstep Address
-              </span>
-              <p className="text-ds-14 font-medium text-brand-ink">{booking.address}</p>
-            </div>
-
-            {booking.description && (
-              <div className="pt-2 space-y-1">
-                <span className="text-ds-12 font-semibold text-gray-600 block">Problem Description</span>
-                <p className="text-ds-14 text-gray-900 bg-gray-50 p-3 rounded-card border border-gray-100">
-                  &ldquo;{booking.description}&rdquo;
-                </p>
-              </div>
-            )}
-          </div>
-
-          {canCancel && (
-            <Button
-              variant="danger"
-              fullWidth
-              leftIcon={<XCircle className="w-5 h-5" strokeWidth={2} />}
-              onClick={() => setShowCancelDialog(true)}
-            >
-              Cancel Booking
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Cancel ConfirmDialog with Reason Chips */}
+      {/* Main 2-Column Website Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6">
+        {isJustConfirmed && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-card p-4 text-emerald-900 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-status-success shrink-0" strokeWidth={2.2} />
+            <div>
+              <h2 className="font-display font-bold text-ds-14">Booking request sent!</h2>
+              <p className="text-ds-12 text-emerald-800">
+                We&apos;ve notified {booking.providerName}. Live tracking updates appear below.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* LEFT (7 Cols): Large Live Map + Vertical StatusTimeline */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="bg-brand-white rounded-sheet border border-gray-200 shadow-card overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-2">
+                <span className="font-display font-bold text-ds-14 text-brand-ink inline-flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Live Service Location
+                </span>
+                {booking.status === 'ON_THE_WAY' && (
+                  <span className="px-3 py-1 rounded-pill bg-brand-ink text-brand-yellow text-[11px] font-bold inline-flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 animate-pulse" /> Pro is on the way
+                  </span>
+                )}
+              </div>
+              <div className="h-72 sm:h-80 lg:h-[380px] w-full">
+                <ProviderMap
+                  customerLocation={
+                    booking.latitude && booking.longitude
+                      ? { lat: booking.latitude, lng: booking.longitude }
+                      : null
+                  }
+                  providers={liveProvider ? [liveProvider] : []}
+                  selectedProvider={liveProvider}
+                />
+              </div>
+            </div>
+
+            <div className="bg-brand-white rounded-card border border-gray-200 shadow-card p-6 space-y-3">
+              <h3 className="font-display font-bold text-ds-20 text-brand-ink">Live Progress</h3>
+              <StatusTimeline
+                currentStatus={booking.status}
+                cancelledBy={booking.cancelledBy}
+                reason={booking.cancellationReason}
+                timestamps={{
+                  createdAt: booking.createdAt,
+                  acceptedAt: booking.acceptedAt,
+                  onTheWayAt: booking.onTheWayAt,
+                  arrivedAt: booking.arrivedAt,
+                  inProgressAt: booking.inProgressAt,
+                  completedAt: booking.completedAt,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* RIGHT (5 Cols, Sticky): Provider Card, Start OTP, Summary, Actions */}
+          <aside className="lg:col-span-5 lg:sticky lg:top-24 space-y-5">
+            {/* Large 4-Digit Start OTP Card */}
+            {['ACCEPTED', 'ON_THE_WAY', 'ARRIVED'].includes(booking.status) && booking.startOtp && (
+              <div className="bg-brand-ink text-brand-white rounded-sheet p-5 space-y-4 border border-gray-900 shadow-sheet">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-card bg-brand-yellow text-brand-ink flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-brand-yellow">
+                      Arrival Security Code
+                    </span>
+                    <h3 className="font-display font-bold text-ds-16 text-brand-white">
+                      Start OTP
+                    </h3>
+                    <p className="text-ds-12 text-gray-400 mt-0.5">
+                      Share only when the pro arrives at your doorstep
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3 pt-1">
+                  {otpDigits.map((d, i) => (
+                    <div
+                      key={i}
+                      className="h-14 sm:h-16 rounded-card bg-brand-yellow text-brand-ink font-display font-extrabold text-ds-24 sm:text-ds-32 flex items-center justify-center shadow-card"
+                    >
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Provider Card with Call Button */}
+            <div className="bg-brand-white rounded-card p-5 border border-gray-200 shadow-card flex flex-col sm:flex-row lg:flex-col xl:flex-row sm:items-center lg:items-stretch xl:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar
+                  src={getProviderAvatar(booking.providerName)}
+                  name={booking.providerName || 'Provider'}
+                  size="lg"
+                  verified
+                />
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                    Assigned Professional
+                  </span>
+                  <h3 className="font-display font-bold text-ds-16 text-brand-ink truncate">
+                    {booking.providerName}
+                  </h3>
+                  <p className="text-ds-12 text-gray-600 truncate">{booking.serviceName}</p>
+                </div>
+              </div>
+
+              {canCallProvider && booking.providerPhone && (
+                <a
+                  href={`tel:${booking.providerPhone}`}
+                  className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-2.5 rounded-card bg-brand-ink hover:bg-gray-900 text-brand-white font-semibold text-ds-14 transition-colors shrink-0"
+                >
+                  <Phone className="w-4 h-4 text-brand-yellow" strokeWidth={2.2} />
+                  Call Pro
+                </a>
+              )}
+            </div>
+
+            {/* Completed Rate Prompt */}
+            {booking.status === 'COMPLETED' && (
+              <div className="bg-brand-yellowSoft border border-brand-yellow rounded-card p-5 flex items-center justify-between gap-4 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
+                    <Star className="w-5 h-5 fill-brand-yellow" />
+                  </div>
+                  <div>
+                    <h4 className="font-display font-bold text-ds-16 text-brand-ink">Rate your service</h4>
+                    <p className="text-ds-12 text-gray-900">Share feedback for {booking.providerName}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="primary"
+                  disabled={reviewSubmitted}
+                  onClick={() => setShowReviewModal(true)}
+                  className="shrink-0"
+                >
+                  {reviewSubmitted ? 'Submitted' : 'Rate'}
+                </Button>
+              </div>
+            )}
+
+            {/* Trip & Price Summary */}
+            <div className="bg-brand-white rounded-card border border-gray-200 shadow-card p-5 space-y-4">
+              <h3 className="font-display font-bold text-ds-16 text-brand-ink">Trip &amp; Price Summary</h3>
+
+              <div className="grid grid-cols-2 gap-4 text-ds-14">
+                <div className="space-y-0.5">
+                  <span className="text-ds-12 text-gray-600 font-medium block">Scheduled Time</span>
+                  <span className="font-bold text-brand-ink inline-flex items-center gap-1.5 text-ds-12">
+                    <Calendar className="w-4 h-4 text-gray-600" />
+                    {booking.scheduledDate} at {booking.scheduledTime}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-ds-12 text-gray-600 font-medium block">Est. Duration</span>
+                  <span className="font-bold text-brand-ink inline-flex items-center gap-1.5 text-ds-12">
+                    <Clock className="w-4 h-4 text-gray-600" />
+                    {booking.estimatedDurationMins || 60} mins
+                  </span>
+                </div>
+
+                <div className="space-y-0.5">
+                  <span className="text-ds-12 text-gray-600 font-medium block">Total Amount</span>
+                  <span className="font-display font-extrabold text-ds-20 text-brand-ink">
+                    {formatCurrency(booking.amount)}
+                  </span>
+                  <span className="text-ds-12 text-gray-600 ml-1">({booking.paymentMethod})</span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-ds-12 text-gray-600 font-medium block">Payment Status</span>
+                  <Badge tone={booking.paymentStatus === 'PAID' ? 'success' : 'warning'} dot>
+                    {booking.paymentStatus || 'PENDING'}
+                  </Badge>
+                  {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && booking.paymentMethod === 'CASH' && (
+                    <p className="text-[11px] text-amber-800">Awaiting provider cash confirmation</p>
+                  )}
+                  {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && booking.paymentMethod === 'UPI' && (
+                    <p className="text-[11px] text-gray-600">UPI payment pending verification</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 space-y-1">
+                <span className="text-ds-12 font-semibold text-gray-600 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5" /> Doorstep Address
+                </span>
+                <p className="text-ds-14 font-medium text-brand-ink">{booking.address}</p>
+              </div>
+
+              {booking.description && (
+                <div className="pt-2 space-y-1">
+                  <span className="text-ds-12 font-semibold text-gray-600 block">Problem Description</span>
+                  <p className="text-ds-14 text-gray-900 bg-gray-50 p-3 rounded-card border border-gray-100">
+                    &ldquo;{booking.description}&rdquo;
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {canCancel && (
+              <Button
+                variant="danger"
+                fullWidth
+                leftIcon={<XCircle className="w-5 h-5" strokeWidth={2} />}
+                onClick={() => setShowCancelDialog(true)}
+              >
+                Cancel Booking
+              </Button>
+            )}
+          </aside>
+        </div>
+      </div>
+
+      {/* Cancel ConfirmDialog */}
       <ConfirmDialog
         open={showCancelDialog}
         title="Cancel Booking"
