@@ -5,9 +5,9 @@ import { Logo } from '../ui';
 
 export const Footer = () => {
   const isDev = import.meta.env.DEV;
-  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : '');
+  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : 'https://localgo-provider.vercel.app/');
   const rawAdminUrl = import.meta.env.VITE_ADMIN_APP_URL || (isDev ? 'http://localhost:5175' : '');
-  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : '';
+  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : 'https://localgo-provider.vercel.app/';
   const adminPortalUrl = rawAdminUrl && (isDev || !rawAdminUrl.includes('localhost')) ? rawAdminUrl : '';
 
   return (
