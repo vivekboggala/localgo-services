@@ -464,12 +464,9 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* 4. How It Works (3-Column Section with Numbered Steps) */}
+      {/* 4. How It Works */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="text-center max-w-xl mx-auto mb-10 space-y-2">
-          <span className="inline-block px-3 py-1 rounded-pill bg-gray-100 text-ds-12 font-bold text-brand-ink">
-            Simple 3-Step Flow
-          </span>
           <h2 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight">
             How LocalGo works
           </h2>
@@ -483,13 +480,8 @@ export const LandingPage = () => {
                 key={item.title}
                 className="bg-gray-50 border border-gray-200 hover:border-gray-400 rounded-card p-6 space-y-4 transition-colors"
               >
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shadow-card">
-                    <Icon className="w-6 h-6" strokeWidth={2} />
-                  </div>
-                  <span className="font-display font-extrabold text-ds-32 text-gray-200">
-                    {item.step}
-                  </span>
+                <div className="w-12 h-12 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shadow-card">
+                  <Icon className="w-6 h-6" strokeWidth={2} />
                 </div>
                 <div className="space-y-1.5">
                   <h3 className="font-display font-bold text-ds-20 text-brand-ink">{item.title}</h3>

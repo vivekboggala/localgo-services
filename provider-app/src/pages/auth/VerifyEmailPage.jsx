@@ -179,16 +179,13 @@ const VerifyEmailPage = () => {
   if (!email || (!isExistingVerification && !pendingRegistration)) {
     return (
       <AuthSplitLayout badgeText="Partner Verification">
-        <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 text-center space-y-5">
-          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center mx-auto">
-            <Mail className="w-7 h-7" strokeWidth={2} />
-          </div>
+        <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 space-y-5">
           <div className="space-y-1.5">
             <h1 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white">
-              Complete Signup First
+              Complete signup first
             </h1>
             <p className="text-ds-14 text-gray-600 dark:text-gray-400">
-              Complete the 3-step partner registration form so we can send your verification code.
+              Complete partner registration so we can send your verification code.
             </p>
           </div>
           <Button
@@ -208,19 +205,13 @@ const VerifyEmailPage = () => {
   return (
     <AuthSplitLayout badgeText="Partner Email OTP">
       <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center mx-auto">
-            <Mail className="w-7 h-7" strokeWidth={2} />
-          </div>
+        <div className="space-y-2">
           <h1 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white tracking-tight">
-            Verify Partner Email
+            Verify partner email
           </h1>
           <p className="text-ds-14 text-gray-600 dark:text-gray-400">
-            Enter the 6-digit code sent to
+            Enter the 6-digit code sent to <span className="font-semibold text-brand-ink dark:text-brand-yellow">{email}</span>
           </p>
-          <span className="inline-block px-3.5 py-1.5 rounded-pill bg-gray-100 dark:bg-brand-ink border border-gray-200 dark:border-gray-600/35 text-ds-12 font-bold text-brand-ink dark:text-brand-yellow">
-            {email}
-          </span>
         </div>
 
         <OtpInput

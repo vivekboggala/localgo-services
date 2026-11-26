@@ -1,6 +1,6 @@
 import React, { useState, useContext, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
 import { AuthSplitLayout } from '../../components/auth/AuthSplitLayout';
@@ -136,12 +136,9 @@ const VerifyEmailPage = () => {
   if (!email || (!isExistingVerification && !pendingRegistration)) {
     return (
       <AuthSplitLayout badgeText="Email Verification">
-        <div className="bg-brand-white rounded-sheet border border-gray-200 shadow-sheet p-6 sm:p-8 text-center space-y-5">
-          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft border border-brand-yellow text-brand-ink flex items-center justify-center mx-auto">
-            <Mail className="w-7 h-7" strokeWidth={2} />
-          </div>
+        <div className="bg-brand-white rounded-sheet border border-gray-200 shadow-sheet p-6 sm:p-8 space-y-5">
           <div className="space-y-1.5">
-            <h1 className="font-display font-bold text-ds-24 text-brand-ink">Complete Signup First</h1>
+            <h1 className="font-display font-bold text-ds-24 text-brand-ink">Complete signup first</h1>
             <p className="text-ds-14 text-gray-600">
               Fill out registration so we can send a 6-digit verification code to your email.
             </p>
@@ -163,19 +160,13 @@ const VerifyEmailPage = () => {
   return (
     <AuthSplitLayout badgeText="OTP Verification">
       <div className="bg-brand-white rounded-sheet border border-gray-200 shadow-sheet p-6 sm:p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft border border-brand-yellow text-brand-ink flex items-center justify-center mx-auto">
-            <Mail className="w-7 h-7" strokeWidth={2} />
-          </div>
+        <div className="space-y-2">
           <h1 className="font-display font-bold text-ds-24 text-brand-ink tracking-tight">
             Verify your email
           </h1>
           <p className="text-ds-14 text-gray-600">
-            Enter the 6-digit verification code sent to
+            Enter the 6-digit verification code sent to <span className="font-semibold text-brand-ink">{email}</span>
           </p>
-          <span className="inline-block px-3.5 py-1.5 rounded-pill bg-gray-100 border border-gray-200 text-ds-12 font-bold text-brand-ink">
-            {email}
-          </span>
         </div>
 
         <OtpInput

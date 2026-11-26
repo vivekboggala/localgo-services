@@ -17,12 +17,6 @@ import { AuthSplitLayout } from '../components/auth/AuthSplitLayout';
 import { ProviderMap } from '../components/map/ProviderMap';
 import { Button, Chip, Input, PasswordInput, showToast } from '../components/ui';
 
-const SIGNUP_STEPS = [
-  { id: 1, label: 'Account' },
-  { id: 2, label: 'Services' },
-  { id: 3, label: 'Location' },
-];
-
 const getPasswordStrength = (pwd) => {
   if (!pwd) return { score: 0, label: '', barClass: 'bg-gray-200', width: '0%' };
   let score = 0;
@@ -228,43 +222,17 @@ export const SignupPage = () => {
   return (
     <AuthSplitLayout badgeText="Partner Registration" wideForm>
       <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 space-y-6">
-        {/* 3-Step Progress Header */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            {SIGNUP_STEPS.map((s) => {
-              const active = step === s.id;
-              const done = step > s.id;
-              return (
-                <div key={s.id} className="space-y-1.5">
-                  <div
-                    className={`h-2 rounded-pill transition-colors ${
-                      done ? 'bg-status-success' : active ? 'bg-brand-yellow' : 'bg-gray-200 dark:bg-gray-600/35'
-                    }`}
-                  />
-                  <span
-                    className={`block text-[11px] font-bold text-center ${
-                      active || done ? 'text-brand-ink dark:text-brand-white' : 'text-gray-400'
-                    }`}
-                  >
-                    {s.id}. {s.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div>
-            <h2 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white tracking-tight">
-              {step === 1 ? 'Create Partner Account' : step === 2 ? 'Service Details' : 'Base Location & Radius'}
-            </h2>
-            <p className="text-ds-12 text-gray-600 dark:text-gray-400 mt-0.5">
-              {step === 1
-                ? 'Step 1 of 3 — Enter your contact and login details'
-                : step === 2
-                  ? 'Step 2 of 3 — Select your categories, experience, and coverage'
-                  : 'Step 3 of 3 — Tap map or detect GPS to set your dispatch pin'}
-            </p>
-          </div>
+        <div>
+          <h2 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white tracking-tight">
+            {step === 1 ? 'Create partner account' : step === 2 ? 'Service details' : 'Base location & radius'}
+          </h2>
+          <p className="text-ds-12 text-gray-600 dark:text-gray-400 mt-0.5">
+            {step === 1
+              ? 'Enter your contact and login details'
+              : step === 2
+                ? 'Select your categories, experience, and coverage'
+                : 'Tap map or detect GPS to set your dispatch pin'}
+          </p>
         </div>
 
         {error && (

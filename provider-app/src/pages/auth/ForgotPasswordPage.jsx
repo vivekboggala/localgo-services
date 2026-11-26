@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { KeyRound, Mail, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import { Mail, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../../api/axios';
 import { AuthSplitLayout } from '../../components/auth/AuthSplitLayout';
 import { Button, Input, OtpInput, PasswordInput, showToast } from '../../components/ui';
-
-const RESET_STEPS = [
-  { id: 1, label: 'Email' },
-  { id: 2, label: 'Verify OTP' },
-  { id: 3, label: 'Reset' },
-];
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
@@ -149,31 +143,9 @@ const ForgotPasswordPage = () => {
   return (
     <AuthSplitLayout badgeText="Partner Account Recovery">
       <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 space-y-6">
-        <div className="grid grid-cols-3 gap-2">
-          {RESET_STEPS.map((s) => {
-            const active = step === s.id;
-            const done = step > s.id;
-            return (
-              <div key={s.id} className="space-y-1.5">
-                <div
-                  className={`h-2 rounded-pill transition-colors ${
-                    done ? 'bg-status-success' : active ? 'bg-brand-yellow' : 'bg-gray-200 dark:bg-gray-600/35'
-                  }`}
-                />
-                <span className={`block text-[11px] font-bold text-center ${active || done ? 'text-brand-ink dark:text-brand-white' : 'text-gray-400'}`}>
-                  {s.id}. {s.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center mx-auto">
-            {step === 2 ? <ShieldCheck className="w-7 h-7" /> : step === 3 ? <Lock className="w-7 h-7" /> : <KeyRound className="w-7 h-7" />}
-          </div>
+        <div className="space-y-1.5">
           <h1 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white tracking-tight">
-            {step === 1 ? 'Forgot Password?' : step === 2 ? 'Verify Reset Code' : 'Create New Password'}
+            {step === 1 ? 'Forgot password?' : step === 2 ? 'Enter verification code' : 'Create new password'}
           </h1>
           <p className="text-ds-14 text-gray-600 dark:text-gray-400">
             {step === 1

@@ -4,12 +4,6 @@ import { Mail, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide
 import api from '../../api/axios';
 import { Badge, Button, Input, Logo, OtpInput, PasswordInput, showToast } from '../../components/ui';
 
-const RESET_STEPS = [
-  { id: 1, label: 'Email' },
-  { id: 2, label: 'Verify OTP' },
-  { id: 3, label: 'New Password' },
-];
-
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -171,29 +165,9 @@ const ForgotPasswordPage = () => {
           </div>
         </div>
 
-        {/* 3-Step Indicator */}
-        <div className="grid grid-cols-3 gap-2">
-          {RESET_STEPS.map((s) => {
-            const done = step > s.id;
-            const active = step === s.id;
-            return (
-              <div key={s.id} className="space-y-1.5">
-                <div
-                  className={`h-2 rounded-pill transition-colors ${
-                    done ? 'bg-status-success' : active ? 'bg-brand-yellow' : 'bg-gray-200'
-                  }`}
-                />
-                <span className={`block text-[11px] font-bold text-center ${active || done ? 'text-brand-ink' : 'text-gray-400'}`}>
-                  {s.id}. {s.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="text-center space-y-1">
+        <div className="space-y-1">
           <h1 className="font-display font-bold text-ds-24 text-brand-ink tracking-tight">
-            {step === 1 ? 'Reset Admin Password' : step === 2 ? 'Verify Reset Code' : 'Create New Password'}
+            {step === 1 ? 'Reset admin password' : step === 2 ? 'Enter verification code' : 'Create new password'}
           </h1>
           <p className="text-ds-12 text-gray-600">
             {step === 1
