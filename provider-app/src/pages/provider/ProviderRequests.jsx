@@ -156,7 +156,7 @@ export const ProviderRequests = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Incoming Requests"
         subtitle="Accept within 10 minutes before auto-expiry"
@@ -192,7 +192,7 @@ export const ProviderRequests = () => {
           title={available ? "You're online, waiting for requests" : 'You are currently offline'}
           description={
             available
-              ? 'Stay on duty — nearby requests with countdown timers will ring in automatically.'
+              ? 'Stay on duty — nearby requests with countdown timers will appear automatically.'
               : 'Go online so nearby customers can send doorstep requests to you.'
           }
           actionLabel={!available ? 'Go Online Now' : null}
@@ -200,7 +200,7 @@ export const ProviderRequests = () => {
           onAction={!available ? () => toggleAvailability(true) : null}
         />
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {requests.map((req) => (
             <RequestCard
               key={req.id}

@@ -18,6 +18,7 @@ import {
   Wallet,
   Calendar,
   ArrowUpRight,
+  ArrowUpDown,
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -45,6 +46,7 @@ export const ProviderEarnings = () => {
   const navigate = useNavigate();
 
   const [periodKey, setPeriodKey] = useState('7');
+  const [sortField, setSortField] = useState('date_desc');
   const [totalRealized, setTotalRealized] = useState(0);
   const [trendData, setTrendData] = useState([]);
   const [completedBookings, setCompletedBookings] = useState([]);
@@ -92,14 +94,22 @@ export const ProviderEarnings = () => {
     cutoff.setDate(now.getDate() - (days - 1));
     cutoff.setHours(0, 0, 0, 0);
 
-    return completedBookings.filter((b) => {
+    const list = completedBookings.filter((b) => {
       const dateStr = b.scheduledDate || (b.completedAt ? String(b.completedAt).split('T')[0] : '');
       if (days === 1) return dateStr === todayStr;
       if (!dateStr) return true;
       const d = new Date(dateStr);
       return isNaN(d.getTime()) ? true : d >= cutoff;
     });
-  }, [completedBookings, days]);
+
+    return [...list].sort((a, b) => {
+      if (sortField === 'amount_desc') return (Number(b.amount) || 0) - (Number(a.amount) || 0);
+      if (sortField === 'amount_asc') return (Number(a.amount) || 0) - (Number(b.amount) || 0);
+      const da = `${a.scheduledDate || ''}T${a.scheduledTime || ''}`;
+      const dbStr = `${b.scheduledDate || ''}T${b.scheduledTime || ''}`;
+      return sortField === 'date_asc' ? da.localeCompare(dbStr) : dbStr.localeCompare(da);
+    });
+  }, [completedBookings, days, sortField]);
 
   const stats = useMemo(() => {
     const paidList = filteredTransactions.filter((b) => b.paymentStatus === 'PAID');
@@ -132,7 +142,7 @@ export const ProviderEarnings = () => {
   }, [filteredTransactions]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Earnings & Payouts"
         subtitle={`Lifetime realized: ${formatCurrency(totalRealized)}`}
@@ -151,8 +161,8 @@ export const ProviderEarnings = () => {
 
       {error && <ErrorState compact message={error} onRetry={fetchEarningsData} />}
 
-      {/* Period Segmented Control + Big Earnings Total Hero */}
-      <div className="bg-gray-900 dark:bg-gray-900 text-brand-white rounded-sheet p-6 border border-gray-600/30 shadow-sheet space-y-5 bg-dark-grid-pattern">
+      {/* 4 Stat Cards + Period Segmented Hero */}
+      <div className="bg-gray-900 text-brand-white rounded-sheet p-6 border border-gray-600/30 shadow-sheet space-y-6 bg-dark-grid-pattern">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 block">
@@ -169,50 +179,49 @@ export const ProviderEarnings = () => {
           <Tabs tabs={PERIOD_TABS} activeTab={periodKey} onChange={setPeriodKey} />
         </div>
 
-        {/* 4 Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-gray-600/25">
-          <div className="bg-brand-ink/80 rounded-card p-3.5 border border-gray-600/25">
-            <span className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-              <Briefcase className="w-3.5 h-3.5 text-brand-yellow" /> Jobs
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-gray-600/25">
+          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4 text-brand-yellow" /> Completed Jobs
             </span>
-            <div className="font-display font-bold text-ds-20 text-brand-white mt-1">
+            <div className="font-display font-bold text-ds-24 text-brand-white mt-1.5">
               {stats.jobsCount}
             </div>
           </div>
 
-          <div className="bg-brand-ink/80 rounded-card p-3.5 border border-gray-600/25">
-            <span className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5 text-brand-yellow" /> Avg / Job
+          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-brand-yellow" /> Avg / Job
             </span>
-            <div className="font-display font-bold text-ds-20 text-brand-white mt-1">
+            <div className="font-display font-bold text-ds-24 text-brand-white mt-1.5">
               {formatCurrency(stats.avgPerJob)}
             </div>
           </div>
 
-          <div className="bg-brand-ink/80 rounded-card p-3.5 border border-gray-600/25">
-            <span className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-              <Percent className="w-3.5 h-3.5 text-status-success" /> Platform Fees
+          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
+              <Percent className="w-4 h-4 text-status-success" /> Platform Fees
             </span>
-            <div className="font-display font-bold text-ds-20 text-status-success mt-1">
+            <div className="font-display font-bold text-ds-24 text-status-success mt-1.5">
               {formatCurrency(stats.platformFees)}
             </div>
           </div>
 
-          <div className="bg-brand-ink/80 rounded-card p-3.5 border border-gray-600/25">
-            <span className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-brand-yellow" /> Net Payout
+          <div className="bg-brand-ink/80 rounded-card p-4 border border-gray-600/25">
+            <span className="text-ds-12 font-semibold text-gray-400 flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-brand-yellow" /> Net Payout
             </span>
-            <div className="font-display font-bold text-ds-20 text-brand-yellow mt-1">
+            <div className="font-display font-bold text-ds-24 text-brand-yellow mt-1.5">
               {formatCurrency(stats.net)}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Polished Recharts Yellow Bar Chart */}
-      <div className="bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 rounded-card p-5 shadow-card space-y-4">
+      {/* Yellow-Bar Chart */}
+      <div className="bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 rounded-card p-6 shadow-card space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-display font-bold text-ds-16 text-brand-ink dark:text-brand-white flex items-center gap-2">
+          <h2 className="font-display font-bold text-ds-20 text-brand-ink dark:text-brand-white flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-brand-yellow" />
             Daily Earnings Chart
           </h2>
@@ -220,11 +229,11 @@ export const ProviderEarnings = () => {
         </div>
 
         {loading ? (
-          <div className="h-60 bg-gray-200 dark:bg-brand-ink rounded-card animate-pulse" />
+          <div className="h-72 bg-gray-200 dark:bg-brand-ink rounded-card animate-pulse" />
         ) : (
-          <div className="h-64 w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartBars} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+              <BarChart data={chartBars} margin={{ top: 10, right: 12, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2a2a33" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9A9AA5' }} tickLine={false} axisLine={false} />
                 <YAxis
@@ -252,7 +261,7 @@ export const ProviderEarnings = () => {
         )}
       </div>
 
-      {/* Transaction List Grouped by Date */}
+      {/* Transactions Section */}
       <section className="space-y-4">
         <h2 className="font-display font-bold text-ds-20 text-brand-ink dark:text-brand-white">
           Completed Transactions
@@ -260,52 +269,112 @@ export const ProviderEarnings = () => {
 
         {loading ? (
           <SkeletonCard />
-        ) : groupedByDate.length === 0 ? (
+        ) : filteredTransactions.length === 0 ? (
           <EmptyState
             icon={<Calendar className="w-7 h-7" />}
             title="No completed jobs in this period"
             description="Switch to 30 Days or complete an assigned service to see itemized payouts."
           />
         ) : (
-          <div className="space-y-5">
-            {groupedByDate.map(([dateStr, items]) => (
-              <div key={dateStr} className="space-y-2.5">
-                <h3 className="text-ds-12 font-bold uppercase tracking-wider text-gray-400 px-1">
-                  {dateStr}
-                </h3>
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => navigate(`/jobs/${item.id}`)}
-                      className="w-full text-left bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 hover:border-brand-yellow rounded-card p-4 flex items-center justify-between gap-3 transition-colors"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="font-display font-bold text-ds-14 text-brand-ink dark:text-brand-white truncate">
-                          {item.serviceName}
+          <>
+            {/* Mobile Grouped Date Cards (< lg) */}
+            <div className="lg:hidden space-y-5">
+              {groupedByDate.map(([dateStr, items]) => (
+                <div key={dateStr} className="space-y-2.5">
+                  <h3 className="text-ds-12 font-bold uppercase tracking-wider text-gray-400 px-1">
+                    {dateStr}
+                  </h3>
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => navigate(`/jobs/${item.id}`)}
+                        className="w-full text-left bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 hover:border-brand-yellow rounded-card p-4 flex items-center justify-between gap-3 transition-colors"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <div className="font-display font-bold text-ds-14 text-brand-ink dark:text-brand-white truncate">
+                            {item.serviceName}
+                          </div>
+                          <div className="text-ds-12 text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                            <span>{item.customerName}</span>
+                            <span>&bull;</span>
+                            <Badge tone={item.paymentStatus === 'PAID' ? 'success' : 'warning'} className="py-0.5 px-2 text-[10px]">
+                              {item.paymentMethod} • {item.paymentStatus || 'PENDING'}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-ds-12 text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                          <span>{item.customerName}</span>
-                          <span>&bull;</span>
-                          <Badge tone={item.paymentStatus === 'PAID' ? 'success' : 'warning'} className="py-0.5 px-2 text-[10px]">
-                            {item.paymentMethod} • {item.paymentStatus || 'PENDING'}
-                          </Badge>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-display font-extrabold text-ds-16 text-brand-ink dark:text-brand-yellow">
-                          +{formatCurrency(item.amount)}
-                        </span>
-                        <ArrowUpRight className="w-4 h-4 text-gray-400" />
-                      </div>
-                    </button>
-                  ))}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-display font-extrabold text-ds-16 text-brand-ink dark:text-brand-yellow">
+                            +{formatCurrency(item.amount)}
+                          </span>
+                          <ArrowUpRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* Desktop Sortable Table (lg+) */}
+            <div className="hidden lg:block bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/25 rounded-card shadow-card overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 dark:bg-brand-ink/80 border-b border-gray-200 dark:border-gray-600/25">
+                  <tr className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <th className="py-3.5 px-5">
+                      <button
+                        type="button"
+                        onClick={() => setSortField((s) => (s === 'date_desc' ? 'date_asc' : 'date_desc'))}
+                        className="inline-flex items-center gap-1 hover:text-brand-yellow cursor-pointer"
+                      >
+                        Date <ArrowUpDown className="w-3 h-3" />
+                      </button>
+                    </th>
+                    <th className="py-3.5 px-4">Service</th>
+                    <th className="py-3.5 px-4">Customer</th>
+                    <th className="py-3.5 px-4">Payment</th>
+                    <th className="py-3.5 px-5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setSortField((s) => (s === 'amount_desc' ? 'amount_asc' : 'amount_desc'))}
+                        className="inline-flex items-center gap-1 hover:text-brand-yellow cursor-pointer"
+                      >
+                        Net Amount <ArrowUpDown className="w-3 h-3" />
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-600/20 text-ds-14">
+                  {filteredTransactions.map((item) => (
+                    <tr
+                      key={item.id}
+                      onClick={() => navigate(`/jobs/${item.id}`)}
+                      className="hover:bg-gray-50 dark:hover:bg-brand-ink/50 cursor-pointer transition-colors"
+                    >
+                      <td className="py-4 px-5 whitespace-nowrap">
+                        <div className="font-semibold text-brand-ink dark:text-brand-white">{item.scheduledDate}</div>
+                        <div className="text-[11px] text-gray-400">{item.scheduledTime}</div>
+                      </td>
+                      <td className="py-4 px-4 font-display font-bold text-brand-ink dark:text-brand-white">
+                        {item.serviceName}
+                      </td>
+                      <td className="py-4 px-4 text-gray-600 dark:text-gray-200">{item.customerName}</td>
+                      <td className="py-4 px-4">
+                        <Badge tone={item.paymentStatus === 'PAID' ? 'success' : 'warning'} dot>
+                          {item.paymentMethod} • {item.paymentStatus || 'PENDING'}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5 text-right font-display font-extrabold text-brand-ink dark:text-brand-yellow whitespace-nowrap">
+                        +{formatCurrency(item.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

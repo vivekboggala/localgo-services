@@ -5,6 +5,7 @@ import { Wrench, RotateCw, Calendar, Clock, MapPin, User, ArrowRight } from 'luc
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { providerPortalService } from '../../services/providerPortalService';
+import { ProviderJobDetailPanel } from './ProviderJobDetailPage';
 import {
   Button,
   EmptyState,
@@ -29,6 +30,7 @@ export const ProviderActiveJob = () => {
   const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,10 +40,17 @@ export const ProviderActiveJob = () => {
     providerPortalService.getProviderBookings(null, 0, 50)
       .then((data) => {
         const list = Array.isArray(data) ? data : (data?.content || []);
-        const activeList = list.filter((b) =>
-          ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
+        const activeList = sortByScheduledTime(
+          list.filter((b) => ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status))
         );
-        setJobs(sortByScheduledTime(activeList));
+        setJobs(activeList);
+        if (activeList.length > 0) {
+          setSelectedJobId((prev) =>
+            prev && activeList.some((j) => j.id === prev) ? prev : activeList[0].id
+          );
+        } else {
+          setSelectedJobId(null);
+        }
       })
       .catch((err) => {
         setJobs([]);
@@ -71,7 +80,13 @@ export const ProviderActiveJob = () => {
             liveActive.push({ id: docSnap.id, ...data, amount: amountInRupees });
           }
         });
-        setJobs(sortByScheduledTime(liveActive));
+        const sorted = sortByScheduledTime(liveActive);
+        setJobs(sorted);
+        if (sorted.length > 0) {
+          setSelectedJobId((prev) =>
+            prev && sorted.some((j) => j.id === prev) ? prev : sorted[0].id
+          );
+        }
         setLoading(false);
       },
       (err) => {
@@ -82,11 +97,21 @@ export const ProviderActiveJob = () => {
     return () => unsubscribe();
   }, [uid]);
 
+  const handleCardSelect = (jobId) => {
+    if (window.innerWidth >= 1024) {
+      setSelectedJobId(jobId);
+    } else {
+      navigate(`/jobs/${jobId}`);
+    }
+  };
+
+  const selectedJob = jobs.find((j) => j.id === selectedJobId) || jobs[0] || null;
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Active Jobs"
-        subtitle="Sorted by upcoming scheduled time"
+        subtitle="Master-detail dispatch queue sorted by scheduled time"
         actions={
           <Button
             variant="secondary"
@@ -113,74 +138,95 @@ export const ProviderActiveJob = () => {
           onAction={() => navigate('/requests')}
         />
       ) : (
-        <div className="space-y-4">
-          {jobs.map((job) => {
-            const ServiceIcon = getServiceIconComponent(job.serviceName);
-            return (
-              <div
-                key={job.id}
-                onClick={() => navigate(`/jobs/${job.id}`)}
-                className="bg-brand-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600/30 hover:border-brand-yellow rounded-sheet p-5 shadow-card cursor-pointer space-y-4 transition-all"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-card bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center shrink-0">
-                      <ServiceIcon className="w-6 h-6" strokeWidth={2} />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT (4 Cols): Active Job Queue */}
+          <div className="lg:col-span-4 space-y-3.5">
+            {jobs.map((job) => {
+              const ServiceIcon = getServiceIconComponent(job.serviceName);
+              const isSelected = selectedJob?.id === job.id;
+              return (
+                <div
+                  key={job.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleCardSelect(job.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleCardSelect(job.id);
+                    }
+                  }}
+                  className={`bg-brand-white dark:bg-gray-900 rounded-sheet p-4 shadow-card cursor-pointer space-y-3 transition-all border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-yellow ${
+                    isSelected
+                      ? 'lg:border-brand-yellow border-gray-200 dark:border-brand-yellow'
+                      : 'border-gray-200 dark:border-gray-600/30 hover:border-brand-yellow/60'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-card bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center shrink-0">
+                        <ServiceIcon className="w-5 h-5" strokeWidth={2} />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="font-display font-bold text-ds-14 text-brand-ink dark:text-brand-white truncate">
+                          {job.serviceName}
+                        </h2>
+                        <p className="text-ds-12 text-gray-600 dark:text-gray-200 inline-flex items-center gap-1 mt-0.5">
+                          <User className="w-3.5 h-3.5 text-brand-yellow" />
+                          <span className="truncate">{job.customerName}</span>
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h2 className="font-display font-bold text-ds-16 text-brand-ink dark:text-brand-white truncate">
-                        {job.serviceName}
-                      </h2>
-                      <p className="text-ds-12 text-gray-600 dark:text-gray-200 inline-flex items-center gap-1.5 mt-0.5">
-                        <User className="w-3.5 h-3.5 text-brand-yellow" />
-                        <span>{job.customerName}</span>
-                      </p>
+                    <StatusBadge status={job.status} />
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-brand-ink rounded-card p-3 border border-gray-200 dark:border-gray-600/25 space-y-1.5 text-ds-12">
+                    <div className="flex flex-wrap items-center gap-3 font-semibold text-brand-ink dark:text-brand-white">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-brand-yellow" /> {job.scheduledDate}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-brand-yellow" /> {job.scheduledTime}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-1.5 text-gray-600 dark:text-gray-400">
+                      <MapPin className="w-3.5 h-3.5 text-brand-yellow shrink-0 mt-0.5" />
+                      <span className="line-clamp-1">{job.address}</span>
                     </div>
                   </div>
-                  <StatusBadge status={job.status} />
-                </div>
 
-                <div className="bg-gray-50 dark:bg-brand-ink rounded-card p-3.5 border border-gray-200 dark:border-gray-600/25 space-y-2 text-ds-12">
-                  <div className="flex flex-wrap items-center gap-4 font-semibold text-brand-ink dark:text-brand-white">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-brand-yellow" /> {job.scheduledDate}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-brand-yellow" /> {job.scheduledTime}
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2 text-gray-600 dark:text-gray-400">
-                    <MapPin className="w-4 h-4 text-brand-yellow shrink-0 mt-0.5" />
-                    <span>{job.address}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase text-gray-400 block">
-                      {job.paymentMethod} Job Value
-                    </span>
-                    <span className="font-display font-extrabold text-ds-20 text-brand-ink dark:text-brand-yellow">
+                  <div className="flex items-center justify-between gap-2 pt-0.5">
+                    <span className="font-display font-extrabold text-ds-16 text-brand-ink dark:text-brand-yellow">
                       {formatCurrency(job.amount)}
                     </span>
-                  </div>
 
-                  <Button
-                    variant="accent"
-                    size="md"
-                    rightIcon={<ArrowRight className="w-5 h-5" strokeWidth={2.2} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/jobs/${job.id}`);
-                    }}
-                    className="min-w-[140px]"
-                  >
-                    Continue
-                  </Button>
+                    <Button
+                      variant="accent"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCardSelect(job.id);
+                      }}
+                      rightIcon={<ArrowRight className="w-4 h-4" strokeWidth={2.2} />}
+                      className="min-h-[38px] py-1.5 px-3 text-ds-12"
+                    >
+                      {isSelected ? 'Selected' : 'Open'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* RIGHT (8 Cols): Selected Job Master-Detail View */}
+          <div className="hidden lg:block lg:col-span-8">
+            {selectedJob && (
+              <ProviderJobDetailPanel
+                jobId={selectedJob.id}
+                embedded={true}
+                onStatusChanged={fetchJobs}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>

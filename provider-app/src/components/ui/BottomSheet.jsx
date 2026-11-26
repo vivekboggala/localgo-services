@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { IconButton } from './IconButton';
 
+/**
+ * Responsive sheet: draggable bottom sheet below lg (<1024px),
+ * centered modal or right-side drawer on desktop (lg and up).
+ */
 export const BottomSheet = ({
   open,
   onClose,
@@ -10,6 +14,7 @@ export const BottomSheet = ({
   children,
   footer = null,
   maxHeightClass = 'max-h-[85vh]',
+  desktopPresentation = 'modal', // 'modal' | 'drawer'
 }) => {
   const [dragY, setDragY] = useState(0);
   const startYRef = useRef(null);
@@ -28,14 +33,19 @@ export const BottomSheet = ({
 
   if (!open) return null;
 
+  const isDrawer = desktopPresentation === 'drawer';
+
   const handlePointerDown = (e) => {
+    if (window.innerWidth >= 1024) return;
     startYRef.current = e.clientY;
   };
 
   const handlePointerMove = (e) => {
     if (startYRef.current === null) return;
     const delta = e.clientY - startYRef.current;
-    if (delta > 0) setDragY(delta);
+    if (delta > 0) {
+      setDragY(delta);
+    }
   };
 
   const handlePointerUp = () => {
@@ -51,26 +61,32 @@ export const BottomSheet = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-brand-ink/75 backdrop-blur-[2px]"
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-brand-ink/75 backdrop-blur-[2px] ${
+        isDrawer ? 'lg:items-stretch lg:justify-end' : 'sm:items-center'
+      }`}
       role="dialog"
       aria-modal="true"
-      aria-label={title || 'Bottom sheet'}
+      aria-label={title || 'Dialog'}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
         style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
-        className={`w-full sm:max-w-lg bg-brand-white dark:bg-gray-900 rounded-t-sheet sm:rounded-sheet shadow-sheet border-t sm:border border-gray-200 dark:border-gray-600/30 flex flex-col overflow-hidden animate-sheet-up transition-transform duration-150 ${maxHeightClass}`}
+        className={`w-full bg-brand-white dark:bg-gray-900 shadow-sheet border-t border-gray-200 dark:border-gray-600/30 flex flex-col overflow-hidden animate-sheet-up transition-transform duration-150 ${
+          isDrawer
+            ? `rounded-t-sheet sm:max-w-lg sm:rounded-sheet lg:max-w-[440px] lg:h-full lg:max-h-screen lg:rounded-none lg:rounded-l-sheet lg:border-l lg:border-t-0 ${maxHeightClass}`
+            : `rounded-t-sheet sm:max-w-lg lg:max-w-xl sm:rounded-sheet sm:border ${maxHeightClass}`
+        }`}
       >
         <div
-          className="pt-3 pb-2 px-5 cursor-grab active:cursor-grabbing select-none touch-none border-b border-gray-100 dark:border-gray-600/20"
+          className="pt-3 pb-3 px-5 cursor-grab lg:cursor-default active:cursor-grabbing select-none touch-none lg:touch-auto border-b border-gray-100 dark:border-gray-600/20"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          <div className="w-10 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-pill mx-auto mb-3" aria-hidden="true" />
+          <div className="w-10 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-pill mx-auto mb-3 lg:hidden" aria-hidden="true" />
           <div className="flex items-start justify-between gap-3">
             <div>
               {title && <h3 className="font-display font-bold text-ds-20 text-brand-ink dark:text-brand-white">{title}</h3>}
@@ -79,7 +95,7 @@ export const BottomSheet = ({
             {onClose && (
               <IconButton
                 icon={<X className="w-5 h-5" strokeWidth={2} />}
-                label="Close sheet"
+                label="Close dialog"
                 variant="ghost"
                 rounded="pill"
                 onClick={onClose}

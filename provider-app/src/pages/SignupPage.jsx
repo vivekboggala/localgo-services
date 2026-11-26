@@ -226,7 +226,7 @@ export const SignupPage = () => {
   };
 
   return (
-    <AuthSplitLayout badgeText="Partner Registration">
+    <AuthSplitLayout badgeText="Partner Registration" wideForm>
       <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 space-y-6">
         {/* 3-Step Progress Header */}
         <div className="space-y-4">
@@ -278,7 +278,7 @@ export const SignupPage = () => {
         )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {/* STEP 1: ACCOUNT */}
+          {/* STEP 1: ACCOUNT (2-col on desktop) */}
           {step === 1 && (
             <>
               <Input
@@ -290,57 +290,61 @@ export const SignupPage = () => {
                 leftIcon={<User className="w-5 h-5" strokeWidth={2} />}
               />
 
-              <Input
-                label="Email Address"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="partner@example.com"
-                leftIcon={<Mail className="w-5 h-5" strokeWidth={2} />}
-              />
-
-              <Input
-                label="Phone Number"
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="9876543210"
-                leftIcon={<Phone className="w-5 h-5" strokeWidth={2} />}
-              />
-
-              <div className="space-y-2">
-                <PasswordInput
-                  label="Password"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Email Address"
+                  type="email"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="partner@example.com"
+                  leftIcon={<Mail className="w-5 h-5" strokeWidth={2} />}
                 />
-                {password.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                      <span className="text-gray-400">Strength</span>
-                      <span className="text-brand-ink dark:text-brand-white">{strength.label}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-gray-200 dark:bg-brand-ink rounded-pill overflow-hidden">
-                      <div
-                        className={`h-full rounded-pill transition-all ${strength.barClass}`}
-                        style={{ width: strength.width }}
-                      />
-                    </div>
-                  </div>
-                )}
+
+                <Input
+                  label="Phone Number"
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="9876543210"
+                  leftIcon={<Phone className="w-5 h-5" strokeWidth={2} />}
+                />
               </div>
 
-              <PasswordInput
-                label="Confirm Password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter password"
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div className="space-y-2">
+                  <PasswordInput
+                    label="Password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                  />
+                  {password.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-gray-400">Strength</span>
+                        <span className="text-brand-ink dark:text-brand-white">{strength.label}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-gray-200 dark:bg-brand-ink rounded-pill overflow-hidden">
+                        <div
+                          className={`h-full rounded-pill transition-all ${strength.barClass}`}
+                          style={{ width: strength.width }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <PasswordInput
+                  label="Confirm Password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                />
+              </div>
 
               <Button
                 variant="accent"
@@ -387,7 +391,7 @@ export const SignupPage = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Experience (Years)"
                   type="number"
@@ -454,7 +458,7 @@ export const SignupPage = () => {
             </>
           )}
 
-          {/* STEP 3: LOCATION (GPS DETECT + MAP PIN) */}
+          {/* STEP 3: LOCATION */}
           {step === 3 && (
             <>
               <div className="space-y-2.5">
@@ -489,16 +493,24 @@ export const SignupPage = () => {
                 </p>
               </div>
 
-              <Input
-                label="Primary Service Area Name"
-                required
-                value={serviceArea}
-                onChange={(e) => setServiceArea(e.target.value)}
-                placeholder="e.g. Indiranagar / Madanapalle Town"
-                leftIcon={<MapPin className="w-5 h-5" strokeWidth={2} />}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Primary Service Area Name"
+                  required
+                  value={serviceArea}
+                  onChange={(e) => setServiceArea(e.target.value)}
+                  placeholder="e.g. Indiranagar / Madanapalle Town"
+                  leftIcon={<MapPin className="w-5 h-5" strokeWidth={2} />}
+                />
+                <Input
+                  label="Street Address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Shop / Street / Landmark"
+                />
+              </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="City"
                   value={city}

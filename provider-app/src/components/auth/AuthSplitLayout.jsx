@@ -10,7 +10,7 @@ const PARTNER_PERKS = [
   { icon: Wallet, title: 'Track Realized Earnings', desc: 'Daily payouts summary & completed job logs' },
 ];
 
-export const AuthSplitLayout = ({ children, badgeText = 'LocalGo Partner' }) => {
+export const AuthSplitLayout = ({ children, badgeText = 'LocalGo Partner', wideForm = false }) => {
   const { isDark } = useTheme();
 
   return (
@@ -59,7 +59,7 @@ export const AuthSplitLayout = ({ children, badgeText = 'LocalGo Partner' }) => 
 
       {/* Right Column */}
       <div className="lg:col-span-7 flex flex-col justify-center items-center px-4 py-8 sm:px-8 bg-gray-50 dark:bg-brand-ink">
-        <div className="w-full max-w-lg space-y-6">
+        <div className={`w-full space-y-6 ${wideForm ? 'max-w-2xl' : 'max-w-lg'}`}>
           <div className="flex lg:hidden justify-center">
             <Link to="/">
               <Logo variant={isDark ? 'dark' : 'light'} size="md" subtitle="Partner" />
