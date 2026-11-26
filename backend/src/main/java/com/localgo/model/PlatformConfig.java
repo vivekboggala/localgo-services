@@ -21,6 +21,14 @@ public class PlatformConfig {
     private Long cancellationFeeBps;         // cancellation fee in basis points
     private Long completionAutoConfirmHours; // auto‑confirm after provider marks done
     private Long disputeWindowHours;         // window for customer to open a dispute
+    // Feature flags for each phase (true = enabled)
+    private Boolean enablePhase0;
+    private Boolean enablePhase1;
+    private Boolean enablePhase2;
+    private Boolean enablePhase3;
+    private Boolean enablePhase4;
+    private Boolean enablePhase5;
+    private Boolean enablePhase6;
     private Long statsWindowDays;               // days for rolling provider stats window
     private Long suspensionStrikes;            // strikes threshold for suspension
     private Long suspensionWindowDays;          // days window for counting strikes
