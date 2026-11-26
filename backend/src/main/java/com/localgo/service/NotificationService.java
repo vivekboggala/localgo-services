@@ -1,6 +1,8 @@
 package com.localgo.service;
 
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.Query;
 import com.localgo.dto.response.NotificationResponse;
 import com.localgo.enums.NotificationType;
 import com.localgo.model.NotificationDoc;
@@ -25,6 +27,7 @@ public class NotificationService {
             NotificationDoc doc = NotificationDoc.builder()
                     .id(docRef.getId())
                     .userId(userId)
+                    .bookingId(bookingId)
                     .title(title)
                     .message(message)
                     .type(type != null ? type.name() : NotificationType.BOOKING_CREATED.name())
@@ -34,6 +37,71 @@ public class NotificationService {
             docRef.set(doc).get();
         } catch (Exception e) {
             log.warn("Failed to create notification for user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    public Map<String, Object> getNotificationsPaginated(String userId, int limit, String cursor) {
+        int pageSize = Math.max(1, Math.min(limit, 100));
+        try {
+            var notifCol = firestore.collection("notifications");
+            Query query = notifCol
+                    .whereEqualTo("userId", userId)
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .limit(pageSize + 1);
+
+            if (cursor != null && !cursor.isBlank()) {
+                DocumentSnapshot cursorSnap = notifCol.document(cursor.trim()).get().get();
+                if (cursorSnap.exists()) {
+                    query = query.startAfter(cursorSnap);
+                }
+            }
+
+            var snapshot = query.get().get();
+            List<NotificationResponse> page = new ArrayList<>();
+            boolean hasMore = false;
+            String nextCursor = null;
+
+            for (var doc : snapshot.getDocuments()) {
+                NotificationDoc n = doc.toObject(NotificationDoc.class);
+                if (n == null) continue;
+                n.setId(doc.getId());
+                if (page.size() < pageSize) {
+                    page.add(mapToResponse(n));
+                    nextCursor = doc.getId();
+                } else {
+                    hasMore = true;
+                    break;
+                }
+            }
+
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("content", page);
+            res.put("limit", pageSize);
+            res.put("nextCursor", hasMore ? nextCursor : null);
+            res.put("hasMore", hasMore);
+            return res;
+        } catch (Exception e) {
+            log.warn("Paged query fallback for notifications ({}): {}", userId, e.getMessage());
+            List<NotificationResponse> all = getNotificationsForUser(userId);
+            int startIdx = 0;
+            if (cursor != null && !cursor.isBlank()) {
+                for (int i = 0; i < all.size(); i++) {
+                    if (cursor.trim().equals(all.get(i).getId())) {
+                        startIdx = i + 1;
+                        break;
+                    }
+                }
+            }
+            int endIdx = Math.min(all.size(), startIdx + pageSize);
+            List<NotificationResponse> slice = startIdx < endIdx ? all.subList(startIdx, endIdx) : List.of();
+            boolean hasMore = endIdx < all.size();
+            String nextCursor = hasMore && !slice.isEmpty() ? slice.get(slice.size() - 1).getId() : null;
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("content", slice);
+            res.put("limit", pageSize);
+            res.put("nextCursor", nextCursor);
+            res.put("hasMore", hasMore);
+            return res;
         }
     }
 
@@ -113,12 +181,14 @@ public class NotificationService {
             try { t = NotificationType.valueOf(doc.getType()); } catch (Exception ignored) {}
         }
 
+        boolean readFlag = Boolean.TRUE.equals(doc.getRead());
         return NotificationResponse.builder()
                 .id(doc.getId())
+                .bookingId(doc.getBookingId())
                 .type(t)
                 .title(doc.getTitle())
                 .message(doc.getMessage())
-                .isRead(doc.getRead() != null ? doc.getRead() : false)
+                .read(readFlag)
                 .createdAt(createdLdt)
                 .build();
     }

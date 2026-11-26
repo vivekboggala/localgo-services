@@ -1,16 +1,16 @@
-import React, { useState, useContext, useMemo } from 'react';
-import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Mail, ArrowRight } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import React, { useState, useContext, useMemo, useEffect } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { Mail, ArrowRight, ArrowLeft, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import api from '../../api/axios';
 import { AuthContext } from '../../context/AuthContext';
-import OtpInput from '../../components/common/OtpInput';
+import { AuthSplitLayout } from '../../components/auth/AuthSplitLayout';
+import { Badge, Button, OtpInput, showToast } from '../../components/ui';
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { registerCustomer, registerProvider } = useContext(AuthContext);
+  const { registerProvider } = useContext(AuthContext);
 
   const isExistingVerification = searchParams.get('mode') === 'verify-existing';
   const queryEmail = searchParams.get('email') || '';
@@ -27,7 +27,7 @@ const VerifyEmailPage = () => {
           return parsed;
         }
       }
-    } catch (e) {}
+    } catch {}
     return null;
   }, [location.state, queryEmail]);
 
@@ -37,6 +37,14 @@ const VerifyEmailPage = () => {
   const [verifiedToken, setVerifiedToken] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+  const [pendingConfirmation, setPendingConfirmation] = useState(null);
+
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+    const t = setInterval(() => setCooldownLeft((p) => Math.max(0, p - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldownLeft]);
 
   const handleVerify = async (codeToVerify) => {
     const targetOtp = codeToVerify || otp;
@@ -73,7 +81,7 @@ const VerifyEmailPage = () => {
       }
 
       if (isExistingVerification || existingAccount) {
-        toast.success('Email verified successfully! Please sign in.');
+        showToast.success('Email verified successfully! Please sign in.');
         navigate('/login');
         return;
       }
@@ -83,18 +91,22 @@ const VerifyEmailPage = () => {
         otpVerificationToken: verificationToken,
       };
 
-      await registerProvider(registrationPayload);
+      const createdUser = await registerProvider(registrationPayload);
 
       sessionStorage.removeItem('localgo_pending_registration');
-      toast.success('Email verified and account created! Welcome to LocalGo Partner Portal.');
-      navigate('/dashboard');
+      showToast.success('Partner account created!');
+      setPendingConfirmation(createdUser || pendingRegistration.payload);
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retrySec = err.response?.data?.data?.retryAfterSeconds || Number(err.response?.headers?.['retry-after']) || 60;
+        setCooldownLeft(retrySec);
+      }
       const msg =
         err.response?.data?.message ||
         err.message ||
         'Verification failed. Please check the code and try again.';
       setError(msg);
-      toast.error(msg);
+      showToast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -102,7 +114,7 @@ const VerifyEmailPage = () => {
 
   const handleResend = async () => {
     if (!email) {
-      toast.error('Email address is missing. Please restart signup.');
+      showToast.error('Email address is missing. Please restart signup.');
       return;
     }
     try {
@@ -110,92 +122,152 @@ const VerifyEmailPage = () => {
         email: email.trim(),
         purpose: 'EMAIL_VERIFICATION',
       });
-      toast.success('A new verification code has been sent to your email.');
+      showToast.success('A new verification code has been sent to your email.');
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retrySec = err.response?.data?.data?.retryAfterSeconds || Number(err.response?.headers?.['retry-after']) || 60;
+        setCooldownLeft(retrySec);
+      }
       const msg = err.response?.data?.message || 'Failed to resend code. Please try again later.';
-      toast.error(msg);
+      setError(msg);
+      showToast.error(msg);
     }
   };
 
+  // Pending Verification Confirmation Screen after Provider Registration
+  if (pendingConfirmation) {
+    return (
+      <AuthSplitLayout badgeText="Application Submitted">
+        <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 text-center space-y-6 animate-modal-pop">
+          <div className="w-20 h-20 rounded-full bg-brand-yellowSoft dark:bg-brand-yellow/15 border-4 border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center mx-auto">
+            <Clock className="w-10 h-10" strokeWidth={2.2} />
+          </div>
+
+          <div className="space-y-2">
+            <Badge tone="warning" dot>Pending Verification</Badge>
+            <h1 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink dark:text-brand-white">
+              Application Under Review
+            </h1>
+            <p className="text-ds-14 text-gray-600 dark:text-gray-400 leading-relaxed">
+              Your email is verified and your partner profile is queued for admin approval. You can preview Partner Studio now and go online once verified.
+            </p>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-brand-ink rounded-card p-4 border border-gray-200 dark:border-gray-600/30 text-left space-y-2 text-ds-12">
+            <div className="flex items-center gap-2 font-bold text-brand-ink dark:text-brand-white">
+              <CheckCircle2 className="w-4 h-4 text-status-success" /> Email verified ({email})
+            </div>
+            <div className="flex items-center gap-2 font-bold text-brand-ink dark:text-brand-white">
+              <ShieldCheck className="w-4 h-4 text-brand-yellow" /> Admin verification usually takes a few hours
+            </div>
+          </div>
+
+          <Button
+            variant="accent"
+            size="lg"
+            fullWidth
+            rightIcon={<ArrowRight className="w-5 h-5" />}
+            onClick={() => navigate('/dashboard')}
+          >
+            Go to Partner Dashboard
+          </Button>
+        </div>
+      </AuthSplitLayout>
+    );
+  }
+
   if (!email || (!isExistingVerification && !pendingRegistration)) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-5 text-center">
-          <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center mx-auto">
-            <Mail className="w-6 h-6" />
+      <AuthSplitLayout badgeText="Partner Verification">
+        <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 text-center space-y-5">
+          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center mx-auto">
+            <Mail className="w-7 h-7" strokeWidth={2} />
           </div>
-          <h1 className="text-xl font-bold text-slate-900">Complete Signup First</h1>
-          <p className="text-sm text-slate-600">
-            Please fill out the registration form so we can send a 6-digit verification code to your email before creating your account.
-          </p>
-          <Link
-            to="/signup"
-            className="inline-flex w-full py-3 px-4 rounded-lg font-medium bg-slate-900 text-white hover:bg-slate-800 items-center justify-center gap-2 transition-all"
+          <div className="space-y-1.5">
+            <h1 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white">
+              Complete Signup First
+            </h1>
+            <p className="text-ds-14 text-gray-600 dark:text-gray-400">
+              Complete the 3-step partner registration form so we can send your verification code.
+            </p>
+          </div>
+          <Button
+            variant="accent"
+            size="lg"
+            fullWidth
+            rightIcon={<ArrowRight className="w-5 h-5" />}
+            onClick={() => navigate('/signup')}
           >
-            Go to Sign Up
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+            Go to Registration
+          </Button>
         </div>
-      </div>
+      </AuthSplitLayout>
     );
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+    <AuthSplitLayout badgeText="Partner Email OTP">
+      <div className="bg-brand-white dark:bg-gray-900 rounded-sheet border border-gray-200 dark:border-gray-600/30 shadow-sheet p-6 sm:p-8 space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-sheet bg-brand-yellowSoft dark:bg-brand-yellow/15 border border-brand-yellow text-brand-ink dark:text-brand-yellow flex items-center justify-center mx-auto">
+            <Mail className="w-7 h-7" strokeWidth={2} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Verify Your Email</h1>
-          <p className="text-sm text-slate-600">
-            We sent a 6-digit verification code to
+          <h1 className="font-display font-bold text-ds-24 text-brand-ink dark:text-brand-white tracking-tight">
+            Verify Partner Email
+          </h1>
+          <p className="text-ds-14 text-gray-600 dark:text-gray-400">
+            Enter the 6-digit code sent to
           </p>
-          <p className="text-sm font-semibold text-slate-900 bg-slate-100 py-1.5 px-3 rounded-md inline-block">
+          <span className="inline-block px-3.5 py-1.5 rounded-pill bg-gray-100 dark:bg-brand-ink border border-gray-200 dark:border-gray-600/35 text-ds-12 font-bold text-brand-ink dark:text-brand-yellow">
             {email}
+          </span>
+        </div>
+
+        <OtpInput
+          length={6}
+          cooldownSeconds={30}
+          externalCooldown={cooldownLeft}
+          autoFocus
+          onComplete={(code) => handleVerify(code)}
+          onChange={(code) => {
+            setOtp(code);
+            if (error) setError(null);
+          }}
+          onResend={handleResend}
+          disabled={submitting || cooldownLeft > 0}
+          error={error}
+        />
+
+        {cooldownLeft > 0 && (
+          <p className="text-ds-12 font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-card px-3.5 py-2.5 text-center">
+            Cooldown active: wait {cooldownLeft}s before trying again.
           </p>
-        </div>
+        )}
 
-        <div className="py-2">
-          <OtpInput
-            onComplete={(code) => handleVerify(code)}
-            onChange={(code) => {
-              setOtp(code);
-              if (error) setError(null);
-            }}
-            onResend={handleResend}
-            disabled={submitting}
-            error={error}
-          />
-        </div>
-
-        <button
-          type="button"
+        <Button
+          variant="accent"
+          size="lg"
+          fullWidth
+          loading={submitting}
+          disabled={otp.length !== 6 || cooldownLeft > 0}
+          rightIcon={<ArrowRight className="w-5 h-5" />}
           onClick={() => handleVerify()}
-          disabled={submitting || otp.length !== 6}
-          className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
-            submitting || otp.length !== 6
-              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              : 'bg-slate-900 text-white hover:bg-slate-800 shadow-sm'
-          }`}
         >
-          {submitting
-            ? (isExistingVerification ? 'Verifying Email...' : 'Verifying & Creating Account...')
-            : (isExistingVerification ? 'Verify Email' : 'Verify Email & Create Account')}
-          <ArrowRight className="w-4 h-4" />
-        </button>
+          {isExistingVerification ? 'Verify Email' : 'Verify & Submit Application'}
+        </Button>
 
-        <div className="text-center">
+        <div className="text-center pt-1">
           <button
             type="button"
             onClick={() => navigate(isExistingVerification ? '/login' : '/signup')}
-            className="text-xs text-slate-500 hover:text-slate-800 underline transition-colors"
+            className="inline-flex items-center gap-1.5 text-ds-12 font-bold text-gray-600 dark:text-gray-400 hover:text-brand-ink dark:hover:text-brand-white"
           >
-            {isExistingVerification ? 'Back to Sign In' : 'Back to Sign Up'}
+            <ArrowLeft className="w-4 h-4" />
+            {isExistingVerification ? 'Back to Sign In' : 'Back to Registration'}
           </button>
         </div>
       </div>
-    </div>
+    </AuthSplitLayout>
   );
 };
 

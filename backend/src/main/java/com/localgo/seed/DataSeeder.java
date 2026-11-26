@@ -1,5 +1,6 @@
 package com.localgo.seed;
 
+import com.google.cloud.firestore.FieldValue;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
@@ -17,7 +18,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -27,13 +30,16 @@ public class DataSeeder implements CommandLineRunner {
     private static final String DEMO_MARKER_PROVIDER_ID = "demo-prov-plmnr-4";
     private static final String DEMO_ADMIN_ID = "demo-admin-1";
     private static final String DEMO_ADMIN_EMAIL = "admin@localgo.com";
-    private static final String DEFAULT_DEMO_PROVIDER_PASSWORD = "LocalGo@123";
 
     private final Firestore firestore;
     private final FirebaseAuth firebaseAuth;
 
-    @Value("${app.seed.demo-provider-password:LocalGo@123}")
+    @Value("${app.seed.demo-provider-password:}")
     private String demoProviderPassword;
+
+    public void setDemoProviderPassword(String demoProviderPassword) {
+        this.demoProviderPassword = demoProviderPassword;
+    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -86,21 +92,36 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         List<ProviderDoc> demoProviders = buildDemoProviders();
+        var privateCollection = firestore.collection("provider_private");
         int seededCount = 0;
         for (ProviderDoc provider : demoProviders) {
+            String providerEmail = provider.getEmail();
+            String providerPhone = provider.getPhone();
+
             boolean hasProviderDoc = providersCollection.document(provider.getId()).get().get().exists();
             if (!hasProviderDoc) {
+                provider.setEmail(null);
+                provider.setPhone(null);
                 providersCollection.document(provider.getId()).set(provider).get();
+            }
+
+            if (privateCollection != null) {
+                privateCollection.document(provider.getId()).set(Map.of(
+                        "id", provider.getId(),
+                        "email", providerEmail != null ? providerEmail : "",
+                        "phone", providerPhone != null ? providerPhone : "",
+                        "updatedAt", new Date()
+                )).get();
             }
 
             boolean hasUserDoc = usersCollection.document(provider.getId()).get().get().exists();
             if (!hasUserDoc) {
-                String uid = ensureFirebaseAccount(provider.getId(), provider.getEmail(), provider.getName());
+                String uid = ensureFirebaseAccount(provider.getId(), providerEmail, provider.getName());
                 UserDoc userDoc = UserDoc.builder()
                         .id(uid)
                         .name(provider.getName())
-                        .email(provider.getEmail())
-                        .phone(provider.getPhone())
+                        .email(providerEmail)
+                        .phone(providerPhone)
                         .role(Role.PROVIDER.name())
                         .emailVerified(true)
                         .createdAt(new Date())
@@ -132,16 +153,17 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     /**
-     * Reconciles demo provider completedJobs to actual bookings and ensures unlogged-in accounts start offline.
+     * Reconciles demo provider completedJobs, strips email/phone from public provider docs, and ensures unlogged-in accounts start offline.
      */
     public void reconcileDemoProviderStates() {
         try {
             var usersCol = firestore.collection("users");
             var providersCol = firestore.collection("providers");
             var bookingsCol = firestore.collection("bookings");
+            var privateCol = firestore.collection("provider_private");
             if (usersCol == null || providersCol == null || bookingsCol == null) return;
 
-            var markerRef = usersCol.document("demo-reconcile-v2");
+            var markerRef = usersCol.document("demo-reconcile-v3");
             if (markerRef.get().get().exists()) {
                 return;
             }
@@ -151,26 +173,38 @@ public class DataSeeder implements CommandLineRunner {
                 var snap = ref.get().get();
                 if (!snap.exists()) continue;
 
+                if (privateCol != null) {
+                    String existingEmail = snap.getString("email") != null ? snap.getString("email") : demo.getEmail();
+                    String existingPhone = snap.getString("phone") != null ? snap.getString("phone") : demo.getPhone();
+                    privateCol.document(demo.getId()).set(Map.of(
+                            "id", demo.getId(),
+                            "email", existingEmail != null ? existingEmail : "",
+                            "phone", existingPhone != null ? existingPhone : "",
+                            "updatedAt", new Date()
+                    )).get();
+                }
+
                 var completedSnap = bookingsCol
                         .whereEqualTo("providerId", demo.getId())
                         .whereEqualTo("status", "COMPLETED")
                         .get().get();
                 int actualCompleted = completedSnap != null ? completedSnap.size() : 0;
 
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("completedJobs", actualCompleted);
+                updates.put("email", FieldValue.delete());
+                updates.put("phone", FieldValue.delete());
+
                 Long lastSeenAt = snap.getLong("lastSeenAt");
                 if (lastSeenAt == null) {
-                    ref.update(
-                            "completedJobs", actualCompleted,
-                            "available", false,
-                            "manualOffline", false
-                    ).get();
-                } else {
-                    ref.update("completedJobs", actualCompleted).get();
+                    updates.put("available", false);
+                    updates.put("manualOffline", false);
                 }
+                ref.update(updates).get();
             }
 
-            markerRef.set(java.util.Map.of("reconciledAt", System.currentTimeMillis())).get();
-            log.info("Reconciled demo provider completedJobs counts and duty status cleanly.");
+            markerRef.set(Map.of("reconciledAt", System.currentTimeMillis())).get();
+            log.info("Reconciled demo provider completedJobs counts, duty status, and private contact isolation.");
         } catch (Exception e) {
             log.warn("Skipped demo provider reconciliation: {}", e.getMessage());
         }
@@ -179,7 +213,7 @@ public class DataSeeder implements CommandLineRunner {
     private String ensureFirebaseAccount(String defaultUid, String email, String displayName) {
         String password = (demoProviderPassword != null && !demoProviderPassword.isBlank())
                 ? demoProviderPassword
-                : DEFAULT_DEMO_PROVIDER_PASSWORD;
+                : System.getenv("DEMO_PROVIDER_PASSWORD");
 
         try {
             UserRecord existingById = firebaseAuth.getUser(defaultUid);
@@ -195,6 +229,11 @@ public class DataSeeder implements CommandLineRunner {
                 return existingByEmail.getUid();
             }
         } catch (FirebaseAuthException ignored) {
+        }
+
+        if (password == null || password.isBlank()) {
+            log.warn("DEMO_PROVIDER_PASSWORD env var is not configured; skipping Firebase Auth credential creation for {}", email);
+            return defaultUid;
         }
 
         try {

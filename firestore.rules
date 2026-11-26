@@ -5,14 +5,33 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function hasNoSensitiveProviderFields() {
+      return (!('email' in resource.data) || resource.data.email == null)
+          && (!('phone' in resource.data) || resource.data.phone == null);
+    }
+
     match /providers/{id} {
-      allow read: if true;
+      // Only non-sensitive public discovery fields may be read directly by clients
+      allow read: if hasNoSensitiveProviderFields();
       allow write: if false;
+    }
+
+    match /provider_private/{id} {
+      // Email & phone are restricted to backend Admin SDK access only
+      allow read, write: if false;
     }
 
     match /bookings/{id} {
       allow read: if signedIn() && (resource.data.customerId == request.auth.uid || resource.data.providerId == request.auth.uid);
       allow write: if false;
+
+      match /secrets/{secretId} {
+        allow read: if signedIn() && (
+          resource.data.customerId == request.auth.uid ||
+          get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+        );
+        allow write: if false;
+      }
     }
 
     match /notifications/{id} {

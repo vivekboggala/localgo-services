@@ -157,11 +157,12 @@ public class AuthService {
                 .startingPrice(priceInPaise)
                 .build();
 
+        String cleanPhone = request.getPhone() != null ? request.getPhone().trim() : "";
         ProviderDoc providerDoc = ProviderDoc.builder()
                 .id(uid)
                 .name(request.getName().trim())
-                .email(cleanEmail)
-                .phone(request.getPhone() != null ? request.getPhone().trim() : "")
+                .email(null)
+                .phone(null)
                 .description(request.getDescription())
                 .experienceYears(request.getExperienceYears())
                 .latitude(request.getLatitude())
@@ -179,6 +180,15 @@ public class AuthService {
         try {
             firestore.collection("users").document(uid).set(userDoc).get();
             firestore.collection("providers").document(uid).set(providerDoc).get();
+            var privateCol = firestore.collection("provider_private");
+            if (privateCol != null) {
+                privateCol.document(uid).set(Map.of(
+                        "id", uid,
+                        "email", cleanEmail,
+                        "phone", cleanPhone,
+                        "updatedAt", new Date()
+                )).get();
+            }
         } catch (Exception e) {
             log.error("Failed to save provider in Firestore: {}", e.getMessage());
             throw new RuntimeException("Error saving provider profile: " + e.getMessage());

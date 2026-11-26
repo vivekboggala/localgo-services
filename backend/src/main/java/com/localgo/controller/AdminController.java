@@ -21,15 +21,18 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/dashboard")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard() {
-        return ResponseEntity.ok(ApiResponse.success("Admin dashboard fetched", adminService.getDashboardOverview()));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard(
+            @RequestParam(value = "days", defaultValue = "7") int days) {
+        return ResponseEntity.ok(ApiResponse.success("Admin dashboard fetched", adminService.getDashboardOverview(days)));
     }
 
     @GetMapping("/providers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getProviders(
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "search", required = false) String search) {
-        return ResponseEntity.ok(ApiResponse.success("Providers fetched", adminService.getProviders(status, search)));
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor) {
+        return ResponseEntity.ok(ApiResponse.success("Providers fetched", adminService.getProviders(status, search, limit, cursor)));
     }
 
     @PutMapping("/providers/{id}/verify")
@@ -47,19 +50,26 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getUsers() {
-        return ResponseEntity.ok(ApiResponse.success("Users fetched", adminService.getUsers()));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUsers(
+            @RequestParam(value = "role", required = false) String role,
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor) {
+        return ResponseEntity.ok(ApiResponse.success("Users fetched", adminService.getUsers(role, limit, cursor)));
     }
 
     @GetMapping("/bookings")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getBookings(
-            @RequestParam(value = "status", required = false) String status) {
-        return ResponseEntity.ok(ApiResponse.success("Bookings fetched", adminService.getBookings(status)));
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor) {
+        return ResponseEntity.ok(ApiResponse.success("Bookings fetched", adminService.getBookings(status, limit, cursor)));
     }
 
     @GetMapping("/reviews")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getReviews() {
-        return ResponseEntity.ok(ApiResponse.success("Reviews fetched", adminService.getReviews()));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getReviews(
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor) {
+        return ResponseEntity.ok(ApiResponse.success("Reviews fetched", adminService.getReviews(limit, cursor)));
     }
 
     @PutMapping("/reviews/{id}/hide")
@@ -72,5 +82,16 @@ public class AdminController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTrends(
             @RequestParam(value = "days", defaultValue = "7") int days) {
         return ResponseEntity.ok(ApiResponse.success("Admin analytics fetched", adminService.getAnalyticsTrends(days)));
+    }
+
+    @GetMapping("/analytics/users-trend")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUsersTrend(
+            @RequestParam(value = "days", defaultValue = "7") int days) {
+        return ResponseEntity.ok(ApiResponse.success("Admin user trend fetched", adminService.getUsersTrend(days)));
+    }
+
+    @GetMapping("/analytics/bookings-breakdown")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getBookingsBreakdown() {
+        return ResponseEntity.ok(ApiResponse.success("Admin bookings breakdown fetched", adminService.getBookingsBreakdown()));
     }
 }

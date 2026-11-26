@@ -1,231 +1,720 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  MapPin,
+  ShieldCheck,
+  KeyRound,
+  Navigation,
+  Star,
+  ArrowRight,
+  CheckCircle2,
+  MousePointerClick,
+  CalendarCheck,
+  Smile,
+  Briefcase,
+  Quote,
+  Calendar,
+  Wrench,
+  Users,
+  Building2,
+} from 'lucide-react';
 import { serviceService } from '../services/serviceService';
 import { providerService } from '../services/providerService';
+import { useLocation } from '../hooks/useLocation';
 import { useLiveSync } from '../hooks/useLiveSync';
-import { ServiceCard } from '../components/customer/ServiceCard';
-import { Search, MapPin, ShieldCheck, Clock, ArrowRight, CheckCircle2, Activity, Zap, Star } from 'lucide-react';
+import {
+  Avatar,
+  Badge,
+  Button,
+  RatingStars,
+  SkeletonCard,
+  ErrorState,
+} from '../components/ui';
+import {
+  formatCurrency,
+  getProviderAvatar,
+  getServiceIconComponent,
+  getServiceStartingPrice,
+} from '../utils/helpers';
+import { LocationSheet } from '../components/customer/LocationSheet';
+
+const HOW_IT_WORKS = [
+  {
+    step: '01',
+    icon: MousePointerClick,
+    title: 'Choose',
+    description: 'Pick a service category and browse verified pros available near your location.',
+  },
+  {
+    step: '02',
+    icon: CalendarCheck,
+    title: 'Book',
+    description: 'Select your date, time slot, and payment option with transparent upfront pricing.',
+  },
+  {
+    step: '03',
+    icon: Smile,
+    title: 'Relax',
+    description: 'Track your pro live on the map and verify arrival with your 4-digit Start OTP.',
+  },
+];
+
+const TRUST_PILLARS = [
+  { icon: ShieldCheck, label: 'Verified pros' },
+  { icon: KeyRound, label: 'OTP-secured arrival' },
+  { icon: Navigation, label: 'Live tracking' },
+  { icon: Star, label: 'Rated reviews' },
+];
+
+const TESTIMONIALS = [
+  {
+    name: 'Ananya Deshmukh',
+    city: 'Bengaluru',
+    service: 'AC Repair',
+    quote: 'Booked an AC technician in 2 minutes. Watched him arrive on the map and shared the Start OTP right at the door.',
+    rating: 5,
+  },
+  {
+    name: 'Karthik Reddy',
+    city: 'Madanapalle',
+    service: 'Plumbing',
+    quote: 'Clear starting price before booking, punctual arrival, and clean pipe work. Much easier than calling random numbers.',
+    rating: 5,
+  },
+  {
+    name: 'Sneha Nair',
+    city: 'Hyderabad',
+    service: 'Electrical',
+    quote: 'The electrician resolved a tripping MCB within 25 minutes. Having verified badges and real reviews makes all the difference.',
+    rating: 5,
+  },
+];
+
+const DEFAULT_CATEGORY_TILES = [
+  { id: 'cat-plumbing', name: 'Plumbing', category: 'Plumbing', startingPrice: 199 },
+  { id: 'cat-electrical', name: 'Electrical', category: 'Electrical', startingPrice: 199 },
+  { id: 'cat-ac', name: 'AC Service', category: 'AC Repair', startingPrice: 399 },
+  { id: 'cat-cleaning', name: 'Home Cleaning', category: 'Cleaning', startingPrice: 499 },
+  { id: 'cat-carpentry', name: 'Carpentry', category: 'Carpentry', startingPrice: 249 },
+  { id: 'cat-appliance', name: 'Appliance Care', category: 'Appliance', startingPrice: 299 },
+  { id: 'cat-painting', name: 'Painting', category: 'Painting', startingPrice: 699 },
+  { id: 'cat-mobile', name: 'Phone Repair', category: 'Electronics', startingPrice: 299 },
+  { id: 'cat-laptop', name: 'PC & Laptop', category: 'Electronics', startingPrice: 349 },
+  { id: 'cat-moving', name: 'Local Moving', category: 'Moving', startingPrice: 599 },
+];
 
 export const LandingPage = () => {
+  const {
+    location,
+    error: locError,
+    loading: locLoading,
+    usingGPS,
+    requestGPSLocation,
+    selectManualLocation,
+    predefinedLocations,
+  } = useLocation();
+
+  const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [services, setServices] = useState([]);
   const [providers, setProviders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+  const [providersError, setProvidersError] = useState('');
+
+  // Floating "Book a service" hero form state
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [locationInput, setLocationInput] = useState(location?.city || '');
+  const [selectedDate, setSelectedDate] = useState(todayIso);
+  const [locationSheetOpen, setLocationSheetOpen] = useState(false);
+
   const navigate = useNavigate();
 
-  const fetchFeaturedProviders = useCallback(({ silent = false } = {}) => {
-    providerService.getNearbyProviders(
-      12.9716,
-      77.5946,
-      25,
-      null,
-      null,
-      null,
-      null,
-      null,
-      silent ? { skipMockFallback: true } : {}
-    )
-      .then((data) => setProviders(Array.isArray(data) ? data.slice(0, 3) : []))
-      .catch(() => {});
+  useEffect(() => {
+    if (location?.city) {
+      setLocationInput(location.city);
+    }
+  }, [location?.city]);
+
+  const loadServices = useCallback(() => {
+    setLoadingServices(true);
+    serviceService.getAllServices()
+      .then((data) => setServices(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setLoadingServices(false));
   }, []);
 
-  useEffect(() => {
-    serviceService.getAllServices()
-      .then((data) => setServices(data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-
-    fetchFeaturedProviders();
-  }, [fetchFeaturedProviders]);
-
-  useLiveSync(() => fetchFeaturedProviders({ silent: true }), { watchProviders: true });
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/services?q=${encodeURIComponent(searchQuery)}`);
+  const fetchTopProviders = useCallback(({ silent = false } = {}) => {
+    const lat = location?.lat || 12.9716;
+    const lng = location?.lng || 77.5946;
+    if (!silent) {
+      setLoadingProviders(true);
+      setProvidersError('');
     }
+    providerService.getNearbyProviders(lat, lng, 25, null, null, null, null, 'rating', {})
+      .then((data) => {
+        setProviders(Array.isArray(data) ? data.slice(0, 8) : []);
+      })
+      .catch(() => {
+        if (!silent) setProvidersError('Unable to load top-rated professionals right now.');
+      })
+      .finally(() => {
+        if (!silent) setLoadingProviders(false);
+      });
+  }, [location?.lat, location?.lng]);
+
+  useEffect(() => {
+    loadServices();
+  }, [loadServices]);
+
+  useEffect(() => {
+    fetchTopProviders();
+  }, [fetchTopProviders]);
+
+  useLiveSync(() => fetchTopProviders({ silent: true }), { watchProviders: true });
+
+  const handleHeroSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = locationInput.trim();
+    if (trimmed) {
+      const matched = predefinedLocations.find((l) =>
+        l.name.toLowerCase().includes(trimmed.toLowerCase())
+      );
+      if (matched) {
+        selectManualLocation({ lat: matched.lat, lng: matched.lng, city: matched.name });
+      }
+    }
+
+    const params = new URLSearchParams();
+    if (selectedServiceId && services.some((s) => String(s.id) === String(selectedServiceId))) {
+      params.set('serviceId', selectedServiceId);
+    }
+    if (selectedDate) {
+      params.set('date', selectedDate);
+    }
+    const qs = params.toString();
+    navigate(qs ? `/providers/nearby?${qs}` : '/providers/nearby');
   };
 
+  const categoryTiles = services.length > 0
+    ? services.slice(0, 10)
+    : DEFAULT_CATEGORY_TILES;
+
+  const statsSummary = useMemo(() => {
+    if (providers.length === 0) return [];
+    const totalJobs = providers.reduce((acc, p) => acc + Number(p.completedJobs || 0), 0);
+    const rated = providers.filter((p) => Number(p.rating) > 0);
+    const avgRating = rated.length > 0
+      ? `${(rated.reduce((acc, p) => acc + Number(p.rating), 0) / rated.length).toFixed(1)} ★`
+      : 'New';
+
+    return [
+      {
+        icon: Users,
+        label: 'Nearby Verified Pros',
+        value: `${providers.length}`,
+        caption: `Live in ${location?.city || 'your area'}`,
+      },
+      {
+        icon: Briefcase,
+        label: 'Jobs in Area',
+        value: `${totalJobs}`,
+        caption: totalJobs > 0 ? 'From nearby rated pros' : 'Ready for first booking',
+      },
+      {
+        icon: Building2,
+        label: 'Supported Cities',
+        value: `${predefinedLocations.length || 7}`,
+        caption: 'Active metro & town zones',
+      },
+      {
+        icon: Star,
+        label: 'Average Rating',
+        value: avgRating,
+        caption: rated.length > 0 ? 'Across nearby verified pros' : 'Awaiting first review',
+      },
+    ];
+  }, [providers, location?.city, predefinedLocations.length]);
+
+  const isDev = import.meta.env.DEV;
+  const rawProviderUrl = import.meta.env.VITE_PROVIDER_APP_URL || (isDev ? 'http://localhost:5174' : '');
+  const providerPortalUrl = rawProviderUrl && (isDev || !rawProviderUrl.includes('localhost')) ? rawProviderUrl : '';
+
   return (
-    <div className="bg-slate-50/70">
-      {/* Asymmetric Hero Section with Grid Background Texture */}
-      <section className="bg-white border-b border-slate-200/80 py-16 lg:py-24 relative overflow-hidden bg-grid-pattern">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center relative z-10">
-          
-          {/* Left Column: Headline & Search */}
-          <div className="lg:col-span-7 space-y-6 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-slate-100 border border-slate-200/80 text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
-              Verified Local Service Marketplace
-            </div>
-
-            <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight leading-[1.1]">
-              On-demand local services, <br />
-              <span className="text-slate-900">delivered to your doorstep.</span>
-            </h1>
-
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl font-normal">
-              Connect directly with verified independent professionals. Book skilled technicians for AC service, plumbing, electrical, and doorstep repairs with spatial radius tracking.
-            </p>
-
-            {/* Quick Search Form */}
-            <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2.5 max-w-xl pt-2">
-              <div className="relative flex-grow">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search service (e.g. AC Repair, Plumber, Electrician)..."
-                  className="w-full pl-10 pr-4 py-3 rounded-md border border-slate-300 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none text-xs bg-white text-slate-900 font-medium shadow-xs transition-colors"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-md text-xs transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 whitespace-nowrap"
-              >
-                Find Professional <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </form>
-
-            {/* Feature Highlights Band */}
-            <div className="bg-slate-50 border border-slate-200/80 shadow-card p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-semibold text-slate-700 mt-6">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Verified Credentials
-              </span>
-              <span className="hidden sm:inline text-slate-300">•</span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Conflict Detection
-              </span>
-              <span className="hidden sm:inline text-slate-300">•</span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Transparent Pricing
-              </span>
-            </div>
-          </div>
-
-          {/* Right Column: Structured Live Marketplace Matrix Card */}
-          <div className="lg:col-span-5">
-            <div className="bg-slate-900 text-white rounded-xl p-6 sm:p-7 shadow-panel border border-slate-800 space-y-5 relative overflow-hidden bg-dark-grid-pattern">
-              
-              {/* Header Badge & Status */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <div>
-                  <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase block">LIVE MARKETPLACE</span>
-                  <h3 className="text-lg font-bold text-white mt-0.5 tracking-tight">Verified Local Service Zone</h3>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold border border-emerald-500/20">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Active
-                </div>
+    <div className="bg-brand-white">
+      {/* 1. Full-Bleed Dark Hero with Floating "Book a service" Card */}
+      <section className="bg-brand-ink text-brand-white bg-dark-grid-pattern border-b border-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 lg:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Left Headline & Value Props */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-pill bg-gray-900 border border-gray-600/40 text-ds-12 font-semibold text-brand-yellow">
+                <span className="w-2 h-2 rounded-full bg-brand-yellow animate-pulse" />
+                On-demand doorstep pros &bull; Instant booking
               </div>
 
-              {/* Activity Stats Bar */}
-              <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-800/50 px-3 py-2 rounded-md border border-slate-700/50">
-                <Activity className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <span>
-                  {providers.length > 0 ? (
-                    <><strong className="text-white font-semibold">{providers.length} verified professionals</strong> active in this area</>
-                  ) : (
-                    <span>Real-time doorstep booking with instant provider matching</span>
-                  )}
-                </span>
-              </div>
+              <h1 className="font-display font-extrabold text-ds-32 sm:text-ds-40 lg:text-[52px] tracking-tight leading-[1.06] text-brand-white">
+                Trusted home services,{' '}
+                <span className="text-brand-yellow">at your doorstep</span>
+              </h1>
 
-              {/* Provider Cards Matrix */}
-              <div className="space-y-3">
-                {providers.length > 0 ? (
-                  providers.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => navigate(`/providers/${p.id}`)}
-                      className="bg-slate-800/80 hover:bg-slate-800 p-3.5 rounded-lg border border-slate-700/70 flex items-center justify-between transition-colors shadow-xs cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-md bg-slate-700 text-white flex items-center justify-center font-bold text-xs border border-slate-600 shrink-0">
-                          {p.name ? p.name.charAt(0).toUpperCase() : 'P'}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-white">{p.name}</span>
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                              p.available ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-700 text-slate-400'
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${p.available ? 'bg-emerald-400' : 'bg-slate-400'}`}></span>
-                              {p.available ? 'Online' : 'Offline'}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            {p.distanceKm != null ? `${p.distanceKm} km away` : (p.serviceArea || 'Local Area')}
-                            {p.rating > 0 && (
-                              <> • <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {p.rating.toFixed(1)}</>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-white bg-slate-700/60 px-2.5 py-1 rounded-sm border border-slate-600">
-                        ₹{p.startingPrice}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-6 px-4 bg-slate-800/40 rounded-lg border border-slate-700/50 space-y-2">
-                    <p className="text-xs text-slate-400 font-medium">
-                      No service providers registered in this zone yet.
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Be the first skilled professional to offer services in your neighborhood!
-                    </p>
-                  </div>
-                )}
-              </div>
+              <p className="text-ds-16 text-gray-400 max-w-xl leading-relaxed">
+                Compare verified plumbers, electricians, AC technicians, and home cleaners near you with upfront starting prices, live map tracking, and OTP-secured arrival.
+              </p>
 
-              {/* Customer Browse CTA Footer */}
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Need a doorstep technician?</span>
-                <Link to="/providers" className="text-white font-semibold hover:underline flex items-center gap-1">
-                  Browse Nearby Pros <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+              <div className="flex flex-wrap items-center gap-4 pt-1 text-ds-14 text-gray-200">
+                <Link
+                  to="/services"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-card bg-gray-900 hover:bg-gray-600/30 border border-gray-600/40 font-semibold transition-colors"
+                >
+                  Explore 10 Services <ArrowRight className="w-4 h-4 text-brand-yellow" />
+                </Link>
+                <Link
+                  to="/map"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-card border border-gray-600/40 hover:border-brand-yellow font-semibold text-gray-200 hover:text-brand-yellow transition-colors"
+                >
+                  <MapPin className="w-4 h-4" /> Live Provider Map
                 </Link>
               </div>
+            </div>
 
+            {/* Right Floating "Book a service" Card */}
+            <div className="lg:col-span-5">
+              <form
+                onSubmit={handleHeroSubmit}
+                className="bg-brand-white text-brand-ink rounded-sheet p-6 sm:p-7 shadow-sheet border border-gray-200 space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
+                  <div>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-600">
+                      Instant Dispatch
+                    </span>
+                    <h2 className="font-display font-bold text-ds-20 text-brand-ink mt-0.5">
+                      Book a service
+                    </h2>
+                  </div>
+                  <Badge tone="accent">Upfront Pricing</Badge>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="hero-service" className="block text-ds-12 font-semibold text-gray-900">
+                    What do you need help with?
+                  </label>
+                  <div className="relative">
+                    <Wrench className="w-4 h-4 text-gray-600 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <select
+                      id="hero-service"
+                      value={selectedServiceId}
+                      onChange={(e) => setSelectedServiceId(e.target.value)}
+                      className="w-full h-12 pl-10 pr-4 py-0 leading-[46px] rounded-input border border-gray-200 focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/10 bg-gray-50 text-ds-14 font-semibold text-brand-ink outline-none cursor-pointer"
+                    >
+                      <option value="">All Home Services</option>
+                      {categoryTiles.map((svc) => (
+                        <option key={svc.id} value={svc.id}>
+                          {svc.name} (from Rs {getServiceStartingPrice(svc)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="hero-location" className="block text-ds-12 font-semibold text-gray-900">
+                      Service location
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setLocationSheetOpen(true)}
+                      className="text-[11px] font-bold text-brand-ink hover:underline cursor-pointer"
+                    >
+                      Pick city preset
+                    </button>
+                  </div>
+                  <div className="relative flex items-center">
+                    <MapPin className="w-4 h-4 text-brand-ink absolute left-3.5 pointer-events-none" strokeWidth={2.2} />
+                    <input
+                      id="hero-location"
+                      type="text"
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      placeholder="Enter city (e.g. Bengaluru, Hyderabad)"
+                      className="w-full min-h-[48px] pl-10 pr-36 rounded-input border border-gray-200 focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/10 bg-gray-50 text-ds-14 font-semibold text-brand-ink outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={requestGPSLocation}
+                      disabled={locLoading}
+                      className="absolute right-1.5 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card bg-brand-yellowSoft hover:bg-brand-yellow border border-brand-yellow text-[11px] font-bold text-brand-ink transition-colors cursor-pointer"
+                    >
+                      <Navigation className="w-3 h-3" strokeWidth={2.3} />
+                      {locLoading ? 'Detecting...' : 'Use my location'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="hero-date" className="block text-ds-12 font-semibold text-gray-900">
+                    Preferred date
+                  </label>
+                  <div className="relative">
+                    <Calendar className="w-4 h-4 text-gray-600 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      id="hero-date"
+                      type="date"
+                      min={todayIso}
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="w-full min-h-[48px] pl-10 pr-4 rounded-input border border-gray-200 focus:border-brand-ink focus:ring-2 focus:ring-brand-ink/10 bg-gray-50 text-ds-14 font-semibold text-brand-ink outline-none"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="accent"
+                  size="lg"
+                  fullWidth
+                  rightIcon={<ArrowRight className="w-5 h-5" strokeWidth={2.2} />}
+                >
+                  Find pros
+                </Button>
+              </form>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* Catalog Section */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="flex items-center justify-between">
+      {/* 2. Category Grid (5 columns x 2 rows on desktop) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-7">
           <div>
-            <h2 className="font-display font-bold text-2xl text-slate-900 tracking-tight">Service Catalog</h2>
-            <p className="text-xs text-slate-500 mt-1">Browse categories and schedule doorstep appointments</p>
+            <span className="text-ds-12 font-bold uppercase tracking-wider text-gray-600">
+              10 Core Categories
+            </span>
+            <h2 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight mt-0.5">
+              What needs fixing today?
+            </h2>
           </div>
-          <Link to="/services" className="text-xs font-semibold text-slate-900 hover:underline flex items-center gap-1">
-            View All Categories <ArrowRight className="w-3.5 h-3.5" />
+          <Link
+            to="/services"
+            className="text-ds-14 font-bold text-brand-ink hover:underline inline-flex items-center gap-1 shrink-0"
+          >
+            Browse All Services <ArrowRight className="w-4 h-4" strokeWidth={2.2} />
           </Link>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-40 bg-slate-200/70 rounded-xl animate-pulse"></div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services.slice(0, 8).map((service) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                onClick={() => navigate(`/services?category=${encodeURIComponent(service.name)}`)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {categoryTiles.map((svc) => {
+            const Icon = getServiceIconComponent(svc);
+            const hasRealId = services.some((s) => s.id === svc.id);
+            return (
+              <button
+                key={svc.id}
+                type="button"
+                onClick={() =>
+                  hasRealId
+                    ? navigate(`/providers/nearby?serviceId=${svc.id}`)
+                    : navigate(`/services?q=${encodeURIComponent(svc.name)}`)
+                }
+                className="bg-brand-white border border-gray-200 hover:border-brand-ink rounded-card p-5 flex flex-col items-center text-center gap-3 shadow-card hover:shadow-card-hover hover:-translate-y-1 active:scale-[0.98] transition-all duration-150 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink"
+              >
+                <div className="w-14 h-14 rounded-card bg-brand-yellowSoft border border-brand-yellow text-brand-ink group-hover:bg-brand-ink group-hover:text-brand-yellow group-hover:border-brand-ink flex items-center justify-center transition-colors duration-150">
+                  <Icon className="w-7 h-7" strokeWidth={2} />
+                </div>
+                <div className="space-y-1 w-full">
+                  <span className="block font-display font-bold text-ds-14 text-brand-ink truncate">
+                    {svc.name}
+                  </span>
+                  <span className="block text-ds-12 font-semibold text-gray-600">
+                    from Rs {getServiceStartingPrice(svc)}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </section>
+
+      {/* 3. Trust Strip (Continuous Marquee) */}
+      <section className="bg-brand-yellow border-y border-brand-yellowHover overflow-hidden">
+        <div className="py-4">
+          <div className="animate-trust-marquee items-center">
+            {[0, 1].map((dupIdx) => (
+              <div
+                key={dupIdx}
+                aria-hidden={dupIdx === 1}
+                className="flex items-center shrink-0 gap-10 sm:gap-14 pr-10 sm:pr-14"
+              >
+                {[...TRUST_PILLARS, ...TRUST_PILLARS].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={`${dupIdx}-${idx}-${item.label}`} className="flex items-center gap-3 shrink-0 whitespace-nowrap">
+                      <div className="w-10 h-10 rounded-pill bg-brand-ink text-brand-yellow flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5" strokeWidth={2.2} />
+                      </div>
+                      <span className="font-display font-bold text-ds-14 text-brand-ink">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 4. How It Works (3-Column Section with Numbered Steps) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <div className="text-center max-w-xl mx-auto mb-10 space-y-2">
+          <span className="inline-block px-3 py-1 rounded-pill bg-gray-100 text-ds-12 font-bold text-brand-ink">
+            Simple 3-Step Flow
+          </span>
+          <h2 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight">
+            How LocalGo works
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {HOW_IT_WORKS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.title}
+                className="bg-gray-50 border border-gray-200 hover:border-gray-400 rounded-card p-6 space-y-4 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-card bg-brand-ink text-brand-yellow flex items-center justify-center shadow-card">
+                    <Icon className="w-6 h-6" strokeWidth={2} />
+                  </div>
+                  <span className="font-display font-extrabold text-ds-32 text-gray-200">
+                    {item.step}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="font-display font-bold text-ds-20 text-brand-ink">{item.title}</h3>
+                  <p className="text-ds-14 text-gray-600 leading-relaxed">{item.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 5. Stats Band */}
+      {providers.length > 0 && (
+        <section className="bg-brand-ink text-brand-white border-y border-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsSummary.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={stat.label} className="bg-gray-900/90 border border-gray-600/30 rounded-card p-5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-ds-12 font-semibold text-gray-400">{stat.label}</span>
+                      <Icon className="w-4 h-4 text-brand-yellow" />
+                    </div>
+                    <div className="font-display font-extrabold text-ds-32 text-brand-white">
+                      {stat.value}
+                    </div>
+                    <div className="text-[11px] text-gray-400">{stat.caption}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 6. Top-Rated Providers 4-Column Grid */}
+      <section className="bg-gray-50 border-b border-gray-200 py-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-7">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <span className="text-ds-12 font-bold uppercase tracking-wider text-gray-600">
+                Top Rated in {location?.city || 'Your Area'}
+              </span>
+              <h2 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight mt-0.5">
+                Highest-rated professionals
+              </h2>
+            </div>
+
+            <Link
+              to="/providers"
+              className="text-ds-14 font-bold text-brand-ink hover:underline inline-flex items-center gap-1.5 shrink-0"
+            >
+              View All Nearby Pros <ArrowRight className="w-4 h-4" strokeWidth={2.2} />
+            </Link>
+          </div>
+
+          {providersError ? (
+            <ErrorState message={providersError} onRetry={() => fetchTopProviders()} compact />
+          ) : loadingProviders || loadingServices ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {providers.map((p) => (
+                <div
+                  key={p.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/providers/${p.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/providers/${p.id}`);
+                    }
+                  }}
+                  className="bg-brand-white border border-gray-200 hover:border-brand-ink rounded-card p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-150 cursor-pointer flex flex-col justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ink"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar
+                          src={getProviderAvatar(p.name)}
+                          name={p.name}
+                          size="md"
+                          status={p.available ? 'online' : 'offline'}
+                          verified={p.verificationStatus === 'VERIFIED'}
+                        />
+                        <div className="min-w-0">
+                          <h3 className="font-display font-bold text-ds-16 text-brand-ink truncate">
+                            {p.name}
+                          </h3>
+                          <p className="text-ds-12 text-gray-600 truncate">
+                            {p.services?.[0]?.name || 'Verified Specialist'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge tone={p.available ? 'success' : 'neutral'} dot>
+                        {p.available ? 'Online' : 'Offline'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between text-ds-12 font-semibold bg-gray-50 rounded-card px-3 py-2 border border-gray-100">
+                      <span className="inline-flex items-center gap-1 text-brand-ink">
+                        <Star className="w-4 h-4 fill-brand-yellow text-brand-yellow" />
+                        {p.rating > 0 ? Number(p.rating).toFixed(1) : 'New'}
+                      </span>
+                      <span className="text-gray-600 inline-flex items-center gap-1">
+                        <Briefcase className="w-3.5 h-3.5" /> {p.completedJobs ?? 0}
+                      </span>
+                      <span className="text-gray-600 truncate max-w-[90px]">
+                        {p.distanceKm != null ? `${Number(p.distanceKm).toFixed(1)} km` : p.serviceArea}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
+                    <div>
+                      <span className="text-[11px] font-semibold text-gray-400 uppercase block">Starts at</span>
+                      <span className="font-display font-bold text-ds-20 text-brand-ink">
+                        {formatCurrency(p.startingPrice)}
+                      </span>
+                    </div>
+                    <Button
+                      variant={p.available ? 'accent' : 'secondary'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(p.available ? `/book/${p.id}` : `/providers/${p.id}`);
+                      }}
+                    >
+                      {p.available ? 'Book' : 'View'}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 7. Customer Testimonials (3-Column) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 space-y-8">
+        <div className="text-center max-w-xl mx-auto space-y-2">
+          <span className="inline-block px-3 py-1 rounded-pill bg-brand-yellowSoft border border-brand-yellow text-ds-12 font-bold text-brand-ink">
+            Customer Stories
+          </span>
+          <h2 className="font-display font-bold text-ds-24 sm:text-ds-32 text-brand-ink tracking-tight">
+            Trusted by homeowners every day
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {TESTIMONIALS.map((t) => (
+            <div
+              key={t.name}
+              className="bg-brand-white border border-gray-200 hover:border-gray-400 rounded-card p-6 shadow-card flex flex-col justify-between gap-4 transition-colors"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <RatingStars rating={t.rating} size="sm" />
+                  <Quote className="w-5 h-5 text-brand-yellow" strokeWidth={2} />
+                </div>
+                <p className="text-ds-14 text-gray-900 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+              </div>
+              <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                <Avatar name={t.name} size="sm" tone="yellow" />
+                <div>
+                  <div className="font-display font-bold text-ds-14 text-brand-ink">{t.name}</div>
+                  <div className="text-ds-12 text-gray-600">{t.service} &bull; {t.city}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 8. Become a Partner Split Banner */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="bg-brand-ink text-brand-white rounded-sheet p-7 sm:p-10 bg-dark-grid-pattern border border-gray-900 grid grid-cols-1 lg:grid-cols-12 items-center gap-8 shadow-sheet">
+          <div className="lg:col-span-8 space-y-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-brand-yellow text-brand-ink text-ds-12 font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Partner With LocalGo
+            </span>
+            <h2 className="font-display font-bold text-ds-24 sm:text-ds-32 tracking-tight text-brand-white">
+              Are you a skilled technician? Grow your earnings with LocalGo.
+            </h2>
+            <p className="text-ds-14 text-gray-400 max-w-2xl">
+              Go online on your schedule, accept nearby doorstep bookings, verify jobs via 4-digit OTP, and build verified customer ratings.
+            </p>
+          </div>
+
+          <div className="lg:col-span-4 flex lg:justify-end">
+            {providerPortalUrl ? (
+              <a
+                href={providerPortalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 min-h-[52px] px-7 py-3.5 rounded-card bg-brand-yellow hover:bg-brand-yellowHover text-brand-ink font-display font-bold text-ds-16 transition-all duration-150 shadow-card shrink-0"
+              >
+                Open Partner Portal <ArrowRight className="w-5 h-5" strokeWidth={2.2} />
+              </a>
+            ) : (
+              <span className="inline-flex items-center justify-center gap-2 min-h-[52px] px-6 py-3.5 rounded-card bg-brand-yellow/15 border border-brand-yellow/40 text-brand-yellow font-display font-bold text-ds-14 shrink-0">
+                Partner Portal Coming Soon
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <LocationSheet
+        open={locationSheetOpen}
+        onClose={() => setLocationSheetOpen(false)}
+        location={location}
+        error={locError}
+        loading={locLoading}
+        usingGPS={usingGPS}
+        onRequestGPS={requestGPSLocation}
+        onSelectManual={selectManualLocation}
+        predefinedLocations={predefinedLocations}
+      />
     </div>
   );
 };

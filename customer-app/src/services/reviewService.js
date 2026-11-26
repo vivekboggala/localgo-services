@@ -5,8 +5,10 @@ export const reviewService = {
     const res = await api.post('/reviews', { bookingId, rating, comment });
     return res.data.data;
   },
-  getProviderReviews: async (providerId, page = 0, size = 10) => {
-    const res = await api.get(`/providers/${providerId}/reviews?page=${page}&size=${size}`);
+  getProviderReviews: async (providerId, limit = 20, cursor = null) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    const res = await api.get(`/providers/${providerId}/reviews?${params.toString()}`);
     return res.data.data;
   },
 };

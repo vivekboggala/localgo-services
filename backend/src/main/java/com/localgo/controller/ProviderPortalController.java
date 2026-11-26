@@ -50,6 +50,15 @@ public class ProviderPortalController {
         return ResponseEntity.ok(ApiResponse.success("Booking status updated to " + request.getStatus(), response));
     }
 
+    @PutMapping("/bookings/{id}/confirm-cash")
+    public ResponseEntity<ApiResponse<BookingResponse>> confirmCashReceived(
+            @PathVariable String id,
+            Authentication authentication) {
+
+        BookingResponse response = providerDashboardService.confirmCashReceived(id, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("Cash payment confirmed as received", response));
+    }
+
     @GetMapping("/bookings")
     public ResponseEntity<ApiResponse<List<BookingResponse>>> getProviderBookings(
             @RequestParam(value = "status", required = false) BookingStatus status,

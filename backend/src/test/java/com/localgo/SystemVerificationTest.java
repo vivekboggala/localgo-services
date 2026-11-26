@@ -17,6 +17,8 @@ import com.localgo.service.BookingService;
 import com.localgo.service.FavoriteService;
 import com.localgo.service.ProviderDashboardService;
 import com.localgo.service.ProviderService;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -33,6 +36,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class SystemVerificationTest {
+
+    @BeforeAll
+    static void requireFirebaseCredentials() {
+        boolean hasCreds = (System.getenv("FIREBASE_CREDENTIALS_JSON") != null && !System.getenv("FIREBASE_CREDENTIALS_JSON").isBlank())
+                || (System.getenv("FIREBASE_CREDENTIALS_PATH") != null && !System.getenv("FIREBASE_CREDENTIALS_PATH").isBlank())
+                || (System.getenv("APP_FIREBASE_CREDENTIAL_PATH") != null && !System.getenv("APP_FIREBASE_CREDENTIAL_PATH").isBlank())
+                || new File("src/main/resources/localgo-824dd-firebase-adminsdk-fbsvc-274cd5adb8.json").exists();
+        Assumptions.assumeTrue(hasCreds, "Skipping live Firestore integration suite without Firebase credentials");
+    }
 
     @Autowired
     private Firestore firestore;
@@ -81,6 +93,7 @@ public class SystemVerificationTest {
         req.setStartingPrice(499.0); // 499 INR = 49900 paise
 
         authService.registerProvider(req, TEST_PROVIDER_UID);
+        providerDashboardService.updatePresence(TEST_PROVIDER_UID, true, true);
 
         // Perform real nearby search around Hyderabad (center: 17.3870, 78.4900, radius 10 km)
         List<ProviderResponse> searchResults = providerService.findNearbyProviders(

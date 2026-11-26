@@ -1,16 +1,24 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LocationProvider } from './context/LocationContext';
 import { AppRoutes } from './routes/AppRoutes';
-import { Toaster } from 'react-hot-toast';
+import { AppToaster } from './components/ui';
+import ServerWakeBanner from './components/common/ServerWakeBanner';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Toaster position="top-right" toastOptions={{ duration: 3000, style: { fontSize: '13px', borderRadius: '8px', background: '#0f172a', color: '#fff' } }} />
-        <AppRoutes />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <LocationProvider>
+            <AppToaster position="top-center" />
+            <ServerWakeBanner />
+            <AppRoutes />
+          </LocationProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

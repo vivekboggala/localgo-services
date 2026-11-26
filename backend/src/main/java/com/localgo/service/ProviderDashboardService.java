@@ -176,6 +176,10 @@ public class ProviderDashboardService {
         return bookingService.updateBookingStatus(bookingId, request, providerId);
     }
 
+    public BookingResponse confirmCashReceived(String bookingId, String providerId) {
+        return bookingService.confirmCashReceived(bookingId, providerId);
+    }
+
     public BigDecimal getProviderEarnings(String providerId) {
         try {
             var snapshot = firestore.collection("bookings")
@@ -340,7 +344,7 @@ public class ProviderDashboardService {
     }
 
     public ProviderResponse getProviderProfile(String providerId) {
-        return providerService.getProviderById(providerId, null, null);
+        return providerService.getProviderProfileWithContact(providerId);
     }
 
     public void updateProviderProfile(String providerId, ProviderProfileUpdateRequest request) {

@@ -1,5 +1,6 @@
 package com.localgo.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.localgo.enums.NotificationType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,12 @@ public class NotificationResponse {
     private String title;
     private String message;
     private String bookingId;
-    private Boolean isRead;
+    @JsonProperty("read")
+    private Boolean read;
     private LocalDateTime createdAt;
+
+    @JsonProperty("isRead")
+    public Boolean getIsRead() {
+        return Boolean.TRUE.equals(read);
+    }
 }

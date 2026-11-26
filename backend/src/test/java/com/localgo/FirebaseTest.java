@@ -5,8 +5,10 @@ import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.cloud.FirestoreClient;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -18,7 +20,9 @@ public class FirebaseTest {
 
     @Test
     public void testFirestoreConnection() throws Exception {
-        InputStream serviceAccount = new FileInputStream("src/main/resources/localgo-824dd-firebase-adminsdk-fbsvc-274cd5adb8.json");
+        File keyFile = new File("src/main/resources/localgo-824dd-firebase-adminsdk-fbsvc-274cd5adb8.json");
+        Assumptions.assumeTrue(keyFile.exists(), "Skipping live Firestore probe when Firebase service account JSON is absent (CI)");
+        InputStream serviceAccount = new FileInputStream(keyFile);
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                 .setProjectId("localgo-824dd")

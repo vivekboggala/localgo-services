@@ -1,61 +1,74 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { CustomerLayout } from '../layouts/CustomerLayout';
-
-import { LandingPage } from '../pages/LandingPage';
-import { LoginPage } from '../pages/LoginPage';
-import { SignupPage } from '../pages/SignupPage';
-
-import { ServiceListPage } from '../pages/customer/ServiceListPage';
-import { CustomerDashboard } from '../pages/customer/CustomerDashboard';
-import { NearbyProvidersPage } from '../pages/customer/NearbyProvidersPage';
-import { MapPage } from '../pages/customer/MapPage';
-import { ProviderDetailPage } from '../pages/customer/ProviderDetailPage';
-import { BookingFlow } from '../pages/customer/BookingFlow';
-import { MyBookingsPage } from '../pages/customer/MyBookingsPage';
-import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
-import { NotificationsPage } from '../pages/customer/NotificationsPage';
-import ProfilePage from '../pages/customer/ProfilePage';
-import VerifyEmailPage from '../pages/auth/VerifyEmailPage';
-import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
-
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
+import { Skeleton, SkeletonCard } from '../components/ui';
+import { ErrorPage } from '../pages/ErrorPage';
+
+const LandingPage = lazy(() => import('../pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const SignupPage = lazy(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+
+const ServiceListPage = lazy(() => import('../pages/customer/ServiceListPage').then((m) => ({ default: m.ServiceListPage })));
+const CustomerDashboard = lazy(() => import('../pages/customer/CustomerDashboard').then((m) => ({ default: m.CustomerDashboard })));
+const NearbyProvidersPage = lazy(() => import('../pages/customer/NearbyProvidersPage').then((m) => ({ default: m.NearbyProvidersPage })));
+const MapPage = lazy(() => import('../pages/customer/MapPage').then((m) => ({ default: m.MapPage })));
+const ProviderDetailPage = lazy(() => import('../pages/customer/ProviderDetailPage').then((m) => ({ default: m.ProviderDetailPage })));
+const BookingFlow = lazy(() => import('../pages/customer/BookingFlow').then((m) => ({ default: m.BookingFlow })));
+const MyBookingsPage = lazy(() => import('../pages/customer/MyBookingsPage').then((m) => ({ default: m.MyBookingsPage })));
+const BookingDetailPage = lazy(() => import('../pages/customer/BookingDetailPage').then((m) => ({ default: m.BookingDetailPage })));
+const NotificationsPage = lazy(() => import('../pages/customer/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const FavoritesPage = lazy(() => import('../pages/customer/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
+const ProfilePage = lazy(() => import('../pages/customer/ProfilePage'));
+const VerifyEmailPage = lazy(() => import('../pages/auth/VerifyEmailPage'));
+const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
+const DesignPreviewPage = lazy(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
+
+const RouteFallback = () => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <Skeleton className="h-9 w-64 rounded-lg" />
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  </div>
+);
 
 export const AppRoutes = () => {
   return (
-    <Routes>
-      <Route element={<MainLayout />}>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/services" element={<ServiceListPage />} />
-      </Route>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/services" element={<ServiceListPage />} />
+        </Route>
 
-      <Route element={<CustomerLayout />}>
-        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerDashboard /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><ProfilePage /></ProtectedRoute>} />
-        <Route path="/providers" element={<NearbyProvidersPage />} />
-        <Route path="/providers/nearby" element={<NearbyProvidersPage />} />
-        <Route path="/providers/:id" element={<ProviderDetailPage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/book/:providerId" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingFlow /></ProtectedRoute>} />
-        <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
-        <Route path="/bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
-        <Route path="/bookings/:id" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingDetailPage /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><NotificationsPage /></ProtectedRoute>} />
-      </Route>
+        <Route element={<CustomerLayout />}>
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><CustomerDashboard /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><ProfilePage /></ProtectedRoute>} />
+          <Route path="/providers" element={<NearbyProvidersPage />} />
+          <Route path="/providers/nearby" element={<NearbyProvidersPage />} />
+          <Route path="/providers/:id" element={<ProviderDetailPage />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/book/:providerId" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingFlow /></ProtectedRoute>} />
+          <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
+          <Route path="/bookings" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><MyBookingsPage /></ProtectedRoute>} />
+          <Route path="/bookings/:id" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><BookingDetailPage /></ProtectedRoute>} />
+          <Route path="/favorites" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><FavoritesPage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute allowedRoles={['CUSTOMER']}><NotificationsPage /></ProtectedRoute>} />
+        </Route>
 
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-      <Route path="*" element={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
-          <p className="text-gray-500 mb-4">Page not found</p>
-          <a href="/" className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-xl text-xs">Go Home</a>
-        </div>
-      } />
-    </Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/design-preview" element={<DesignPreviewPage />} />
+        <Route path="/error" element={<ErrorPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 };

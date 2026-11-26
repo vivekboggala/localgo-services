@@ -1,17 +1,20 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from '../components/common/Navbar';
 import { Footer } from '../components/common/Footer';
 import { BottomNavigation } from '../components/common/BottomNavigation';
 
 export const CustomerLayout = () => {
+  const { pathname } = useLocation();
+  const isMapScreen = pathname === '/map';
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 pb-16 md:pb-0">
+    <div className="min-h-screen flex flex-col bg-brand-white">
       <Navbar />
-      <main className="flex-grow">
+      <main className={`flex-grow ${isMapScreen ? 'pb-0' : 'pb-20 lg:pb-0'}`}>
         <Outlet />
       </main>
-      <Footer />
+      {!isMapScreen && <Footer />}
       <BottomNavigation />
     </div>
   );

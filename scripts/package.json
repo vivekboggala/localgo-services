@@ -1,0 +1,10 @@
+{
+  "name": "localgo-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Operational and Firestore migration utilities for LocalGo Services",
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

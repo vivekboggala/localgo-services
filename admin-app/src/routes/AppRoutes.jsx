@@ -1,40 +1,55 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminLayout } from '../layouts/AdminLayout';
-import { LoginPage } from '../pages/LoginPage';
-import { AdminDashboard } from '../pages/admin/AdminDashboard';
-import { AdminProviders } from '../pages/admin/AdminProviders';
-import { AdminUsers } from '../pages/admin/AdminUsers';
-import { AdminBookings } from '../pages/admin/AdminBookings';
-import { AdminReviews } from '../pages/admin/AdminReviews';
-import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
+import { Skeleton, SkeletonCard } from '../components/ui';
+import { ForbiddenPage } from '../pages/ForbiddenPage';
+
+const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const AdminProviders = lazy(() => import('../pages/admin/AdminProviders').then((m) => ({ default: m.AdminProviders })));
+const AdminUsers = lazy(() => import('../pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers })));
+const AdminBookings = lazy(() => import('../pages/admin/AdminBookings').then((m) => ({ default: m.AdminBookings })));
+const AdminReviews = lazy(() => import('../pages/admin/AdminReviews').then((m) => ({ default: m.AdminReviews })));
+const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
+const DesignPreviewPage = lazy(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const ErrorPage = lazy(() => import('../pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
+
+const RouteFallback = () => (
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <Skeleton className="h-9 w-56 rounded-lg" />
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <SkeletonCard />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  </div>
+);
 
 export const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-        <Route path="/dashboard" element={<AdminDashboard />} />
-        <Route path="/providers" element={<AdminProviders />} />
-        <Route path="/users" element={<AdminUsers />} />
-        <Route path="/bookings" element={<AdminBookings />} />
-        <Route path="/reviews" element={<AdminReviews />} />
-        <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/admin/providers" element={<Navigate to="/providers" replace />} />
-      </Route>
+        <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<AdminDashboard />} />
+          <Route path="/providers" element={<AdminProviders />} />
+          <Route path="/users" element={<AdminUsers />} />
+          <Route path="/bookings" element={<AdminBookings />} />
+          <Route path="/reviews" element={<AdminReviews />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/admin/providers" element={<Navigate to="/providers" replace />} />
+        </Route>
 
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-      <Route path="*" element={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
-          <p className="text-slate-500 mb-4 text-xs">Page not found</p>
-          <a href="/dashboard" className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg text-xs">Go to Admin Console</a>
-        </div>
-      } />
-    </Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/design-preview" element={<DesignPreviewPage />} />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
+        <Route path="/error" element={<ErrorPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 };

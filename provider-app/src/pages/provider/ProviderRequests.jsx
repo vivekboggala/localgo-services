@@ -1,25 +1,87 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { Inbox, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
+import { useProviderPresence } from '../../hooks/useProviderPresence';
 import { providerPortalService } from '../../services/providerPortalService';
 import { RequestCard } from '../../components/provider/RequestCard';
-import { Inbox, RotateCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  SkeletonList,
+  showToast,
+} from '../../components/ui';
+
+const playAlertTone = () => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(660, now);
+    osc.frequency.setValueAtTime(880, now + 0.14);
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.36);
+  } catch {}
+};
 
 export const ProviderRequests = () => {
   const { user, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || user?.id;
   const navigate = useNavigate();
+  const { available, toggleAvailability } = useProviderPresence(Boolean(uid));
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [muted, setMuted] = useState(() => {
+    try {
+      return localStorage.getItem('localgo_provider_mute') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const knownIdsRef = useRef(new Set());
+  const firstSnapshotRef = useRef(true);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+
+  const toggleMute = () => {
+    setMuted((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('localgo_provider_mute', String(next));
+      } catch {}
+      showToast.info(next ? 'Request alert sound muted' : 'Request alert sound enabled');
+      return next;
+    });
+  };
 
   const fetchRequests = () => {
     setLoading(true);
+    setError('');
     providerPortalService.getPendingRequests()
-      .then((data) => setRequests(Array.isArray(data) ? data : (data?.content || [])))
-      .catch(() => setRequests([]))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.content || []);
+        setRequests(list);
+        list.forEach((r) => knownIdsRef.current.add(r.id));
+      })
+      .catch((err) => {
+        setRequests([]);
+        setError(err.response?.data?.message || 'Unable to load pending requests.');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -27,13 +89,11 @@ export const ProviderRequests = () => {
     if (!uid) {
       setRequests([]);
       setLoading(false);
-      return;
+      return undefined;
     }
 
-    // Initial load via REST fallback
     fetchRequests();
 
-    // Query constraints matching rules: providerId == uid and status == REQUESTED
     const q = query(
       collection(db, 'bookings'),
       where('providerId', '==', uid),
@@ -45,28 +105,30 @@ export const ProviderRequests = () => {
       (snapshot) => {
         const liveRequests = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
-          const amountInRupees = data.amount != null
-            ? (Number(data.amount) / 100)
-            : 0;
-
-          return {
-            id: docSnap.id,
-            ...data,
-            amount: amountInRupees,
-          };
+          const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
+          return { id: docSnap.id, ...data, amount: amountInRupees };
         });
+
+        const hasNewRequest = liveRequests.some((r) => !knownIdsRef.current.has(r.id));
+        if (!firstSnapshotRef.current && hasNewRequest && !mutedRef.current) {
+          playAlertTone();
+          try {
+            navigator.vibrate?.([200, 100, 200]);
+          } catch {}
+          showToast.info('New service request received!');
+        }
+        firstSnapshotRef.current = false;
+        liveRequests.forEach((r) => knownIdsRef.current.add(r.id));
+
         setRequests(liveRequests);
         setLoading(false);
       },
       (err) => {
         console.warn('Real-time provider requests listener error:', err);
-        toast.error('Live updates disconnected. Using manual refresh.', { id: 'rt-provider-requests' });
       }
     );
 
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [uid]);
 
   const handleOpen = (id) => {
@@ -76,52 +138,69 @@ export const ProviderRequests = () => {
   const handleAccept = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'ACCEPTED');
-      toast.success('Request accepted! Opening job flow...');
+      showToast.success('Request accepted! Opening job screen...');
       navigate(`/jobs/${id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Accept request failed.');
+      showToast.error(err.response?.data?.message || 'Accept request failed.');
     }
   };
 
   const handleReject = async (id) => {
     try {
       await providerPortalService.updateBookingStatus(id, 'REJECTED');
-      toast.success('Request rejected.');
+      showToast.success('Request rejected.');
       fetchRequests();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Reject request failed.');
+      showToast.error(err.response?.data?.message || 'Reject request failed.');
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Incoming Booking Requests</h1>
-          <p className="text-xs text-slate-500 mt-1">Review customer requests and accept or reject</p>
-        </div>
-        <button
-          onClick={fetchRequests}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
-        >
-          <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto"></div>
-        </div>
-      ) : requests.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
-          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
-            <Inbox className="w-6 h-6" />
+    <div className="space-y-6">
+      <PageHeader
+        title="Incoming Requests"
+        subtitle="Accept within 10 minutes before auto-expiry"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={toggleMute}
+              leftIcon={muted ? <VolumeX className="w-4 h-4 text-status-danger" /> : <Volume2 className="w-4 h-4 text-brand-yellow" />}
+              className="min-h-[44px] py-2 px-3.5 text-ds-12"
+            >
+              {muted ? 'Muted' : 'Sound On'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={fetchRequests}
+              leftIcon={<RotateCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
+              className="min-h-[44px] py-2 px-3.5 text-ds-12"
+            >
+              Refresh
+            </Button>
           </div>
-          <h3 className="font-semibold text-slate-900 text-base">No pending requests</h3>
-          <p className="text-xs text-slate-500 mt-1">New requests from nearby customers will appear here.</p>
-        </div>
+        }
+      />
+
+      {error ? (
+        <ErrorState message={error} onRetry={fetchRequests} />
+      ) : loading ? (
+        <SkeletonList count={3} />
+      ) : requests.length === 0 ? (
+        <EmptyState
+          icon={<Inbox className="w-7 h-7" strokeWidth={2} />}
+          title={available ? "You're online, waiting for requests" : 'You are currently offline'}
+          description={
+            available
+              ? 'Stay on duty — nearby requests with countdown timers will appear automatically.'
+              : 'Go online so nearby customers can send doorstep requests to you.'
+          }
+          actionLabel={!available ? 'Go Online Now' : null}
+          actionVariant="accent"
+          onAction={!available ? () => toggleAvailability(true) : null}
+        />
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {requests.map((req) => (
             <RequestCard
               key={req.id}

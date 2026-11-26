@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { ForbiddenPage } from '../../pages/ForbiddenPage';
 
 export const ProtectedRoute = ({ children }) => {
   const { user, loading, isAuthenticated } = useAuth();
@@ -8,14 +9,18 @@ export const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-900"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 rounded-full border-4 border-brand-yellow border-t-brand-ink animate-spin" />
       </div>
     );
   }
 
-  if (!isAuthenticated || user?.role !== 'ADMIN') {
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (user?.role !== 'ADMIN') {
+    return <ForbiddenPage />;
   }
 
   return children;

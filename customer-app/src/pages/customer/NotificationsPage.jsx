@@ -1,33 +1,206 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Bell,
+  CheckCheck,
+  CalendarCheck,
+  Navigation,
+  MapPin,
+  Wrench,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Star,
+} from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { notificationService } from '../../services/notificationService';
-import { LoadingSkeleton } from '../../components/common/LoadingSkeleton';
-import { Bell, CheckCheck } from 'lucide-react';
+import {
+  Button,
+  Chip,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  SkeletonList,
+  showToast,
+} from '../../components/ui';
+
+const normalizeNotification = (n) => {
+  const isRead = Boolean(n?.read ?? n?.isRead);
+  return { ...n, read: isRead, isRead };
+};
+
+const parseNotifDate = (val) => {
+  if (!val) return null;
+  try {
+    const d =
+      typeof val?.toDate === 'function'
+        ? val.toDate()
+        : val?.seconds != null
+          ? new Date(val.seconds * 1000)
+          : new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+};
+
+const isToday = (date) => {
+  if (!date) return false;
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+};
+
+const getNotificationMeta = (type = '', title = '') => {
+  const t = `${type} ${title}`.toUpperCase();
+  if (t.includes('ON_THE_WAY') || t.includes('WAY')) {
+    return { icon: Navigation, toneClass: 'bg-indigo-50 text-booking-ontheway border-indigo-200', isBooking: true };
+  }
+  if (t.includes('ARRIVED')) {
+    return { icon: MapPin, toneClass: 'bg-purple-50 text-booking-arrived border-purple-200', isBooking: true };
+  }
+  if (t.includes('START') || t.includes('PROGRESS')) {
+    return { icon: Wrench, toneClass: 'bg-teal-50 text-booking-inprogress border-teal-200', isBooking: true };
+  }
+  if (t.includes('COMPLETE')) {
+    return { icon: CheckCircle2, toneClass: 'bg-emerald-50 text-status-success border-emerald-200', isBooking: true };
+  }
+  if (t.includes('CANCEL') || t.includes('REJECT') || t.includes('EXPIRE')) {
+    return { icon: XCircle, toneClass: 'bg-rose-50 text-status-danger border-rose-200', isBooking: true };
+  }
+  if (t.includes('REVIEW') || t.includes('RATE')) {
+    return { icon: Star, toneClass: 'bg-brand-yellowSoft text-brand-ink border-brand-yellow', isBooking: true };
+  }
+  if (t.includes('ACCEPT') || t.includes('BOOK') || t.includes('PAYMENT')) {
+    return { icon: CalendarCheck, toneClass: 'bg-blue-50 text-booking-accepted border-blue-200', isBooking: true };
+  }
+  return { icon: Bell, toneClass: 'bg-brand-yellowSoft text-brand-ink border-brand-yellow', isBooking: false };
+};
+
+const NotificationRow = ({ item, onMarkRead, onOpen }) => {
+  const [swipeX, setSwipeX] = useState(0);
+  const startXRef = useRef(null);
+  const { icon: Icon, toneClass } = getNotificationMeta(item.type, item.title);
+  const dateObj = parseNotifDate(item.createdAt);
+
+  return (
+    <div
+      onPointerDown={(e) => {
+        if (window.innerWidth >= 1024) return;
+        startXRef.current = e.clientX;
+      }}
+      onPointerMove={(e) => {
+        if (startXRef.current === null) return;
+        const delta = e.clientX - startXRef.current;
+        if (Math.abs(delta) > 8 && Math.abs(delta) < 110) {
+          setSwipeX(delta);
+        }
+      }}
+      onPointerUp={() => {
+        if (Math.abs(swipeX) > 60 && !item.read) {
+          onMarkRead(item);
+        }
+        setSwipeX(0);
+        startXRef.current = null;
+      }}
+      onPointerCancel={() => {
+        setSwipeX(0);
+        startXRef.current = null;
+      }}
+      style={{ transform: swipeX !== 0 ? `translateX(${swipeX}px)` : undefined }}
+      onClick={() => onOpen(item)}
+      className={`p-4 sm:p-5 rounded-card border transition-all duration-150 flex items-start gap-4 cursor-pointer select-none ${
+        item.read
+          ? 'bg-brand-white border-gray-200 hover:border-brand-ink'
+          : 'bg-brand-yellowSoft/45 border-brand-yellow hover:bg-brand-yellowSoft/75 shadow-card'
+      }`}
+    >
+      <div className={`w-11 h-11 rounded-card border flex items-center justify-center shrink-0 ${toneClass}`}>
+        <Icon className="w-5 h-5" strokeWidth={2} />
+      </div>
+
+      <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h4 className="font-display font-bold text-ds-14 text-brand-ink truncate">
+              {item.title || 'Booking Update'}
+            </h4>
+            {!item.read && (
+              <span aria-label="Unread" className="w-2.5 h-2.5 rounded-full bg-status-info shrink-0" />
+            )}
+          </div>
+          {dateObj && (
+            <span className="text-[11px] font-medium text-gray-400 shrink-0 inline-flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+
+        <p className="text-ds-14 text-gray-600 leading-relaxed">{item.message}</p>
+
+        <div className="flex items-center justify-between pt-1">
+          {item.bookingId ? (
+            <span className="text-ds-12 font-bold text-brand-ink">View Booking &rarr;</span>
+          ) : (
+            <span />
+          )}
+          {!item.read && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkRead(item);
+              }}
+              className="text-[11px] font-bold text-brand-ink px-2.5 py-1 rounded-pill bg-brand-white border border-gray-200 hover:bg-gray-100 cursor-pointer"
+            >
+              Mark read
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const NotificationsPage = () => {
   const { user, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || user?.id;
+  const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
+  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'UNREAD' | 'BOOKINGS' | 'SYSTEM'
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
+  const loadNotifications = () => {
     if (!uid) {
       setNotifications([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
-    // Initial REST fetch
+    setError('');
     notificationService.getNotifications()
-      .then((data) => setNotifications(Array.isArray(data) ? data : (data?.content || [])))
-      .catch(() => setNotifications([]))
+      .then((data) => {
+        const rawList = Array.isArray(data) ? data : (data?.content || []);
+        setNotifications(rawList.map(normalizeNotification));
+      })
+      .catch((err) => {
+        setError(err.response?.data?.message || 'Unable to load notifications.');
+      })
       .finally(() => setLoading(false));
+  };
 
-    // Real-time Firestore snapshot listener
+  useEffect(() => {
+    loadNotifications();
+    if (!uid) return undefined;
+
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', uid),
@@ -37,10 +210,9 @@ export const NotificationsPage = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const liveList = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
-        }));
+        const liveList = snapshot.docs.map((docSnap) =>
+          normalizeNotification({ id: docSnap.id, ...docSnap.data() })
+        );
         setNotifications(liveList);
         setLoading(false);
       },
@@ -53,57 +225,196 @@ export const NotificationsPage = () => {
   }, [uid]);
 
   const handleMarkAllRead = async () => {
-    await notificationService.markAllAsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, isRead: true })));
+      showToast.success('All notifications marked as read');
+    } catch {
+      showToast.error('Failed to mark notifications as read');
+    }
   };
 
+  const handleMarkSingleRead = async (n) => {
+    if (n.read) return;
+    setNotifications((prev) =>
+      prev.map((item) => (item.id === n.id ? { ...item, read: true, isRead: true } : item))
+    );
+    try {
+      await notificationService.markAsRead(n.id);
+    } catch {}
+  };
+
+  const handleOpenNotification = async (n) => {
+    if (!n.read) {
+      await handleMarkSingleRead(n);
+    }
+    if (n.bookingId) {
+      navigate(`/bookings/${n.bookingId}`);
+    }
+  };
+
+  const counts = useMemo(() => {
+    const unread = notifications.filter((n) => !n.read).length;
+    const bookings = notifications.filter((n) => Boolean(n.bookingId) || getNotificationMeta(n.type, n.title).isBooking).length;
+    const system = notifications.length - bookings;
+    return { ALL: notifications.length, UNREAD: unread, BOOKINGS: bookings, SYSTEM: system };
+  }, [notifications]);
+
+  const filtered = useMemo(() => {
+    if (filter === 'UNREAD') return notifications.filter((n) => !n.read);
+    if (filter === 'BOOKINGS') {
+      return notifications.filter((n) => Boolean(n.bookingId) || getNotificationMeta(n.type, n.title).isBooking);
+    }
+    if (filter === 'SYSTEM') {
+      return notifications.filter((n) => !n.bookingId && !getNotificationMeta(n.type, n.title).isBooking);
+    }
+    return notifications;
+  }, [notifications, filter]);
+
+  const grouped = useMemo(() => {
+    const today = [];
+    const earlier = [];
+    filtered.forEach((n) => {
+      const d = parseNotifDate(n.createdAt);
+      if (d && isToday(d)) {
+        today.push(n);
+      } else {
+        earlier.push(n);
+      }
+    });
+    return { today, earlier };
+  }, [filtered]);
+
+  const unreadCount = counts.UNREAD;
+
+  const filterItems = [
+    { key: 'ALL', label: 'All Updates', count: counts.ALL },
+    { key: 'UNREAD', label: 'Unread', count: counts.UNREAD },
+    { key: 'BOOKINGS', label: 'Bookings', count: counts.BOOKINGS },
+    { key: 'SYSTEM', label: 'System', count: counts.SYSTEM },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Notifications</h1>
-          <p className="text-xs text-slate-500 mt-1">Updates regarding your bookings and services</p>
-        </div>
-        <button
-          onClick={handleMarkAllRead}
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 transition-colors"
-        >
-          <CheckCheck className="w-4 h-4 text-slate-500" />
-          Mark all read
-        </button>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      <PageHeader
+        title="Notifications"
+        subtitle={unreadCount > 0 ? `${unreadCount} unread updates` : 'Live booking and account updates'}
+        actions={
+          notifications.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={handleMarkAllRead}
+              disabled={unreadCount === 0}
+              leftIcon={<CheckCheck className="w-4 h-4" strokeWidth={2} />}
+            >
+              Mark all read
+            </Button>
+          )
+        }
+      />
+
+      {/* Mobile Chips Filter Bar */}
+      <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-1">
+        {filterItems.map((item) => (
+          <Chip
+            key={item.key}
+            selected={filter === item.key}
+            tone="yellow"
+            count={item.count}
+            onClick={() => setFilter(item.key)}
+          >
+            {item.label}
+          </Chip>
+        ))}
       </div>
 
-      {loading ? (
-        <LoadingSkeleton count={4} />
-      ) : notifications.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
-          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
-            <Bell className="w-6 h-6" />
-          </div>
-          <h3 className="font-semibold text-slate-900 text-base mb-1">No notifications</h3>
-          <p className="text-xs text-slate-500">You're all caught up!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              className={`p-4 rounded-lg border transition-colors flex items-start justify-between gap-4 ${
-                n.isRead ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-300'
-              }`}
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-sm text-slate-900">{n.title}</h4>
-                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-600"></span>}
-                </div>
-                <p className="text-xs text-slate-600">{n.message}</p>
-                <span className="text-[10px] text-slate-400 block">{new Date(n.createdAt).toLocaleString()}</span>
-              </div>
+      {/* Desktop 2-Column Filter Rail + Wide List */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <aside className="hidden lg:block lg:col-span-3 sticky top-24 bg-brand-white border border-gray-200 rounded-card p-4 shadow-card space-y-1.5">
+          <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 px-2 pb-1">
+            Inbox Filter
+          </span>
+          {filterItems.map((item) => {
+            const active = filter === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFilter(item.key)}
+                className={`w-full px-3.5 py-2.5 rounded-card text-ds-14 font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                  active
+                    ? 'bg-brand-ink text-brand-white shadow-card'
+                    : 'text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <span>{item.label}</span>
+                <span
+                  className={`px-2 py-0.5 rounded-pill text-[11px] font-bold ${
+                    active ? 'bg-brand-yellow text-brand-ink' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {item.count}
+                </span>
+              </button>
+            );
+          })}
+        </aside>
+
+        <div className="lg:col-span-9 space-y-6">
+          {error && notifications.length === 0 ? (
+            <ErrorState message={error} onRetry={loadNotifications} />
+          ) : loading ? (
+            <SkeletonList count={4} />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<Bell className="w-7 h-7" strokeWidth={2} />}
+              title={filter === 'ALL' ? 'No notifications yet' : `No ${filter.toLowerCase()} notifications`}
+              description="Booking updates, arrival alerts, and OTP reminders appear here."
+              actionLabel={filter === 'ALL' ? 'Explore Services' : 'Show All'}
+              actionVariant="accent"
+              onAction={() => (filter === 'ALL' ? navigate('/services') : setFilter('ALL'))}
+            />
+          ) : (
+            <div className="space-y-6">
+              {grouped.today.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="text-ds-12 font-bold uppercase tracking-wider text-gray-600 px-1">
+                    Today
+                  </h2>
+                  <div className="space-y-3">
+                    {grouped.today.map((item) => (
+                      <NotificationRow
+                        key={item.id}
+                        item={item}
+                        onMarkRead={handleMarkSingleRead}
+                        onOpen={handleOpenNotification}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {grouped.earlier.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="text-ds-12 font-bold uppercase tracking-wider text-gray-600 px-1">
+                    Earlier
+                  </h2>
+                  <div className="space-y-3">
+                    {grouped.earlier.map((item) => (
+                      <NotificationRow
+                        key={item.id}
+                        item={item}
+                        onMarkRead={handleMarkSingleRead}
+                        onOpen={handleOpenNotification}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

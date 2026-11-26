@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,10 +28,12 @@ public class ReviewController {
     }
 
     @GetMapping("/api/providers/{providerId}/reviews")
-    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getProviderReviews(
-            @PathVariable String providerId) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getProviderReviews(
+            @PathVariable String providerId,
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor) {
 
-        List<ReviewResponse> reviews = reviewService.getProviderReviews(providerId);
-        return ResponseEntity.ok(ApiResponse.success("Provider reviews fetched", reviews));
+        Map<String, Object> reviewsPage = reviewService.getProviderReviewsPaginated(providerId, limit, cursor);
+        return ResponseEntity.ok(ApiResponse.success("Provider reviews fetched", reviewsPage));
     }
 }
