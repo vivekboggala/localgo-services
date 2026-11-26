@@ -119,6 +119,18 @@ cd ../admin-app && npm install && npm run build
 
 ---
 
+## Local development
+
+- **Java 21 requirement**: Both the Spring Boot backend (`mvn test` / `mvn spring-boot:run`) and Firebase Tools (`firebase emulators:exec`) require JDK 21 first on `PATH` (for example `C:\Program Files\Java\jdk-21\bin` ahead of older JDK installs on Windows).
+- **Port `:8080` conflict**: `firebase.json` binds the Firestore emulator to port `8080`, which is the same default port used by Spring Boot (`server.port=8080`). Do not run both simultaneously on `:8080`: run `firebase emulators:exec --only firestore "npm test"` in `firestore-rules-tests/` separately, or start Spring Boot on a different port (`SERVER_PORT=8081`) when testing with the emulator.
+- **Vite dev server ports**:
+  - `customer-app`: `http://localhost:5173` (`cd customer-app && npm run dev`)
+  - `provider-app`: `http://localhost:5174` (`cd provider-app && npm run dev`)
+  - `admin-app`: `http://localhost:5175` (`cd admin-app && npm run dev`)
+- **Backend URL (`VITE_API_BASE_URL`)**: Copy `.env.example` to `.env` in each app. Use `VITE_API_BASE_URL=http://localhost:8080/` to target a local Spring Boot server (or keep the Render URL for hosted API testing).
+
+---
+
 ## License
 
 Licensed under the MIT License.

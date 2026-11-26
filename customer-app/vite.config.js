@@ -12,4 +12,33 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalized = id.replace(/\\/g, '/');
+          if (!normalized.includes('node_modules/')) return;
+          if (normalized.includes('/node_modules/firebase/') || normalized.includes('/node_modules/@firebase/')) {
+            return 'firebase';
+          }
+          if (normalized.includes('/node_modules/leaflet/') || normalized.includes('/node_modules/react-leaflet/') || normalized.includes('/node_modules/@react-leaflet/')) {
+            return 'maps';
+          }
+          if (normalized.includes('/node_modules/lucide-react/')) {
+            return 'icons';
+          }
+          if (
+            normalized.includes('/node_modules/react/') ||
+            normalized.includes('/node_modules/react-dom/') ||
+            normalized.includes('/node_modules/react-router/') ||
+            normalized.includes('/node_modules/react-router-dom/') ||
+            normalized.includes('/node_modules/@remix-run/') ||
+            normalized.includes('/node_modules/scheduler/')
+          ) {
+            return 'react';
+          }
+        },
+      },
+    },
+  },
 });
