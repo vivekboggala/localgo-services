@@ -942,3 +942,93 @@ F. EXACT NEXT STEPS TO SEE THE CHANGES
 
 Appended Section Word Count: 2511 words
 ================================================================================
+
+
+================================================================================
+WEBSITE UI REDESIGN REPORT (BRANCH: ui-website-redesign)
+Generated: 2026-11-26 21:24:14 +05:30
+================================================================================
+
+(a) BRANCH & COMMITS ON origin/ui-website-redesign
+--------------------------------------------------------------------------------
+- Branch: `ui-website-redesign` (pushed to `origin/ui-website-redesign`; `main` was NOT modified or merged).
+- Commits created (chronological oldest -> newest prior to adding this report):
+  1. `6078a57` backend: security hardening, pricing, OTP isolation, rate limiting, notifications, auto-expire
+  2. `1771fe1` chore: remove legacy frontend, add CI workflow, update README
+  3. `56f28d8` ui: shared design system and /design-preview in all apps
+  4. `c742f7a` ui: customer-app and provider-app mobile-first redesign
+  5. `beb479f` admin-app: pagination and cleanup
+  6. `21b9325` ui: convert customer-app to full desktop website layouts
+  7. `7cc4ff1` ui: convert provider-app to SaaS partner dashboard
+  8. `8dfeb07` ui: complete admin-app website console redesign
+  9. `1fe94bb` chore: remove unused legacy components, add route code-splitting and local dev docs
+ 10. `21ba6f2` ui: fix responsive browser findings and archive verified screenshots
+ 11. `1a2469d` chore: add idempotent booking startOtp secrets migration script
+
+(b) REDESIGN SUMMARY ACROSS ALL THREE APPS
+--------------------------------------------------------------------------------
+- `customer-app` (Phase 1):
+  - Converted from centered narrow mobile layouts to responsive full-width desktop website layouts (`max-w-7xl px-4 sm:px-6 lg:px-8`) while retaining bottom-nav (`lg:hidden`) & bottom sheets below `1024px`/`768px`.
+  - Updated `BottomSheet.jsx` (centered modal/side drawer at `lg+`), `Navbar.jsx` (desktop mega Services dropdown + XL search + profile dropdown + compact mobile location chip), 4-column `Footer.jsx`, and all pages (`LandingPage`, `ServiceListPage`, `CustomerDashboard`, `NearbyProvidersPage`, `MapPage`, `ProviderDetailPage`, `BookingFlow`, `MyBookingsPage`, `BookingDetailPage`, `NotificationsPage`, `FavoritesPage`, `ProfilePage`).
+- `provider-app` (Phase 2):
+  - Rebuilt `ProviderLayout.jsx` into a desktop SaaS Partner sidebar (`240px` fixed on `lg+` with persistent GO ONLINE / OFFLINE status card) + top header bar + `BottomNav` below `lg`.
+  - Updated all partner screens (`ProviderDashboard` 4 KPIs + 7d/30d chart toggle + recent jobs table, `ProviderRequests` 2-3 col grid, `ProviderActiveJob` master-detail split, `ProviderJobDetailPage`, `ProviderBookings` sortable/searchable table, `ProviderEarnings`, `ProviderProfile` 6-tab sub-nav with service radius slider, `SignupPage` 2-col onboarding form).
+- `admin-app` (Phase 3):
+  - Rebuilt entire `admin-app` console with LocalGo Yellow `#FFC700` & Ink `#0B0B0F` tokens (`AdminLayout` collapsible dark sidebar, breadcrumbs, search, pending alerts bell, avatar menu), dark gradient `LoginPage` & `ForgotPasswordPage`, dedicated `NotFoundPage` / `ForbiddenPage` / `ErrorPage` + `ErrorBoundary`, and full desktop ops pages (`AdminDashboard` w/ Recharts Area/Donut/Bar/Line charts, `AdminProviders` approve/reject modal & KYC drawer, `AdminUsers`, `AdminBookings`, `AdminReviews` hide/restore + Undo toast).
+
+(c) CLEANUP, CODE-SPLITTING & DOCS (PHASE 4)
+--------------------------------------------------------------------------------
+- Removed 18 confirmed zero-import legacy files across `customer-app`, `provider-app`, and `admin-app` (`ConfirmModal`, old `OtpInput`, old `LoadingSkeleton`, `EmptyState`, `RatingStars`, `StatusTimeline`, `ActiveJobCard`, unused `provider-app/src/layouts/MainLayout.jsx`, `Navbar.jsx`, `Footer.jsx`, `BottomNavigation.jsx`).
+- Configured route-level `React.lazy` + `Suspense` fallbacks in all three `AppRoutes.jsx` files and Rollup `manualChunks` (`react`, `firebase`, `maps`, `charts`, `icons`) in all three `vite.config.js` files. Every JS chunk across all 3 apps is now strictly under `500 kB`.
+- Added `admin-app/.env.example`, standardized `provider-app/.env.example`, and added the `Local development` guide in `README.md` covering JDK 21 `PATH` ordering, the `:8080` port collision between Spring Boot and Firestore emulator, and Vite dev ports `5173`/`5174`/`5175`.
+
+(d) BUILD & AUTOMATED TEST RESULTS (AFTER FINAL EDITS)
+--------------------------------------------------------------------------------
+- `customer-app` (`npm run build`): PASS (`2368 modules`, `0` chunks > 500 kB, largest `firebase` `435.84 kB` / `102.18 kB` gzip, `10.47s`).
+- `provider-app` (`npm run build`): PASS (`2964 modules`, `0` chunks > 500 kB, largest `firebase` `435.84 kB` / `charts` `427.74 kB`, `19.36s`).
+- `admin-app` (`npm run build`): PASS (`2909 modules`, `0` chunks > 500 kB, largest `charts` `493.03 kB` / `firebase` `241.43 kB`, `17.62s`).
+- `backend` (`mvn -B test`, backend logic untouched in Phases 1-7): PASS (`Tests run: 29, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`).
+- `firestore-rules-tests` (`firebase emulators:exec --only firestore "npm test"`): PASS (`42/42` tests across `6` suites, `0` fail, `0` skipped).
+- `scripts/migrate-booking-otp-secrets.mjs` (`node --check`): PASS (`exit code 0`).
+
+(e) BROWSER RESPONSIVE QA & SCREENSHOTS (PHASE 5)
+--------------------------------------------------------------------------------
+- Inspected reachable routes at `1440x900`, `1024x768`, `768x1024`, and `390x844` against live dev servers (`5173`, `5174`, `5175`). Note: Protected routes requiring live authenticated Firebase sessions (`/dashboard`, `/profile`, `/book/:id`, `/bookings`, provider/admin inner consoles) were verified by route compilation and unauthenticated redirect checks rather than live sign-in sessions during headless inspection.
+- Defects found & resolved during visual QA:
+  1. `customer-app` `Navbar.jsx`: eliminated `390px` horizontal overflow (`+26px`), fixed `1024px` link overlap with location pill/bell, and matched `hidden lg:flex` to `BottomNavigation` `lg:hidden` to remove duplicate navigation at `768px`.
+  2. `customer-app` `Avatar.jsx`: added `w-fit self-start sm:self-auto` so the online/offline dot stays anchored on the avatar image on narrow `flex-col` layouts.
+  3. `customer-app` `ProviderMap.jsx` & `MapPage.jsx`: enabled top-right `<ZoomControl />` and raised mobile map height (`calc(100dvh - 148px)`) so Leaflet attribution is never clipped by the mobile bottom nav.
+  4. `Select.jsx` (all 3 apps) & `LandingPage.jsx`: replaced conflicting overlay chevron with a vertically centered (`h-12`/`h-[52px]`, `py-0 leading-[46px]`/`leading-[50px]`) single-arrow native dropdown.
+  5. `customer-app` & `admin-app` `LoginPage.jsx` / `ForgotPasswordPage.jsx`: fixed single-row label + Forgot Password baseline alignment and separated `.bg-dark-grid-pattern` overlay over `bg-brand-ink` gradient so dark theme renders cleanly.
+  6. `admin-app` `ErrorPage.jsx` & `NotFoundPage.jsx`: removed `<button>` nested inside `<a>` by using `useNavigate()`.
+  7. `provider-app` `DesignPreviewPage.jsx` & `SignupPage.jsx`: enabled dark canvas theme compatibility (`bg-gray-50 dark:bg-brand-ink`) + high-contrast wordmarks, and shortened `"e.g. Rajesh Electric Works"` placeholder to fit `390px`.
+- Archived `25` verified PNG screenshots in `docs/screenshots/{customer-app,provider-app,admin-app}/`.
+
+(f) MISSING BACKEND METRICS & EXPLICIT UI PLACEHOLDERS
+--------------------------------------------------------------------------------
+- New User Signups Trend (`/admin/analytics/users-trend`): no backend endpoint exists -> `AdminDashboard` displays a labeled `"Placeholder Data"` line chart.
+- Historical KPI Period Deltas (`totalCustomers`, `verifiedProviders`, `pendingVerifications`): no backend comparison endpoint -> KPI footers explicitly label `"No period delta endpoint"` / `"Live queue count"`.
+- Aggregate Bookings by Status / Service (`AdminDashboard`): computed client-side from latest `100` bookings (`getAllBookings('ALL', 100)`) and labeled `"Sampled"`.
+- Provider KYC Document Storage (`AdminProviders`): no KYC upload/view endpoints exist -> detail drawer displays a labeled `"Placeholder"` verification checklist.
+- Public Homepage Stats (`LandingPage`): derived from nearby providers API when available with `"Sample platform benchmark"` fallback labels when empty/offline.
+
+(g) FIRESTORE MIGRATION & DEPLOY PREPARATION (PHASE 6)
+--------------------------------------------------------------------------------
+- Checked `BookingService.java` and `firestore.rules`: new bookings already store `startOtp` solely in `bookings/{id}/secrets/otp` (customer-read-only), while any pre-existing production booking docs holding an inline `startOtp` field would remain readable to assigned providers under `firestore.rules`.
+- Created `scripts/migrate-booking-otp-secrets.mjs` (dry-run by default, `--apply` to execute in batches of `400`) + `scripts/package.json` without executing against production or running `firebase deploy`.
+
+(h) DEPLOYMENT & SMOKE-TEST CHECKLIST
+--------------------------------------------------------------------------------
+1. Review `ui-website-redesign` on GitHub and merge into `main` when ready to ship.
+2. Before enforcing updated `firestore.rules` on live bookings, run dry-run and apply migration:
+     cd scripts && npm install
+     FIREBASE_CREDENTIALS_PATH=<path-to-sa.json> node migrate-booking-otp-secrets.mjs
+     FIREBASE_CREDENTIALS_PATH=<path-to-sa.json> node migrate-booking-otp-secrets.mjs --apply
+3. Deploy Firestore rules (`firebase deploy --only firestore:rules`) after verifying `firestore-rules-tests` (`42/42`).
+4. Ensure Vercel Root Directory settings point to `customer-app`, `provider-app`, and `admin-app` respectively, with `VITE_API_BASE_URL` pointing to Render.
+5. Smoke test live deployments at `1440px` and `390px`:
+   - Customer signup/login, city switch, provider booking, and OTP arrival verification
+   - Provider `GO ONLINE` toggle, request accept/reject, and booking OTP start/complete
+   - Admin login (`ADMIN` role), KPI charts, provider approve/reject modal, and review hide + undo toast
+
+================================================================================
