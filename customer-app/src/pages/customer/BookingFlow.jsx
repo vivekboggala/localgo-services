@@ -34,20 +34,104 @@ import {
 } from '../../components/ui';
 import { formatCurrency, getProviderAvatar } from '../../utils/helpers';
 
-const WIZARD_STEPS = [
-  { id: 1, title: 'Service & Issue', icon: Wrench },
-  { id: 2, title: 'Date & Slot', icon: Calendar },
-  { id: 3, title: 'Address', icon: MapPin },
-  { id: 4, title: 'Review & Confirm', icon: Wallet },
+const SERVICE_ISSUE_TAGS = {
+  'mobile-repair': [
+    'Cracked / broken screen',
+    'Battery draining fast',
+    'Charging port issue',
+    'Speaker / mic problem',
+    'Software / bootloop issue',
+  ],
+  'computer-repair': [
+    'Slow performance / hanging',
+    'OS / software installation',
+    'Keyboard / display issue',
+    'Battery or charger problem',
+    'SSD / RAM upgrade',
+  ],
+  electrician: [
+    'MCB / fuse tripping',
+    'Switchboard / socket repair',
+    'Fan / light installation',
+    'Wiring short circuit',
+    'Inverter / UPS setup',
+  ],
+  plumber: [
+    'Tap / shower leaking',
+    'Blocked sink or drain',
+    'Pipe leakage / fitting',
+    'Flush tank repair',
+    'Water motor / tank issue',
+  ],
+  'ac-repair': [
+    'AC not cooling',
+    'Water dripping from AC',
+    'Gas refill / servicing',
+    'Unusual noise from unit',
+    'AC installation / uninstallation',
+  ],
+  'refrigerator-repair': [
+    'Fridge not cooling',
+    'Freezer icing / frost issue',
+    'Water leaking inside',
+    'Compressor / noise issue',
+    'Gas refill & checkup',
+  ],
+  'washing-machine-repair': [
+    'Not spinning / draining',
+    'Water inlet / leakage issue',
+    'Excessive vibration / noise',
+    'Door lock / error code',
+    'General servicing',
+  ],
+  'vehicle-service': [
+    'Engine / starting trouble',
+    'Oil change & servicing',
+    'Brake / clutch adjustment',
+    'Battery / electrical issue',
+    'Flat tyre / puncture',
+  ],
+  cleaning: [
+    'Full home deep cleaning',
+    'Bathroom & toilet sanitation',
+    'Kitchen degreasing & clean',
+    'Sofa / carpet cleaning',
+    'Move-in / move-out cleaning',
+  ],
+  painting: [
+    'Interior room painting',
+    'Exterior wall painting',
+    'Dampness / crack putty fix',
+    'Single wall / touch-up',
+    'Color consultation & quote',
+  ],
+};
+
+const DEFAULT_ISSUE_TAGS = [
+  'Not working properly',
+  'Needs inspection & diagnosis',
+  'Routine servicing & checkup',
+  'Part replacement needed',
+  'Urgent visit requested',
 ];
 
-const QUICK_ISSUE_CHIPS = [
-  'Not working properly',
-  'Unusual noise / vibration',
-  'Water or gas leakage',
-  'Routine servicing & checkup',
-  'Urgent inspection needed',
-];
+const getIssueTagsForService = (service) => {
+  if (!service) return DEFAULT_ISSUE_TAGS;
+  const idKey = String(service.id || '').toLowerCase();
+  if (SERVICE_ISSUE_TAGS[idKey]) return SERVICE_ISSUE_TAGS[idKey];
+  const name = String(service.name || '').toLowerCase();
+  if (name.includes('mobile') || name.includes('phone')) return SERVICE_ISSUE_TAGS['mobile-repair'];
+  if (name.includes('computer') || name.includes('laptop')) return SERVICE_ISSUE_TAGS['computer-repair'];
+  if (name.includes('electric')) return SERVICE_ISSUE_TAGS.electrician;
+  if (name.includes('plumb')) return SERVICE_ISSUE_TAGS.plumber;
+  if (name.includes('ac ') || name.includes('air condition')) return SERVICE_ISSUE_TAGS['ac-repair'];
+  if (name.includes('fridge') || name.includes('refrigerator')) return SERVICE_ISSUE_TAGS['refrigerator-repair'];
+  if (name.includes('washing')) return SERVICE_ISSUE_TAGS['washing-machine-repair'];
+  if (name.includes('car') || name.includes('bike') || name.includes('vehicle')) return SERVICE_ISSUE_TAGS['vehicle-service'];
+  if (name.includes('clean')) return SERVICE_ISSUE_TAGS.cleaning;
+  if (name.includes('paint')) return SERVICE_ISSUE_TAGS.painting;
+  return DEFAULT_ISSUE_TAGS;
+};
 
 const TIME_SLOTS = [
   { value: '09:00', label: '09:00 AM', hour: 9 },
@@ -381,44 +465,12 @@ export const BookingFlow = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-32 lg:pb-12 space-y-6">
       <PageHeader
         title={`Book ${provider.name}`}
-        subtitle={WIZARD_STEPS[step - 1].title}
         onBack={() => (step > 1 ? setStep((s) => s - 1) : navigate(-1))}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* LEFT COLUMN (7-8 Cols): Stepper Form */}
+        {/* LEFT COLUMN (7-8 Cols): Booking Form */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          {/* 4-Step Progress Bar */}
-          <div className="bg-brand-white border border-gray-200 rounded-card p-5 shadow-card">
-            <div className="grid grid-cols-4 gap-3">
-              {WIZARD_STEPS.map((s) => {
-                const done = step > s.id;
-                const active = step === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    disabled={s.id > step}
-                    onClick={() => s.id < step && setStep(s.id)}
-                    className={`space-y-2 text-left ${s.id < step ? 'cursor-pointer' : 'cursor-default'}`}
-                  >
-                    <div
-                      className={`h-2 rounded-pill transition-colors duration-200 ${
-                        done ? 'bg-status-success' : active ? 'bg-brand-yellow' : 'bg-gray-200'
-                      }`}
-                    />
-                    <span
-                      className={`block text-ds-12 font-bold truncate ${
-                        active || done ? 'text-brand-ink' : 'text-gray-400'
-                      }`}
-                    >
-                      {s.title}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {error && (
             <div role="alert" className="p-3.5 rounded-card bg-rose-50 border border-status-danger/30 text-status-danger text-ds-12 font-semibold">
@@ -467,7 +519,7 @@ export const BookingFlow = () => {
               <div className="space-y-2.5">
                 <h3 className="font-display font-bold text-ds-16 text-brand-ink">Quick issue tags</h3>
                 <div className="flex flex-wrap gap-2">
-                  {QUICK_ISSUE_CHIPS.map((issue) => (
+                  {getIssueTagsForService(selectedService).map((issue) => (
                     <Chip
                       key={issue}
                       selected={description.includes(issue)}
