@@ -70,19 +70,27 @@ public class ProviderDashboardService {
                 }
             }
 
-            // 3. Calculate total realized earnings in integer paise
+            // 3. Calculate total completed jobs and realized earnings in integer paise
             var completedSnap = firestore.collection("bookings")
                     .whereEqualTo("providerId", providerId)
                     .whereEqualTo("status", BookingStatus.COMPLETED.name())
-                    .whereEqualTo("paymentStatus", "PAID")
                     .get().get();
 
             long totalPaise = 0L;
             for (var doc : completedSnap.getDocuments()) {
-                Long amt = doc.getLong("amount");
-                if (amt != null) {
-                    totalPaise += amt;
+                if ("PAID".equalsIgnoreCase(doc.getString("paymentStatus"))) {
+                    Long amt = doc.getLong("amount");
+                    if (amt != null) {
+                        totalPaise += amt;
+                    }
                 }
+            }
+
+            int completedCount = completedSnap.size();
+            if (!Integer.valueOf(completedCount).equals(provider.getCompletedJobs())) {
+                try {
+                    firestore.collection("providers").document(providerId).update("completedJobs", completedCount);
+                } catch (Exception ignored) {}
             }
 
             BigDecimal realizedEarnings = BigDecimal.valueOf(totalPaise)
@@ -97,11 +105,11 @@ public class ProviderDashboardService {
                     .manualOffline(Boolean.TRUE.equals(provider.getManualOffline()))
                     .lastSeenAt(provider.getLastSeenAt())
                     .rating(provider.getRating() != null ? provider.getRating() : 0.0)
-                    .completedJobs(provider.getCompletedJobs() != null ? provider.getCompletedJobs() : 0)
+                    .completedJobs(completedCount)
                     .serviceRadiusKm(provider.getServiceRadiusKm())
                     .todayRequestsCount(pendingRequests.size())
                     .activeJobsCount(activeJobs.size())
-                    .totalCompletedJobs(completedSnap.size())
+                    .totalCompletedJobs(completedCount)
                     .totalRealizedEarnings(realizedEarnings)
                     .activeJobs(activeJobs)
                     .pendingRequests(pendingRequests)

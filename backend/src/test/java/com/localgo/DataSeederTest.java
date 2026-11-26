@@ -97,7 +97,8 @@ class DataSeederTest {
         ProviderDoc blrElec = providerStore.get("demo-prov-blr-elec-1");
         assertNotNull(blrElec);
         assertEquals("VERIFIED", blrElec.getVerificationStatus());
-        assertTrue(Boolean.TRUE.equals(blrElec.getAvailable()));
+        assertFalse(Boolean.TRUE.equals(blrElec.getAvailable()));
+        assertEquals(0, blrElec.getCompletedJobs());
         assertNotNull(blrElec.getGeohash());
         assertEquals(12, blrElec.getGeohash().length());
         assertEquals(24900L, blrElec.getServices().get(0).getStartingPrice());

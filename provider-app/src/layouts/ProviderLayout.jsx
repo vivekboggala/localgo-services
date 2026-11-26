@@ -60,7 +60,7 @@ export const ProviderLayout = () => {
                 }`}
               >
                 <span className={`w-2 h-2 rounded-full ${available ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`}></span>
-                <span>{available ? 'Online' : 'Offline'}</span>
+                <span>{available ? 'On Duty • Online' : 'Off Duty • Offline'}</span>
               </button>
             )}
             <button onClick={logout} className="text-xs text-red-400 hover:text-red-300 font-semibold px-3 py-1.5 rounded-md border border-red-900/60 flex items-center gap-1.5 cursor-pointer">

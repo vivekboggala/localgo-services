@@ -171,7 +171,8 @@ public class AuthService {
                 .verificationStatus("PENDING")
                 .rating(0.0)
                 .completedJobs(0)
-                .available(true)
+                .available(false)
+                .manualOffline(false)
                 .services(List.of(serviceItem))
                 .build();
 

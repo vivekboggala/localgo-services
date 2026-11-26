@@ -92,14 +92,19 @@ export const ProviderDashboard = () => {
 
         <button
           onClick={handleToggleAvailability}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-xs transition-colors border ${
+          className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-colors border ${
             stats?.available
               ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
           }`}
         >
-          <span className={`w-2 h-2 rounded-full ${stats?.available ? 'bg-emerald-200' : 'bg-rose-400'}`}></span>
-          {stats?.available ? 'Available for Jobs' : 'Currently Offline'}
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${stats?.available ? 'bg-emerald-200 animate-pulse' : 'bg-rose-400'}`}></span>
+          <div>
+            <div className="font-bold text-xs">{stats?.available ? 'ON DUTY • Online' : 'OFF DUTY • Offline'}</div>
+            <div className="text-[10px] opacity-85">
+              {stats?.available ? 'Receiving requests — Tap to Go Offline' : 'Hidden from dispatch — Tap to Go Online'}
+            </div>
+          </div>
         </button>
       </div>
 

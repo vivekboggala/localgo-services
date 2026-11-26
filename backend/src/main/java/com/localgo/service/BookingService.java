@@ -315,11 +315,12 @@ public class BookingService {
             } else if (targetStatus == BookingStatus.COMPLETED) {
                 doc.setCompletedAt(now);
                 doc.setPaymentStatus(PaymentStatus.PAID.name());
-                // Increment completedJobs on provider
-                incrementProviderCompletedJobs(providerId);
             }
 
             docRef.set(doc).get();
+            if (targetStatus == BookingStatus.COMPLETED) {
+                syncProviderCompletedJobs(providerId);
+            }
             return mapToResponse(doc, null, false);
         } catch (ResourceNotFoundException | UnauthorizedException | BadRequestException e) {
             throw e;
@@ -344,20 +345,19 @@ public class BookingService {
         }
     }
 
-    private void incrementProviderCompletedJobs(String providerId) {
+    private void syncProviderCompletedJobs(String providerId) {
         try {
-            var provRef = firestore.collection("providers").document(providerId);
-            firestore.runTransaction(tx -> {
-                var snap = tx.get(provRef).get();
-                if (snap.exists()) {
-                    Long jobs = snap.getLong("completedJobs");
-                    long updated = (jobs != null ? jobs : 0L) + 1L;
-                    tx.update(provRef, "completedJobs", updated);
-                }
-                return null;
-            }).get();
+            var bookingsCol = firestore.collection("bookings");
+            var providersCol = firestore.collection("providers");
+            if (bookingsCol == null || providersCol == null) return;
+            var completedSnap = bookingsCol
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", BookingStatus.COMPLETED.name())
+                    .get().get();
+            int actualCount = completedSnap != null ? completedSnap.size() : 0;
+            providersCol.document(providerId).update("completedJobs", actualCount).get();
         } catch (Exception e) {
-            log.warn("Failed to increment completed jobs for provider {}: {}", providerId, e.getMessage());
+            log.warn("Failed to sync completed jobs for provider {}: {}", providerId, e.getMessage());
         }
     }
 

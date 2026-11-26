@@ -54,9 +54,12 @@ class ProviderPresenceTest {
     }
 
     @Test
-    void effectiveAvailabilityHandlesSeededActiveStaleAndPausedStates() {
-        ProviderDoc seeded = ProviderDoc.builder().available(true).build();
-        assertTrue(providerService.isEffectivelyAvailable(seeded));
+    void effectiveAvailabilityHandlesUnloggedActiveStaleAndPausedStates() {
+        ProviderDoc unloggedIn = ProviderDoc.builder().available(true).build();
+        assertFalse(providerService.isEffectivelyAvailable(unloggedIn));
+
+        ProviderDoc offlineDefault = ProviderDoc.builder().available(false).build();
+        assertFalse(providerService.isEffectivelyAvailable(offlineDefault));
 
         ProviderDoc paused = ProviderDoc.builder()
                 .available(true)

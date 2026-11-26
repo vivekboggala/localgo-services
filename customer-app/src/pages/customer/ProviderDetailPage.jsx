@@ -90,17 +90,30 @@ export const ProviderDetailPage = () => {
             </div>
           </div>
 
-          <div className="text-right w-full sm:w-auto flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-100">
+          <div className="text-right w-full sm:w-auto flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-100 gap-2">
             <div>
               <span className="text-xs text-slate-500 block font-medium">Starting Price</span>
               <span className="text-xl font-bold text-slate-900">₹{provider.startingPrice}</span>
             </div>
-            <button
-              onClick={() => navigate(`/book/${provider.id}`)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors text-xs"
-            >
-              Book Service <ArrowRight className="w-4 h-4" />
-            </button>
+            {provider.available ? (
+              <button
+                onClick={() => navigate(`/book/${provider.id}`)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors text-xs"
+              >
+                Book Service <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <div className="text-right">
+                <button
+                  type="button"
+                  disabled
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-200 text-slate-500 font-medium rounded-lg text-xs cursor-not-allowed"
+                >
+                  Currently Offline
+                </button>
+                <span className="text-[11px] text-slate-400 block mt-1">Provider must be On Duty to accept bookings</span>
+              </div>
+            )}
           </div>
         </div>
 

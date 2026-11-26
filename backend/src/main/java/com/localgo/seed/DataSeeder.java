@@ -40,6 +40,7 @@ public class DataSeeder implements CommandLineRunner {
         seedServices();
         seedDemoProviders();
         seedAdminAccount();
+        reconcileDemoProviderStates();
     }
 
     private void seedServices() throws Exception {
@@ -128,6 +129,51 @@ public class DataSeeder implements CommandLineRunner {
                 .build();
         usersCollection.document(uid).set(adminDoc).get();
         log.info("Seeded admin verification account: {}", DEMO_ADMIN_EMAIL);
+    }
+
+    /**
+     * Reconciles demo provider completedJobs to actual bookings and ensures unlogged-in accounts start offline.
+     */
+    public void reconcileDemoProviderStates() {
+        try {
+            var usersCol = firestore.collection("users");
+            var providersCol = firestore.collection("providers");
+            var bookingsCol = firestore.collection("bookings");
+            if (usersCol == null || providersCol == null || bookingsCol == null) return;
+
+            var markerRef = usersCol.document("demo-reconcile-v2");
+            if (markerRef.get().get().exists()) {
+                return;
+            }
+
+            for (ProviderDoc demo : buildDemoProviders()) {
+                var ref = providersCol.document(demo.getId());
+                var snap = ref.get().get();
+                if (!snap.exists()) continue;
+
+                var completedSnap = bookingsCol
+                        .whereEqualTo("providerId", demo.getId())
+                        .whereEqualTo("status", "COMPLETED")
+                        .get().get();
+                int actualCompleted = completedSnap != null ? completedSnap.size() : 0;
+
+                Long lastSeenAt = snap.getLong("lastSeenAt");
+                if (lastSeenAt == null) {
+                    ref.update(
+                            "completedJobs", actualCompleted,
+                            "available", false,
+                            "manualOffline", false
+                    ).get();
+                } else {
+                    ref.update("completedJobs", actualCompleted).get();
+                }
+            }
+
+            markerRef.set(java.util.Map.of("reconciledAt", System.currentTimeMillis())).get();
+            log.info("Reconciled demo provider completedJobs counts and duty status cleanly.");
+        } catch (Exception e) {
+            log.warn("Skipped demo provider reconciliation: {}", e.getMessage());
+        }
     }
 
     private String ensureFirebaseAccount(String defaultUid, String email, String displayName) {
@@ -472,8 +518,9 @@ public class DataSeeder implements CommandLineRunner {
                 .geohash(GeoUtils.encodeGeohash(latitude, longitude))
                 .verificationStatus("VERIFIED")
                 .rating(rating)
-                .completedJobs(completedJobs)
-                .available(true)
+                .completedJobs(0)
+                .available(false)
+                .manualOffline(false)
                 .services(services)
                 .build();
     }

@@ -37,7 +37,7 @@ export const useProviderPresence = (enabled) => {
       if (document.visibilityState === 'visible') {
         sendHeartbeat();
       }
-    }, 25000);
+    }, 20000);
 
     const handleResume = () => {
       if (document.visibilityState === 'visible') {

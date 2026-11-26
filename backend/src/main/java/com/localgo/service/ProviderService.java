@@ -150,35 +150,54 @@ public class ProviderService {
             results.add(response);
         }
 
-        // Apply sorting
+        // Apply sorting with active Online providers prioritized first
+        Comparator<ProviderResponse> comparator;
         if ("rating".equalsIgnoreCase(sortBy)) {
-            results.sort((a, b) -> Double.compare(
+            comparator = (a, b) -> Double.compare(
                     b.getRating() != null ? b.getRating() : 0.0,
                     a.getRating() != null ? a.getRating() : 0.0
-            ));
-        } else if ("price".equalsIgnoreCase(sortBy)) {
-            results.sort((a, b) -> {
+            );
+        } else if ("price".equalsIgnoreCase(sortBy) || "price_asc".equalsIgnoreCase(sortBy)) {
+            comparator = (a, b) -> {
                 BigDecimal pA = a.getStartingPrice() != null ? a.getStartingPrice() : BigDecimal.ZERO;
                 BigDecimal pB = b.getStartingPrice() != null ? b.getStartingPrice() : BigDecimal.ZERO;
                 return pA.compareTo(pB);
-            });
+            };
+        } else if ("price_desc".equalsIgnoreCase(sortBy)) {
+            comparator = (a, b) -> {
+                BigDecimal pA = a.getStartingPrice() != null ? a.getStartingPrice() : BigDecimal.ZERO;
+                BigDecimal pB = b.getStartingPrice() != null ? b.getStartingPrice() : BigDecimal.ZERO;
+                return pB.compareTo(pA);
+            };
         } else {
-            // Default: sort by distance ascending
-            results.sort(Comparator.comparingDouble(p -> p.getDistanceKm() != null ? p.getDistanceKm() : Double.MAX_VALUE));
+            comparator = Comparator.comparingDouble(p -> p.getDistanceKm() != null ? p.getDistanceKm() : Double.MAX_VALUE);
         }
+
+        results.sort(
+                Comparator.comparing((ProviderResponse p) -> !Boolean.TRUE.equals(p.getAvailable()))
+                        .thenComparing(comparator)
+        );
 
         return results;
     }
 
     public ProviderResponse getProviderById(String id, Double userLat, Double userLon) {
         try {
-            var docSnap = firestore.collection("providers").document(id).get().get();
+            var docRef = firestore.collection("providers").document(id);
+            var docSnap = docRef.get().get();
             if (!docSnap.exists()) {
                 throw new ResourceNotFoundException("Provider not found with id: " + id);
             }
             ProviderDoc doc = docSnap.toObject(ProviderDoc.class);
             if (doc != null) {
                 doc.setId(id);
+                Integer actualCompleted = fetchCompletedJobsCount(id);
+                if (actualCompleted != null && !actualCompleted.equals(doc.getCompletedJobs())) {
+                    doc.setCompletedJobs(actualCompleted);
+                    try {
+                        docRef.update("completedJobs", actualCompleted);
+                    } catch (Exception ignored) {}
+                }
                 Double distance = null;
                 if (userLat != null && userLon != null && doc.getLatitude() != null && doc.getLongitude() != null) {
                     distance = GeoUtils.haversineDistanceKm(userLat, userLon, doc.getLatitude(), doc.getLongitude());
@@ -191,6 +210,21 @@ public class ProviderService {
         } catch (Exception e) {
             log.error("Failed to fetch provider {}: {}", id, e.getMessage());
             throw new RuntimeException("Error fetching provider: " + e.getMessage());
+        }
+    }
+
+    private Integer fetchCompletedJobsCount(String providerId) {
+        try {
+            var bookingsCol = firestore.collection("bookings");
+            if (bookingsCol == null) return null;
+            var snap = bookingsCol
+                    .whereEqualTo("providerId", providerId)
+                    .whereEqualTo("status", "COMPLETED")
+                    .get()
+                    .get();
+            return snap != null ? snap.size() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -232,19 +266,16 @@ public class ProviderService {
         }
     }
 
-    public static final long PRESENCE_TIMEOUT_MS = 1_800_000L;
+    public static final long PRESENCE_TIMEOUT_MS = 120_000L;
 
     /**
-     * Resolves live availability combining explicit offline override, stored flag, and active heartbeat recency.
+     * Strict Uber/Rapido-style availability: only Online when logged in on duty with a fresh heartbeat.
      */
     public boolean isEffectivelyAvailable(ProviderDoc doc) {
-        if (doc == null || Boolean.TRUE.equals(doc.getManualOffline()) || Boolean.FALSE.equals(doc.getAvailable())) {
+        if (doc == null || Boolean.TRUE.equals(doc.getManualOffline()) || !Boolean.TRUE.equals(doc.getAvailable())) {
             return false;
         }
-        if (doc.getLastSeenAt() != null && (System.currentTimeMillis() - doc.getLastSeenAt()) > PRESENCE_TIMEOUT_MS) {
-            return false;
-        }
-        return doc.getAvailable() != null ? doc.getAvailable() : true;
+        return doc.getLastSeenAt() != null && (System.currentTimeMillis() - doc.getLastSeenAt()) <= PRESENCE_TIMEOUT_MS;
     }
 
     public ProviderResponse mapToResponse(ProviderDoc doc, Double distanceKm) {
