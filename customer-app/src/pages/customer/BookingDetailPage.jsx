@@ -419,12 +419,14 @@ export const BookingDetailPage = () => {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-gray-100 space-y-1">
-                <span className="text-ds-12 font-semibold text-gray-600 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" /> Doorstep Address
-                </span>
-                <p className="text-ds-14 font-medium text-brand-ink">{booking.address}</p>
-              </div>
+              {booking.address && (
+                <div className="pt-3 border-t border-gray-100 space-y-1">
+                  <span className="text-ds-12 font-semibold text-gray-600 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> Doorstep Address
+                  </span>
+                  <p className="text-ds-14 font-medium text-brand-ink">{booking.address}</p>
+                </div>
+              )}
 
               {booking.description && (
                 <div className="pt-2 space-y-1">

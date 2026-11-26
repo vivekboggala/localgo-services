@@ -83,21 +83,16 @@ export const ProviderProfile = () => {
   });
 
   const [docsState, setDocsState] = useState(() => {
+    const defaultDocs = [
+      { key: 'id', title: 'Government Photo ID', subtitle: 'Aadhaar / Driving License / PAN', status: 'PENDING' },
+      { key: 'cert', title: 'Trade & Skill Certificate', subtitle: 'Technical training or license', status: 'PENDING' },
+      { key: 'bank', title: 'UPI / Bank Verification', subtitle: 'Payout settlement account', status: 'PENDING' },
+    ];
     try {
       const saved = localStorage.getItem(`localgo_provider_docs_${user?.id || 'me'}`);
-      return saved
-        ? JSON.parse(saved)
-        : [
-            { key: 'id', title: 'Government Photo ID', subtitle: 'Aadhaar / Driving License / PAN', status: 'VERIFIED' },
-            { key: 'cert', title: 'Trade & Skill Certificate', subtitle: 'Technical training or license', status: 'UPLOADED' },
-            { key: 'bank', title: 'UPI / Bank Verification', subtitle: 'Payout settlement account', status: 'PENDING' },
-          ];
+      return saved ? JSON.parse(saved) : defaultDocs;
     } catch {
-      return [
-        { key: 'id', title: 'Government Photo ID', subtitle: 'Aadhaar / Driving License / PAN', status: 'VERIFIED' },
-        { key: 'cert', title: 'Trade & Skill Certificate', subtitle: 'Technical training or license', status: 'UPLOADED' },
-        { key: 'bank', title: 'UPI / Bank Verification', subtitle: 'Payout settlement account', status: 'PENDING' },
-      ];
+      return defaultDocs;
     }
   });
 

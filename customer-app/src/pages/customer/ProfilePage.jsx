@@ -128,10 +128,14 @@ export const ProfilePage = () => {
   };
 
   const handleConfirmLogout = async () => {
-    await logout();
-    setLogoutDialogOpen(false);
-    showToast.success('Signed out');
-    navigate('/');
+    try {
+      await logout();
+      setLogoutDialogOpen(false);
+      showToast.success('Signed out');
+      navigate('/');
+    } catch (err) {
+      showToast.error(err?.message || 'Failed to sign out. Please try again.');
+    }
   };
 
   const menuItems = [

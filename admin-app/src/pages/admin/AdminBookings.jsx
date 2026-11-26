@@ -213,7 +213,7 @@ export const AdminBookings = () => {
                     {b.scheduledDate} {b.scheduledTime}
                   </td>
                   <td className="py-4 px-4 text-right whitespace-nowrap">
-                    <div className="font-display font-bold text-ds-14 text-brand-ink">₹{b.amount}</div>
+                    <div className="font-display font-bold text-ds-14 text-brand-ink">₹{b.amount ?? 0}</div>
                     <div className="text-[11px] text-gray-600">{b.paymentMethod} • {b.paymentStatus}</div>
                   </td>
                   <td className="py-4 px-4">
@@ -279,7 +279,7 @@ export const AdminBookings = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Total Amount</span>
-                <span className="font-display font-extrabold text-ds-16 text-brand-ink">₹{selectedBooking.amount}</span>
+                <span className="font-display font-extrabold text-ds-16 text-brand-ink">₹{selectedBooking.amount ?? 0}</span>
               </div>
             </div>
 
