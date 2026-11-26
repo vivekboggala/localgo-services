@@ -1,33 +1,36 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../ui';
 
 export const PaginationBar = ({ pageIndex, hasPrev, hasNext, itemCount, totalElements, loading, onPrev, onNext }) => {
   if (!hasPrev && !hasNext && itemCount === 0) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-600">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-brand-white border border-gray-200 rounded-card text-ds-12 text-gray-600 shadow-card">
       <div>
-        Page <strong className="text-slate-900">{pageIndex + 1}</strong> • Showing{' '}
-        <strong className="text-slate-900">{itemCount}</strong>
+        Page <strong className="text-brand-ink">{pageIndex + 1}</strong> &bull; Showing{' '}
+        <strong className="text-brand-ink">{itemCount}</strong>
         {typeof totalElements === 'number' && totalElements > itemCount ? ` of ${totalElements}` : ''} items
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onPrev}
+        <Button
+          variant="secondary"
           disabled={!hasPrev || loading}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={onPrev}
+          leftIcon={<ChevronLeft className="w-4 h-4" />}
+          className="min-h-[40px] py-1.5 px-3 text-ds-12"
         >
-          <ChevronLeft className="w-3.5 h-3.5" /> Previous
-        </button>
-        <button
-          type="button"
-          onClick={onNext}
+          Previous
+        </Button>
+        <Button
+          variant="secondary"
           disabled={!hasNext || loading}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={onNext}
+          rightIcon={<ChevronRight className="w-4 h-4" />}
+          className="min-h-[40px] py-1.5 px-3 text-ds-12"
         >
-          Next <ChevronRight className="w-3.5 h-3.5" />
-        </button>
+          Next
+        </Button>
       </div>
     </div>
   );

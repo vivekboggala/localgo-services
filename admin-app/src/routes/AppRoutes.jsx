@@ -9,6 +9,9 @@ import { AdminBookings } from '../pages/admin/AdminBookings';
 import { AdminReviews } from '../pages/admin/AdminReviews';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import { DesignPreviewPage } from '../pages/DesignPreviewPage';
+import { NotFoundPage } from '../pages/NotFoundPage';
+import { ForbiddenPage } from '../pages/ForbiddenPage';
+import { ErrorPage } from '../pages/ErrorPage';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
 
 export const AppRoutes = () => {
@@ -29,14 +32,9 @@ export const AppRoutes = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/design-preview" element={<DesignPreviewPage />} />
-
-      <Route path="*" element={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
-          <p className="text-slate-500 mb-4 text-xs">Page not found</p>
-          <a href="/dashboard" className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg text-xs">Go to Admin Console</a>
-        </div>
-      } />
+      <Route path="/forbidden" element={<ForbiddenPage />} />
+      <Route path="/error" element={<ErrorPage />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };
