@@ -1,10 +1,12 @@
 import axios from 'axios';
 import { auth } from '../firebase';
 
-const MAX_WAKE_RETRIES = 3;
-const RETRY_DELAYS_MS = [2500, 4500, 6500];
+const MAX_WAKE_RETRIES = 4;
+const RETRY_DELAYS_MS = [1500, 3000, 4500, 6000];
+let isCurrentlyWaking = false;
 
 const emitWakeStatus = (waking, attempt = 0) => {
+  isCurrentlyWaking = waking;
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent('localgo:server-waking', {
@@ -21,7 +23,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000,
+  timeout: 20000,
 });
 
 api.interceptors.request.use(
@@ -49,7 +51,7 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
-    if (response.config?.__retryCount) {
+    if (isCurrentlyWaking || response.config?.__retryCount) {
       emitWakeStatus(false, 0);
     }
     return response;

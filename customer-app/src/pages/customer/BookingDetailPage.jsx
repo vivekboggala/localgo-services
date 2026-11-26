@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
+import QRCode from 'qrcode';
 import {
   CheckCircle2,
   Phone,
@@ -11,6 +12,11 @@ import {
   ShieldCheck,
   Navigation,
   XCircle,
+  Smartphone,
+  Wallet,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../hooks/useAuth';
@@ -50,6 +56,10 @@ const REVIEW_TAGS = [
   'Friendly',
 ];
 
+const UPI_VPA = 'vivekreddy9390799974-8@ybl';
+const isMobileDevice = () =>
+  typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 export const BookingDetailPage = () => {
   const { id } = useParams();
   const { user, firebaseUser } = useAuth();
@@ -78,6 +88,14 @@ export const BookingDetailPage = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
+  // Post-completion Payment state
+  const [selectedPayMethod, setSelectedPayMethod] = useState('UPI');
+  const [utrInput, setUtrInput] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const mobileDevice = useMemo(() => isMobileDevice(), []);
+
   const loadBooking = () => {
     if (!id || !uid) {
       setLoading(false);
@@ -105,12 +123,18 @@ export const BookingDetailPage = () => {
         if (docSnap.exists()) {
           const liveData = docSnap.data();
           setBooking((prev) => {
-            const amountInRupees = liveData.amount != null ? Number(liveData.amount) / 100 : prev?.amount;
+            const amountInRupees = liveData.amount != null ? Number(liveData.amount) / 100 : (prev?.amount ?? 0);
+            const extraInRupees =
+              liveData.extraAmountPaise != null
+                ? Number(liveData.extraAmountPaise) / 100
+                : (prev?.extraAmount ?? 0);
             return {
               ...(prev || {}),
               ...liveData,
               id: docSnap.id,
-              amount: amountInRupees ?? prev?.amount,
+              amount: amountInRupees,
+              extraAmount: extraInRupees,
+              totalAmount: amountInRupees + extraInRupees,
               startOtp: liveData.startOtp ?? prev?.startOtp,
               status: liveData.status || prev?.status,
               cancelledBy: liveData.cancelledBy ?? prev?.cancelledBy,
@@ -149,6 +173,79 @@ export const BookingDetailPage = () => {
         .catch(() => {});
     }
   }, [booking?.providerId, booking?.status]);
+
+  useEffect(() => {
+    if (booking?.paymentMethod === 'CASH' || booking?.paymentMethod === 'UPI') {
+      setSelectedPayMethod(booking.paymentMethod);
+    }
+    if (booking?.paymentUtr) {
+      setUtrInput((prev) => prev || booking.paymentUtr);
+    }
+  }, [booking?.paymentMethod, booking?.paymentUtr]);
+
+  const payableAmount = useMemo(() => {
+    if (!booking) return 0;
+    if (booking.totalAmount != null) return Number(booking.totalAmount);
+    return Number(booking.amount || 0) + Number(booking.extraAmount || 0);
+  }, [booking]);
+
+  const upiUri = useMemo(() => {
+    if (!booking) return '';
+    const amountStr = payableAmount.toFixed(2);
+    const note = encodeURIComponent(`LocalGo Booking ${booking.id}`);
+    return `upi://pay?pa=${UPI_VPA}&pn=LocalGo%20Services&am=${amountStr}&cu=INR&tn=${note}`;
+  }, [booking, payableAmount]);
+
+  useEffect(() => {
+    if (!upiUri || booking?.status !== 'COMPLETED' || booking?.paymentStatus === 'PAID') {
+      return;
+    }
+    let active = true;
+    QRCode.toDataURL(upiUri, { width: 220, margin: 2 })
+      .then((url) => {
+        if (active) setQrDataUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [upiUri, booking?.status, booking?.paymentStatus]);
+
+  const handleCopyUpi = async () => {
+    try {
+      await navigator.clipboard.writeText(UPI_VPA);
+      setCopiedUpi(true);
+      showToast.success('UPI ID copied');
+      setTimeout(() => setCopiedUpi(false), 2000);
+    } catch {
+      showToast.error('Could not copy UPI ID');
+    }
+  };
+
+  const handleSubmitPayment = async (method) => {
+    if (method === 'UPI' && (!utrInput || utrInput.trim().length < 6)) {
+      showToast.error('Enter a valid UTR / transaction reference number (min 6 characters).');
+      return;
+    }
+    setSubmittingPayment(true);
+    try {
+      const updated = await bookingService.submitPayment(
+        id,
+        method,
+        method === 'UPI' ? utrInput.trim() : null
+      );
+      setBooking(updated);
+      showToast.success(
+        method === 'UPI'
+          ? 'UTR submitted! Provider will verify and mark as paid.'
+          : 'Cash payment selected. Please pay the provider.'
+      );
+    } catch (err) {
+      showToast.error(err.response?.data?.message || 'Failed to submit payment details.');
+    } finally {
+      setSubmittingPayment(false);
+    }
+  };
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -376,6 +473,150 @@ export const BookingDetailPage = () => {
               </div>
             )}
 
+            {/* Post-Completion Payment Selection (UPI QR + UTR or Cash) */}
+            {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && (
+              <div className="bg-brand-white rounded-card border-2 border-brand-yellow shadow-card p-5 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 block">
+                      Job Completed • Payment Due
+                    </span>
+                    <h3 className="font-display font-bold text-ds-18 text-brand-ink">
+                      Pay {formatCurrency(payableAmount)}
+                    </h3>
+                  </div>
+                  <Badge tone="warning" dot>PENDING</Badge>
+                </div>
+
+                {/* Method Toggle */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPayMethod('UPI')}
+                    className={`p-3 rounded-card border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      selectedPayMethod === 'UPI'
+                        ? 'bg-brand-yellowSoft border-brand-yellow shadow-card'
+                        : 'bg-brand-white border-gray-200 hover:border-brand-ink'
+                    }`}
+                  >
+                    <Smartphone className="w-4 h-4 text-brand-ink shrink-0" />
+                    <div>
+                      <div className="font-display font-bold text-ds-14 text-brand-ink">UPI</div>
+                      <div className="text-[11px] text-gray-600">Scan QR &amp; enter UTR</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPayMethod('CASH')}
+                    className={`p-3 rounded-card border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
+                      selectedPayMethod === 'CASH'
+                        ? 'bg-brand-yellowSoft border-brand-yellow shadow-card'
+                        : 'bg-brand-white border-gray-200 hover:border-brand-ink'
+                    }`}
+                  >
+                    <Wallet className="w-4 h-4 text-brand-ink shrink-0" />
+                    <div>
+                      <div className="font-display font-bold text-ds-14 text-brand-ink">Cash</div>
+                      <div className="text-[11px] text-gray-600">Pay directly to pro</div>
+                    </div>
+                  </button>
+                </div>
+
+                {selectedPayMethod === 'UPI' ? (
+                  <div className="space-y-4 pt-1">
+                    {/* QR Code */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-card p-4 flex flex-col items-center text-center gap-3">
+                      {qrDataUrl && (
+                        <img
+                          src={qrDataUrl}
+                          alt="UPI Payment QR Code"
+                          className="w-48 h-48 rounded-card border border-gray-200 bg-white p-2"
+                        />
+                      )}
+                      <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-pill px-3 py-1.5">
+                        <span className="text-ds-12 font-mono font-semibold text-brand-ink">{UPI_VPA}</span>
+                        <button
+                          type="button"
+                          onClick={handleCopyUpi}
+                          className="text-gray-600 hover:text-brand-ink cursor-pointer"
+                          title="Copy UPI ID"
+                        >
+                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Deep-link button ONLY on mobile devices */}
+                      {mobileDevice && (
+                        <a
+                          href={upiUri}
+                          className="w-full inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-card bg-brand-ink text-brand-yellow font-semibold text-ds-14 hover:bg-gray-900 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Pay {formatCurrency(payableAmount)} via UPI App
+                        </a>
+                      )}
+                    </div>
+
+                    {/* UTR Submission */}
+                    {booking.paymentMethod === 'UPI' && booking.paymentUtr ? (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-card p-3 space-y-1">
+                        <div className="text-ds-12 font-bold text-emerald-900">
+                          UTR Submitted: <span className="font-mono">{booking.paymentUtr}</span>
+                        </div>
+                        <p className="text-[11px] text-emerald-800">
+                          Waiting for {booking.providerName} to verify and mark payment as PAID.
+                        </p>
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-2">
+                      <label className="text-ds-12 font-semibold text-gray-700 block">
+                        Enter 12-digit UTR / Transaction Ref No. after paying
+                      </label>
+                      <input
+                        type="text"
+                        value={utrInput}
+                        onChange={(e) => setUtrInput(e.target.value)}
+                        placeholder="e.g. 412345678901"
+                        className="w-full min-h-[44px] px-3.5 py-2 rounded-card border border-gray-300 bg-white text-ds-14 font-mono focus:outline-none focus:border-brand-ink"
+                      />
+                      <Button
+                        variant="primary"
+                        fullWidth
+                        loading={submittingPayment}
+                        onClick={() => handleSubmitPayment('UPI')}
+                      >
+                        {booking.paymentUtr ? 'Update UTR for Verification' : 'Submit UTR for Verification'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-1">
+                    {booking.paymentMethod === 'CASH' ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-card p-3 text-ds-12 text-amber-900">
+                        Cash payment selected. Hand <strong>{formatCurrency(payableAmount)}</strong> to {booking.providerName} so they can confirm receipt.
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-ds-12 text-gray-600">
+                          Pay <strong>{formatCurrency(payableAmount)}</strong> in cash to {booking.providerName}.
+                        </p>
+                        <Button
+                          variant="primary"
+                          fullWidth
+                          loading={submittingPayment}
+                          onClick={() => handleSubmitPayment('CASH')}
+                        >
+                          Confirm Cash Payment
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Trip & Price Summary */}
             <div className="bg-brand-white rounded-card border border-gray-200 shadow-card p-5 space-y-4">
               <h3 className="font-display font-bold text-ds-16 text-brand-ink">Trip &amp; Price Summary</h3>
@@ -400,9 +641,20 @@ export const BookingDetailPage = () => {
                 <div className="space-y-0.5">
                   <span className="text-ds-12 text-gray-600 font-medium block">Total Amount</span>
                   <span className="font-display font-extrabold text-ds-20 text-brand-ink">
-                    {formatCurrency(booking.amount)}
+                    {formatCurrency(
+                      booking.totalAmount != null
+                        ? booking.totalAmount
+                        : Number(booking.amount || 0) + Number(booking.extraAmount || 0)
+                    )}
                   </span>
-                  <span className="text-ds-12 text-gray-600 ml-1">({booking.paymentMethod})</span>
+                  <span className="text-ds-12 text-gray-600 ml-1">
+                    ({booking.paymentMethod === 'PAY_AFTER_SERVICE' ? 'Pay after service' : booking.paymentMethod})
+                  </span>
+                  {Number(booking.extraAmount || 0) > 0 && (
+                    <span className="text-[11px] text-gray-600 block">
+                      Base {formatCurrency(booking.amount)} + Extra fittings {formatCurrency(booking.extraAmount)}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -410,11 +662,16 @@ export const BookingDetailPage = () => {
                   <Badge tone={booking.paymentStatus === 'PAID' ? 'success' : 'warning'} dot>
                     {booking.paymentStatus || 'PENDING'}
                   </Badge>
+                  {booking.paymentUtr && (
+                    <p className="text-[11px] font-mono text-gray-700">UTR: {booking.paymentUtr}</p>
+                  )}
                   {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && booking.paymentMethod === 'CASH' && (
                     <p className="text-[11px] text-amber-800">Awaiting provider cash confirmation</p>
                   )}
                   {booking.status === 'COMPLETED' && booking.paymentStatus !== 'PAID' && booking.paymentMethod === 'UPI' && (
-                    <p className="text-[11px] text-gray-600">UPI payment pending verification</p>
+                    <p className="text-[11px] text-gray-600">
+                      {booking.paymentUtr ? 'UTR submitted — awaiting provider verification' : 'UPI payment pending'}
+                    </p>
                   )}
                 </div>
               </div>

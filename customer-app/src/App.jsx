@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LocationProvider } from './context/LocationContext';
@@ -6,8 +6,13 @@ import { AppRoutes } from './routes/AppRoutes';
 import { AppToaster } from './components/ui';
 import ServerWakeBanner from './components/common/ServerWakeBanner';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import api from './api/axios';
 
 function App() {
+  useEffect(() => {
+    // Pre-warm Render backend silently on initial app load without triggering wake banner
+    api.get('/services', { skipWakeRetry: true }).catch(() => {});
+  }, []);
   return (
     <BrowserRouter>
       <ErrorBoundary>

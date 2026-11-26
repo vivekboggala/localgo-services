@@ -4,6 +4,8 @@ import com.localgo.enums.BookingStatus;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class StatusUpdateRequest {
     @NotNull(message = "Target status is required")
@@ -12,4 +14,8 @@ public class StatusUpdateRequest {
     private String cancellationReason;
 
     private String otp;
+
+    private BigDecimal extraCharges;
+
+    private String workSummary;
 }

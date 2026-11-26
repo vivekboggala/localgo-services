@@ -56,8 +56,12 @@ public class BookingResponse {
     private String cancellationReason;
 
     private BigDecimal amount; // in INR (converted from paise)
+    private BigDecimal extraAmount; // extra charges in INR
+    private BigDecimal totalAmount; // amount + extraAmount in INR
+    private String workSummary;
     private String paymentMethod;
     private PaymentStatus paymentStatus;
+    private String paymentUtr;
 
     private String startOtp;
     private String completionOtp;

@@ -13,12 +13,19 @@ export const providerPortalService = {
     const res = await api.get(`/bookings/${bookingId}`);
     return res.data.data;
   },
-  updateBookingStatus: async (bookingId, status, cancellationReason = null, otp = null) => {
-    const res = await api.put(`/provider/bookings/${bookingId}/status`, {
+  updateBookingStatus: async (bookingId, status, cancellationReason = null, otp = null, extraCharges = null, workSummary = null) => {
+    const payload = {
       status,
       cancellationReason,
       otp,
-    });
+    };
+    if (extraCharges !== null && extraCharges !== undefined && Number(extraCharges) > 0) {
+      payload.extraCharges = Number(extraCharges);
+    }
+    if (workSummary && workSummary.trim()) {
+      payload.workSummary = workSummary.trim();
+    }
+    const res = await api.put(`/provider/bookings/${bookingId}/status`, payload);
     return res.data.data;
   },
   confirmCashReceived: async (bookingId) => {

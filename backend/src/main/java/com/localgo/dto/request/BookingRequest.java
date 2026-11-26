@@ -43,7 +43,6 @@ public class BookingRequest {
 
     private Integer estimatedDurationMins;
 
-    @NotBlank(message = "Payment method is required (CASH or UPI)")
     private String paymentMethod;
 
     private Double amount; // optional amount in Rupees
