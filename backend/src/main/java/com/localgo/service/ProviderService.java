@@ -266,7 +266,7 @@ public class ProviderService {
         }
     }
 
-    public static final long PRESENCE_TIMEOUT_MS = 120_000L;
+    public static final long PRESENCE_TIMEOUT_MS = 900_000L; // 15 minutes
 
     /**
      * Strict Uber/Rapido-style availability: only Online when logged in on duty with a fresh heartbeat.

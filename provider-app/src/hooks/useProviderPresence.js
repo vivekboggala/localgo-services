@@ -71,10 +71,8 @@ export const useProviderPresence = (enabled) => {
     sendHeartbeat();
 
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        sendHeartbeat();
-      }
-    }, 20000);
+      sendHeartbeat();
+    }, 25000);
 
     const handleResume = () => {
       if (document.visibilityState === 'visible') {

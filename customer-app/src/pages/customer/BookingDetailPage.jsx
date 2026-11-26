@@ -14,8 +14,6 @@ import {
   XCircle,
   Smartphone,
   Wallet,
-  Copy,
-  Check,
   ExternalLink,
 } from 'lucide-react';
 import { db } from '../../firebase';
@@ -93,7 +91,6 @@ export const BookingDetailPage = () => {
   const [utrInput, setUtrInput] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [submittingPayment, setSubmittingPayment] = useState(false);
-  const [copiedUpi, setCopiedUpi] = useState(false);
   const mobileDevice = useMemo(() => isMobileDevice(), []);
 
   const loadBooking = () => {
@@ -210,17 +207,6 @@ export const BookingDetailPage = () => {
       active = false;
     };
   }, [upiUri, booking?.status, booking?.paymentStatus]);
-
-  const handleCopyUpi = async () => {
-    try {
-      await navigator.clipboard.writeText(UPI_VPA);
-      setCopiedUpi(true);
-      showToast.success('UPI ID copied');
-      setTimeout(() => setCopiedUpi(false), 2000);
-    } catch {
-      showToast.error('Could not copy UPI ID');
-    }
-  };
 
   const handleSubmitPayment = async (method) => {
     if (method === 'UPI' && (!utrInput || utrInput.trim().length < 6)) {
@@ -534,17 +520,6 @@ export const BookingDetailPage = () => {
                           className="w-48 h-48 rounded-card border border-gray-200 bg-white p-2"
                         />
                       )}
-                      <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-pill px-3 py-1.5">
-                        <span className="text-ds-12 font-mono font-semibold text-brand-ink">{UPI_VPA}</span>
-                        <button
-                          type="button"
-                          onClick={handleCopyUpi}
-                          className="text-gray-600 hover:text-brand-ink cursor-pointer"
-                          title="Copy UPI ID"
-                        >
-                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
 
                       {/* Deep-link button ONLY on mobile devices */}
                       {mobileDevice && (
