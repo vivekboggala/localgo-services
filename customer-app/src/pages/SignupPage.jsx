@@ -118,7 +118,7 @@ export const SignupPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-3">
           <Input
             label="Full Name"
             required
