@@ -40,7 +40,9 @@ export const AuthProvider = ({ children }) => {
       const saved = localStorage.getItem('localgo_user');
       if (saved) {
         const u = JSON.parse(saved);
-        return { uid: u.id, email: u.email, getIdToken: async () => localStorage.getItem('localgo_token') || '' };
+        if (u && u.id) {
+          return { uid: u.id, email: u.email, getIdToken: async () => localStorage.getItem('localgo_token') || '' };
+        }
       }
       return null;
     } catch (e) {
@@ -48,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !localStorage.getItem('localgo_user'));
 
   const fetchProfile = async () => {
     try {

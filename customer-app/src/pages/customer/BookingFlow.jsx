@@ -182,6 +182,12 @@ export const BookingFlow = () => {
   const [provider, setProvider] = useState(null);
   const [selectedServiceId, setSelectedServiceId] = useState(queryServiceId || '');
   const [description, setDescription] = useState(prefillState.prefillDescription || '');
+  const isSlotUnavailable = (dateIso, hour) => {
+    if (dateIso !== dates[0].iso) return false;
+    const now = new Date();
+    return hour <= now.getHours();
+  };
+
   const initialSlotState = useMemo(() => {
     const todaySlots = TIME_SLOTS.filter((s) => !isSlotUnavailable(dates[0].iso, s.hour));
     if (todaySlots.length > 0) {

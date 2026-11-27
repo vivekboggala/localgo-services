@@ -3,8 +3,15 @@ import { DEFAULT_LOCATION, PREDEFINED_LOCATIONS } from '../utils/constants';
 
 export const useLocation = () => {
   const [location, setLocation] = useState(() => {
-    const saved = localStorage.getItem('localgo_custom_location');
-    return saved ? JSON.parse(saved) : DEFAULT_LOCATION;
+    try {
+      const saved = localStorage.getItem('localgo_custom_location');
+      const parsed = saved ? JSON.parse(saved) : null;
+      return parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number'
+        ? parsed
+        : DEFAULT_LOCATION;
+    } catch {
+      return DEFAULT_LOCATION;
+    }
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // null | 'PERMISSION_DENIED' | 'POSITION_UNAVAILABLE' | 'TIMEOUT' | 'UNSUPPORTED'

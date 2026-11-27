@@ -7,7 +7,10 @@ export const LocationProvider = ({ children }) => {
   const [location, setLocation] = useState(() => {
     try {
       const saved = localStorage.getItem('localgo_custom_location');
-      return saved ? JSON.parse(saved) : DEFAULT_LOCATION;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number'
+        ? parsed
+        : DEFAULT_LOCATION;
     } catch {
       return DEFAULT_LOCATION;
     }

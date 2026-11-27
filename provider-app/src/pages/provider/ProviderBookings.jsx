@@ -74,7 +74,14 @@ export const ProviderBookings = () => {
         const liveList = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
           const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
-          return { id: docSnap.id, ...data, amount: amountInRupees };
+          const extraAmount = (data.extraAmountPaise || 0) / 100;
+          return {
+            id: docSnap.id,
+            ...data,
+            amount: amountInRupees,
+            extraAmount,
+            totalAmount: amountInRupees + extraAmount,
+          };
         });
 
         liveList.sort((a, b) => {
