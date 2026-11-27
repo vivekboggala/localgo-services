@@ -81,6 +81,10 @@ export const ProviderJobDetailPanel = ({ jobId, embedded = false, onStatusChange
   useEffect(() => {
     setOtpCode('');
     setOtpError('');
+    setWorkSummary('');
+    setExtraCharges('');
+    setConfirmCancelOpen(false);
+    setCancelReason('');
     loadJob();
     if (!jobId || !uid) return undefined;
 

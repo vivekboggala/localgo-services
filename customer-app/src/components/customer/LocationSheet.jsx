@@ -28,10 +28,12 @@ export const LocationSheet = ({
       setSearchingPlaces(false);
       return undefined;
     }
+    const controller = new AbortController();
     const timer = setTimeout(() => {
       setSearchingPlaces(true);
       fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&limit=5&q=${encodeURIComponent(q)}`
+        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&limit=5&q=${encodeURIComponent(q)}`,
+        { signal: controller.signal }
       )
         .then((r) => (r.ok ? r.json() : []))
         .then((rows) => {
@@ -47,11 +49,16 @@ export const LocationSheet = ({
             }))
           );
         })
-        .catch(() => setPlaceResults([]))
+        .catch((err) => {
+          if (err?.name !== 'AbortError') setPlaceResults([]);
+        })
         .finally(() => setSearchingPlaces(false));
     }, 350);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [cityQuery]);
 
   const handleSelectCity = (loc) => {

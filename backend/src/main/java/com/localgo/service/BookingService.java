@@ -70,7 +70,8 @@ public class BookingService {
                 int reqDuration = (request.getEstimatedDurationMins() != null && request.getEstimatedDurationMins() > 0)
                         ? request.getEstimatedDurationMins()
                         : 60;
-                LocalTime reqEnd = reqStart.plusMinutes(reqDuration);
+                java.time.LocalDateTime reqStartDt = java.time.LocalDateTime.of(request.getScheduledDate(), reqStart);
+                java.time.LocalDateTime reqEndDt = reqStartDt.plusMinutes(reqDuration);
 
                 // 1. Transactional check for existing active bookings
                 Query conflictQuery = firestore.collection("bookings")
@@ -94,12 +95,13 @@ public class BookingService {
                     if (timeStr != null) {
                         try {
                             LocalTime existStart = LocalTime.parse(timeStr);
-                            LocalTime existEnd = existStart.plusMinutes(existDuration);
+                            java.time.LocalDateTime existStartDt = java.time.LocalDateTime.of(request.getScheduledDate(), existStart);
+                            java.time.LocalDateTime existEndDt = existStartDt.plusMinutes(existDuration);
 
-                            // Interval overlap: reqStart < existEnd AND existStart < reqEnd
-                            if (reqStart.isBefore(existEnd) && existStart.isBefore(reqEnd)) {
+                            // Interval overlap using LocalDateTime to handle midnight wrap-around
+                            if (reqStartDt.isBefore(existEndDt) && existStartDt.isBefore(reqEndDt)) {
                                 throw new BookingConflictException(
-                                        "The selected time slot (" + reqStart + " - " + reqEnd +
+                                        "The selected time slot (" + reqStart + " - " + reqEndDt.toLocalTime() +
                                         ") overlaps with an existing booking for this provider on " + requestedDateStr);
                             }
                         } catch (BookingConflictException bce) {
@@ -146,6 +148,9 @@ public class BookingService {
                 }
 
                 ProviderDoc p = providerDoc.toObject(ProviderDoc.class);
+                if (p == null || (p.getVerificationStatus() != null && !"VERIFIED".equalsIgnoreCase(p.getVerificationStatus()))) {
+                    throw new BadRequestException("Selected provider is not verified for bookings yet.");
+                }
                 ProviderServiceItem matchedService = null;
                 if (p != null && p.getServices() != null) {
                     for (ProviderServiceItem item : p.getServices()) {
@@ -178,7 +183,7 @@ public class BookingService {
                         .customerPhone(customerPhone)
                         .providerId(request.getProviderId())
                         .providerName(providerName)
-                        .providerPhone(providerPhone != null ? providerPhone : "")
+                        .providerPhone("")
                         .serviceId(request.getServiceId())
                         .serviceName(serviceName)
                         .description(request.getDescription())

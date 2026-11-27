@@ -39,6 +39,16 @@ const MapController = ({ center, recenterKey, onViewportChange }) => {
   const map = useMap();
 
   useEffect(() => {
+    const container = map.getContainer();
+    if (!container || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
+  useEffect(() => {
     if (center?.lat && center?.lng) {
       map.setView([center.lat, center.lng], map.getZoom(), { animate: true });
     }

@@ -103,24 +103,33 @@ export const ProviderRequests = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const liveRequests = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
-          return { id: docSnap.id, ...data, amount: amountInRupees };
+        setRequests((prev) => {
+          const prevMap = new Map(prev.map((item) => [item.id, item]));
+          const liveRequests = snapshot.docs.map((docSnap) => {
+            const data = docSnap.data();
+            const existing = prevMap.get(docSnap.id);
+            const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
+            return {
+              id: docSnap.id,
+              ...data,
+              amount: amountInRupees,
+              distanceKm: data.distanceKm ?? existing?.distanceKm,
+            };
+          });
+
+          const hasNewRequest = liveRequests.some((r) => !knownIdsRef.current.has(r.id));
+          if (!firstSnapshotRef.current && hasNewRequest && !mutedRef.current) {
+            playAlertTone();
+            try {
+              navigator.vibrate?.([200, 100, 200]);
+            } catch {}
+            showToast.info('New service request received!');
+          }
+          firstSnapshotRef.current = false;
+          liveRequests.forEach((r) => knownIdsRef.current.add(r.id));
+
+          return liveRequests;
         });
-
-        const hasNewRequest = liveRequests.some((r) => !knownIdsRef.current.has(r.id));
-        if (!firstSnapshotRef.current && hasNewRequest && !mutedRef.current) {
-          playAlertTone();
-          try {
-            navigator.vibrate?.([200, 100, 200]);
-          } catch {}
-          showToast.info('New service request received!');
-        }
-        firstSnapshotRef.current = false;
-        liveRequests.forEach((r) => knownIdsRef.current.add(r.id));
-
-        setRequests(liveRequests);
         setLoading(false);
       },
       (err) => {

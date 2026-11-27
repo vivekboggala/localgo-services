@@ -28,6 +28,8 @@ public class ProviderDashboardResponse {
     private long activeJobsCount;
     private long totalCompletedJobs;
     private BigDecimal totalRealizedEarnings;
+    private BigDecimal todayEarnings;
+    private long todayJobsCount;
 
     private List<BookingResponse> activeJobs;
     private List<BookingResponse> pendingRequests;

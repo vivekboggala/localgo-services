@@ -138,7 +138,7 @@ export const AdminDashboard = () => {
       ...recentBookings.slice(0, 6).map((b) => ({
         id: `b-${b.id}`,
         title: `${b.serviceName} booked by ${b.customerName || 'Customer'}`,
-        meta: `Pro: ${b.providerName || 'Assigned'} • ₹${b.amount ?? 0}`,
+        meta: `Pro: ${b.providerName || 'Assigned'} • ₹${b.totalAmount ?? b.amount ?? 0}`,
         status: b.status,
         ts: new Date(b.createdAt || b.scheduledDate || 0).getTime(),
         to: '/bookings',
@@ -169,7 +169,7 @@ export const AdminDashboard = () => {
   }
 
   if (error && !stats) {
-    return <ErrorState message={error} onRetry={loadDashboard} />;
+    return <ErrorState message={error} onRetry={() => loadDashboard(days)} />;
   }
 
   const kpiCards = [

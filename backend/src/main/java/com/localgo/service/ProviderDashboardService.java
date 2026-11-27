@@ -99,10 +99,23 @@ public class ProviderDashboardService {
                     .whereEqualTo("status", BookingStatus.COMPLETED.name())
                     .get().get();
 
+            LocalDate todayIst = LocalDate.now(IST_ZONE);
             long totalPaise = 0L;
+            long todayPaise = 0L;
+            long todayJobsCount = 0L;
             for (var doc : completedSnap.getDocuments()) {
-                if ("PAID".equalsIgnoreCase(doc.getString("paymentStatus"))) {
-                    totalPaise += extractBookingTotalPaise(doc);
+                boolean paid = "PAID".equalsIgnoreCase(doc.getString("paymentStatus"));
+                long docPaise = extractBookingTotalPaise(doc);
+                if (paid) {
+                    totalPaise += docPaise;
+                }
+                // Count today's jobs by IST date (use completedAt, fall back to scheduledDate)
+                LocalDate docDate = extractCompletedIstDate(doc);
+                if (docDate != null && docDate.equals(todayIst)) {
+                    todayJobsCount++;
+                    if (paid) {
+                        todayPaise += docPaise;
+                    }
                 }
             }
 
@@ -114,6 +127,8 @@ public class ProviderDashboardService {
             }
 
             BigDecimal realizedEarnings = BigDecimal.valueOf(totalPaise)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal todayEarnings = BigDecimal.valueOf(todayPaise)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
             return ProviderDashboardResponse.builder()
@@ -131,6 +146,8 @@ public class ProviderDashboardService {
                     .activeJobsCount(activeJobs.size())
                     .totalCompletedJobs(completedCount)
                     .totalRealizedEarnings(realizedEarnings)
+                    .todayEarnings(todayEarnings)
+                    .todayJobsCount(todayJobsCount)
                     .activeJobs(activeJobs)
                     .pendingRequests(pendingRequests)
                     .build();
@@ -226,7 +243,7 @@ public class ProviderDashboardService {
      * 3. Continuous zero-fill: build a continuous date map for the requested range and fill in 0 for any day with no completed bookings.
      */
     public List<EarningsTrendResponse> getProviderEarningsTrend(String providerId, int days) {
-        int window = days > 0 ? days : 7;
+        int window = days > 0 ? Math.min(days, 365) : 7;
         LocalDate endDate = LocalDate.now(IST_ZONE);
         LocalDate startDate = endDate.minusDays(window - 1);
 
@@ -357,7 +374,7 @@ public class ProviderDashboardService {
         return providerService.getProviderProfileWithContact(providerId);
     }
 
-    public void updateProviderProfile(String providerId, ProviderProfileUpdateRequest request) {
-        providerService.updateProviderProfile(providerId, request);
+    public ProviderResponse updateProviderProfile(String providerId, ProviderProfileUpdateRequest request) {
+        return providerService.updateProviderProfile(providerId, request);
     }
 }

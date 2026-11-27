@@ -117,7 +117,7 @@ export const ProviderLayout = () => {
       unsubscribe();
       window.removeEventListener('localgo:requests-updated', handleRequestsUpdated);
     };
-  }, [uid, pathname]);
+  }, [uid]);
 
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);

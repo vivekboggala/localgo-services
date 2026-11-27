@@ -134,8 +134,8 @@ class BookingBugsFixTest {
         verify(notificationService).createNotification(
                 eq("cust-1"), eq(NotificationType.SERVICE_COMPLETED), anyString(), anyString(), eq("b-upi"));
 
-        assertThrows(BadRequestException.class,
-                () -> bookingService.confirmCashReceived("b-upi", "prov-1"));
+        BookingResponse paid = bookingService.confirmCashReceived("b-upi", "prov-1");
+        assertEquals(PaymentStatus.PAID, paid.getPaymentStatus(), "Provider should be able to confirm UPI payment received");
     }
 
     @Test

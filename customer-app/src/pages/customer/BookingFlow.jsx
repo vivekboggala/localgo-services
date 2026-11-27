@@ -182,18 +182,16 @@ export const BookingFlow = () => {
   const [provider, setProvider] = useState(null);
   const [selectedServiceId, setSelectedServiceId] = useState(queryServiceId || '');
   const [description, setDescription] = useState(prefillState.prefillDescription || '');
-  const [scheduledDate, setScheduledDate] = useState(dates[0].iso);
+  const initialSlotState = useMemo(() => {
+    const todaySlots = TIME_SLOTS.filter((s) => !isSlotUnavailable(dates[0].iso, s.hour));
+    if (todaySlots.length > 0) {
+      return { date: dates[0].iso, time: todaySlots[0].value };
+    }
+    return { date: dates[1].iso, time: TIME_SLOTS[0].value };
+  }, [dates]);
 
-  const isSlotUnavailable = (dateIso, hour) => {
-    if (dateIso !== dates[0].iso) return false;
-    const now = new Date();
-    return hour <= now.getHours();
-  };
-
-  const [scheduledTime, setScheduledTime] = useState(() => {
-    const firstAvailable = TIME_SLOTS.find((s) => !isSlotUnavailable(dates[0].iso, s.hour));
-    return firstAvailable ? firstAvailable.value : '10:00';
-  });
+  const [scheduledDate, setScheduledDate] = useState(initialSlotState.date);
+  const [scheduledTime, setScheduledTime] = useState(initialSlotState.time);
 
   const addressStorageKey = `localgo_saved_addresses_${user?.id || 'guest'}`;
   const [savedAddresses, setSavedAddresses] = useState(() => {

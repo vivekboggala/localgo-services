@@ -17,6 +17,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -86,50 +87,67 @@ public class OtpService {
         DocumentReference docRef = getDocRef(cleanEmail, purpose);
 
         try {
-            DocumentSnapshot snap = docRef.get().get();
-            if (!snap.exists()) {
-                throw new BadRequestException("No active OTP found. Please request a new verification code.");
-            }
+            Map<String, Object> outcome = firestore.<Map<String, Object>>runTransaction(tx -> {
+                DocumentSnapshot snap = tx.get(docRef).get();
+                if (!snap.exists()) {
+                    return Map.of("status", "NOT_FOUND");
+                }
 
-            OtpDoc otpDoc = snap.toObject(OtpDoc.class);
-            if (otpDoc == null || otpDoc.isUsed() || otpDoc.isVerified()) {
-                throw new BadRequestException("No active OTP found. Please request a new verification code.");
-            }
+                OtpDoc otpDoc = snap.toObject(OtpDoc.class);
+                if (otpDoc == null || otpDoc.isUsed() || otpDoc.isVerified()) {
+                    return Map.of("status", "NOT_FOUND");
+                }
 
-            if (otpDoc.getAttempts() >= MAX_ATTEMPTS) {
-                otpDoc.setUsed(true);
-                docRef.set(otpDoc).get();
-                throw new BadRequestException("Maximum OTP verification attempts exceeded (5). Please request a new code.");
-            }
-
-            if (otpDoc.getExpiresAt() == null || new Date().after(otpDoc.getExpiresAt())) {
-                otpDoc.setUsed(true);
-                docRef.set(otpDoc).get();
-                throw new BadRequestException("OTP verification code has expired. Please request a new code.");
-            }
-
-            String inputHash = hashOtp(rawOtpCode.trim());
-            if (!inputHash.equalsIgnoreCase(otpDoc.getOtpHash())) {
-                int newAttempts = otpDoc.getAttempts() + 1;
-                otpDoc.setAttempts(newAttempts);
-                if (newAttempts >= MAX_ATTEMPTS) {
+                if (otpDoc.getAttempts() >= MAX_ATTEMPTS) {
                     otpDoc.setUsed(true);
+                    tx.set(docRef, otpDoc);
+                    return Map.of("status", "MAX_ATTEMPTS");
                 }
-                docRef.set(otpDoc).get();
 
-                int remaining = MAX_ATTEMPTS - newAttempts;
-                if (remaining <= 0) {
-                    throw new BadRequestException("Maximum OTP verification attempts exceeded. Please request a new code.");
+                if (otpDoc.getExpiresAt() == null || new Date().after(otpDoc.getExpiresAt())) {
+                    otpDoc.setUsed(true);
+                    tx.set(docRef, otpDoc);
+                    return Map.of("status", "EXPIRED");
                 }
-                throw new BadRequestException("Invalid verification code. " + remaining + " attempt(s) remaining.");
+
+                String inputHash = hashOtp(rawOtpCode.trim());
+                if (!inputHash.equalsIgnoreCase(otpDoc.getOtpHash())) {
+                    int newAttempts = otpDoc.getAttempts() + 1;
+                    otpDoc.setAttempts(newAttempts);
+                    if (newAttempts >= MAX_ATTEMPTS) {
+                        otpDoc.setUsed(true);
+                    }
+                    tx.set(docRef, otpDoc);
+                    return Map.of("status", "INVALID", "remaining", MAX_ATTEMPTS - newAttempts);
+                }
+
+                String verificationToken = UUID.randomUUID().toString();
+                otpDoc.setVerified(true);
+                otpDoc.setVerifiedAt(new Date());
+                otpDoc.setVerificationToken(verificationToken);
+                tx.set(docRef, otpDoc);
+                return Map.of("status", "OK", "token", verificationToken);
+            }).get();
+
+            String status = String.valueOf(outcome.get("status"));
+            switch (status) {
+                case "OK":
+                    return String.valueOf(outcome.get("token"));
+                case "NOT_FOUND":
+                    throw new BadRequestException("No active OTP found. Please request a new verification code.");
+                case "MAX_ATTEMPTS":
+                    throw new BadRequestException("Maximum OTP verification attempts exceeded (5). Please request a new code.");
+                case "EXPIRED":
+                    throw new BadRequestException("OTP verification code has expired. Please request a new code.");
+                case "INVALID":
+                    int remaining = ((Number) outcome.get("remaining")).intValue();
+                    if (remaining <= 0) {
+                        throw new BadRequestException("Maximum OTP verification attempts exceeded. Please request a new code.");
+                    }
+                    throw new BadRequestException("Invalid verification code. " + remaining + " attempt(s) remaining.");
+                default:
+                    throw new RuntimeException("Unexpected OTP verification state.");
             }
-
-            String verificationToken = UUID.randomUUID().toString();
-            otpDoc.setVerified(true);
-            otpDoc.setVerifiedAt(new Date());
-            otpDoc.setVerificationToken(verificationToken);
-            docRef.set(otpDoc).get();
-            return verificationToken;
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {

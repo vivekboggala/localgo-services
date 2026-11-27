@@ -51,18 +51,10 @@ public class ReviewService {
                 throw new BadRequestException("Reviews can only be submitted for COMPLETED bookings.");
             }
 
-            // 2. Validate one review per booking
-            var existingReviews = firestore.collection("reviews")
-                    .whereEqualTo("bookingId", request.getBookingId())
-                    .get().get();
-            if (!existingReviews.isEmpty()) {
-                throw new BadRequestException("A review has already been submitted for this booking.");
-            }
-
-            // 3. Save review
-            var newDocRef = firestore.collection("reviews").document();
+            // 2 & 3. Atomically validate one review per booking using deterministic document ID
+            var newDocRef = firestore.collection("reviews").document(request.getBookingId());
             ReviewDoc review = ReviewDoc.builder()
-                    .id(newDocRef.getId())
+                    .id(request.getBookingId())
                     .bookingId(request.getBookingId())
                     .customerId(customerId)
                     .customerName(booking.getCustomerName())
@@ -72,7 +64,18 @@ public class ReviewService {
                     .createdAt(new Date())
                     .build();
 
-            newDocRef.set(review).get();
+            Boolean created = firestore.runTransaction(tx -> {
+                var snap = tx.get(newDocRef).get();
+                if (snap.exists()) {
+                    return false;
+                }
+                tx.create(newDocRef, review);
+                return true;
+            }).get();
+
+            if (!Boolean.TRUE.equals(created)) {
+                throw new BadRequestException("A review has already been submitted for this booking.");
+            }
 
             // 4. Live rating recalculation on provider doc
             recalculateProviderRating(booking.getProviderId());

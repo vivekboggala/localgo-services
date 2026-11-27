@@ -93,6 +93,7 @@ public class SystemVerificationTest {
         req.setStartingPrice(499.0); // 499 INR = 49900 paise
 
         authService.registerProvider(req, TEST_PROVIDER_UID);
+        firestore.collection("providers").document(TEST_PROVIDER_UID).update("verificationStatus", "VERIFIED").get();
         providerDashboardService.updatePresence(TEST_PROVIDER_UID, true, true);
 
         // Perform real nearby search around Hyderabad (center: 17.3870, 78.4900, radius 10 km)
@@ -190,10 +191,9 @@ public class SystemVerificationTest {
         LocalDate today = LocalDate.now();
         LocalDate targetActiveDate = today.minusDays(2); // Activity on day -2
 
-        // Clean up any existing bookings for TEST_PROVIDER_UID on targetActiveDate
+        // Clean up any existing bookings for TEST_PROVIDER_UID so prior runs don't contaminate revenue totals
         var existingTrendBookings = firestore.collection("bookings")
                 .whereEqualTo("providerId", TEST_PROVIDER_UID)
-                .whereEqualTo("scheduledDate", targetActiveDate.toString())
                 .get().get();
         for (var doc : existingTrendBookings.getDocuments()) {
             firestore.collection("bookings").document(doc.getId()).delete().get();

@@ -113,20 +113,29 @@ export const CustomerDashboard = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const liveList = snapshot.docs.map((docSnap) => {
-          const d = docSnap.data();
-          return {
-            id: docSnap.id,
-            ...d,
-            amount: d.amount != null ? Number(d.amount) / 100 : 0,
-          };
+        setBookings((prev) => {
+          const prevMap = new Map(prev.map((item) => [item.id, item]));
+          const liveList = snapshot.docs.map((docSnap) => {
+            const d = docSnap.data();
+            const existing = prevMap.get(docSnap.id);
+            const amountInRupees = d.amount != null ? Number(d.amount) / 100 : 0;
+            const extraAmount = (d.extraAmountPaise || 0) / 100;
+            return {
+              id: docSnap.id,
+              ...d,
+              amount: amountInRupees,
+              extraAmount,
+              totalAmount: amountInRupees + extraAmount,
+              startOtp: d.startOtp ?? existing?.startOtp,
+            };
+          });
+          liveList.sort((a, b) => {
+            const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+            const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+            return tB - tA;
+          });
+          return liveList.length > 0 ? liveList : prev;
         });
-        liveList.sort((a, b) => {
-          const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-          const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-          return tB - tA;
-        });
-        if (liveList.length > 0) setBookings(liveList);
       },
       () => {}
     );

@@ -81,21 +81,31 @@ export const MyBookingsPage = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const liveList = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
-          return { id: docSnap.id, ...data, amount: amountInRupees };
-        });
+        setAllBookings((prev) => {
+          const prevMap = new Map(prev.map((item) => [item.id, item]));
+          const liveList = snapshot.docs.map((docSnap) => {
+            const data = docSnap.data();
+            const existing = prevMap.get(docSnap.id);
+            const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
+            const extraAmount = (data.extraAmountPaise || 0) / 100;
+            return {
+              id: docSnap.id,
+              ...data,
+              amount: amountInRupees,
+              extraAmount,
+              totalAmount: amountInRupees + extraAmount,
+              startOtp: data.startOtp ?? existing?.startOtp,
+            };
+          });
 
-        liveList.sort((a, b) => {
-          const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-          const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-          return tB - tA;
-        });
+          liveList.sort((a, b) => {
+            const tA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+            const tB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+            return tB - tA;
+          });
 
-        if (liveList.length > 0) {
-          setAllBookings(liveList);
-        }
+          return liveList.length > 0 ? liveList : prev;
+        });
         setLoading(false);
       },
       (err) => {

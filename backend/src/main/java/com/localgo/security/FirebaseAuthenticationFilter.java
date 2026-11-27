@@ -41,15 +41,11 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                 FirebaseToken decodedToken = firebaseAuth.verifyIdToken(token);
                 String uid = decodedToken.getUid();
 
-                // Fetch user role from Firestore users collection
-                String role = "CUSTOMER"; // Default fallback
-                try {
-                    DocumentSnapshot userDoc = firestore.collection("users").document(uid).get().get();
-                    if (userDoc.exists() && userDoc.contains("role")) {
-                        role = userDoc.getString("role");
-                    }
-                } catch (Exception e) {
-                    log.warn("Could not fetch user role for uid {}: {}", uid, e.getMessage());
+                // Fetch user role from Firestore users collection (fail closed on lookup error)
+                String role = "CUSTOMER";
+                DocumentSnapshot userDoc = firestore.collection("users").document(uid).get().get();
+                if (userDoc.exists() && userDoc.contains("role")) {
+                    role = userDoc.getString("role");
                 }
 
                 List<SimpleGrantedAuthority> authorities = new ArrayList<>();

@@ -3,6 +3,7 @@ package com.localgo.service;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.Firestore;
 import com.localgo.exception.BadRequestException;
+import com.localgo.exception.ResourceNotFoundException;
 import com.localgo.model.Dispute;
 import org.springframework.stereotype.Service;
 
@@ -44,11 +45,11 @@ public class DisputeService {
         var docRef = disputesCol.document(disputeId);
         var snapshot = docRef.get().get();
         if (!snapshot.exists()) {
-            throw new IllegalArgumentException("Dispute not found: " + disputeId);
+            throw new ResourceNotFoundException("Dispute not found: " + disputeId);
         }
         Dispute d = snapshot.toObject(Dispute.class);
         if (d == null) {
-            throw new IllegalArgumentException("Dispute data missing: " + disputeId);
+            throw new ResourceNotFoundException("Dispute data missing: " + disputeId);
         }
         d.setStatus(newStatus);
         docRef.set(d).get();

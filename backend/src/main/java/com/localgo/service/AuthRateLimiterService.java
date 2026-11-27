@@ -102,14 +102,28 @@ public class AuthRateLimiterService {
 
     private String extractClientIp(HttpServletRequest request) {
         if (request == null) return "unknown";
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        if (isTrustedProxy(remoteAddr)) {
+            String xff = request.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                String[] parts = xff.split(",");
+                String first = parts[0].trim();
+                if (!first.isEmpty()) return first;
+            }
+            String realIp = request.getHeader("X-Real-IP");
+            if (realIp != null && !realIp.isBlank()) {
+                return realIp.trim();
+            }
         }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        return remoteAddr;
+    }
+
+    private boolean isTrustedProxy(String ip) {
+        return ip.equals("127.0.0.1")
+                || ip.equals("::1")
+                || ip.equals("0:0:0:0:0:0:0:1")
+                || ip.startsWith("10.")
+                || ip.startsWith("192.168.")
+                || ip.matches("^172\\.(1[6-9]|2\\d|3[0-1])\\..*");
     }
 }

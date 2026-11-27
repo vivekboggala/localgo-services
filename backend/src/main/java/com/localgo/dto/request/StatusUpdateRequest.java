@@ -1,6 +1,7 @@
 package com.localgo.dto.request;
 
 import com.localgo.enums.BookingStatus;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -15,6 +16,7 @@ public class StatusUpdateRequest {
 
     private String otp;
 
+    @DecimalMin(value = "0.00", message = "Extra charges cannot be negative")
     private BigDecimal extraCharges;
 
     private String workSummary;

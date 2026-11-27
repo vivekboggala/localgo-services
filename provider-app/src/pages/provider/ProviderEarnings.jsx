@@ -151,10 +151,9 @@ export const ProviderEarnings = () => {
 
   const stats = useMemo(() => {
     const paidList = filteredTransactions.filter((b) => b.paymentStatus === 'PAID');
-    const sourceList = paidList.length > 0 ? paidList : filteredTransactions;
-    const gross = sourceList.reduce((sum, b) => sum + getBookingTotal(b), 0);
+    const gross = paidList.reduce((sum, b) => sum + getBookingTotal(b), 0);
     const jobsCount = filteredTransactions.length;
-    const avgPerJob = jobsCount > 0 ? Math.round(gross / jobsCount) : 0;
+    const avgPerJob = paidList.length > 0 ? Math.round(gross / paidList.length) : 0;
     const platformFees = 0;
     const net = gross - platformFees;
     return { gross, jobsCount, avgPerJob, platformFees, net };

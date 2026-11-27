@@ -81,12 +81,12 @@ public class ProviderPortalController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<ApiResponse<Void>> updateProfile(
+    public ResponseEntity<ApiResponse<ProviderResponse>> updateProfile(
             @Valid @RequestBody ProviderProfileUpdateRequest request,
             Authentication authentication) {
 
-        providerDashboardService.updateProviderProfile(authentication.getName(), request);
-        return ResponseEntity.ok(ApiResponse.success("Provider profile updated successfully"));
+        ProviderResponse updated = providerDashboardService.updateProviderProfile(authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success("Provider profile updated successfully", updated));
     }
 
     @PutMapping("/availability")

@@ -2,6 +2,7 @@ package com.localgo.service;
 
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.Firestore;
+import com.localgo.exception.ResourceNotFoundException;
 import com.localgo.model.SosEvent;
 
 /**
@@ -27,9 +28,12 @@ public class SosService {
         var docRef = sosCol.document(eventId);
         var snap = docRef.get().get();
         if (!snap.exists()) {
-            throw new IllegalArgumentException("SOS event not found: " + eventId);
+            throw new ResourceNotFoundException("SOS event not found: " + eventId);
         }
         SosEvent e = snap.toObject(SosEvent.class);
+        if (e == null) {
+            throw new ResourceNotFoundException("SOS event data missing: " + eventId);
+        }
         e.setStatus(newStatus);
         docRef.set(e).get();
     }

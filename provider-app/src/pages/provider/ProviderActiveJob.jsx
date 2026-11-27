@@ -77,7 +77,14 @@ export const ProviderActiveJob = () => {
           const data = docSnap.data();
           if (['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(data.status)) {
             const amountInRupees = data.amount != null ? Number(data.amount) / 100 : 0;
-            liveActive.push({ id: docSnap.id, ...data, amount: amountInRupees });
+            const extraAmount = (data.extraAmountPaise || 0) / 100;
+            liveActive.push({
+              id: docSnap.id,
+              ...data,
+              amount: amountInRupees,
+              extraAmount,
+              totalAmount: amountInRupees + extraAmount,
+            });
           }
         });
         const sorted = sortByScheduledTime(liveActive);

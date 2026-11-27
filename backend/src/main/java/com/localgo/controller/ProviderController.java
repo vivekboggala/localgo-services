@@ -27,6 +27,9 @@ public class ProviderController {
             @RequestParam(value = "available", required = false) String available,
             @RequestParam(value = "sortBy", required = false) String sortBy) {
 
+        if (latitude < -90.0 || latitude > 90.0 || longitude < -180.0 || longitude > 180.0 || radius <= 0) {
+            throw new com.localgo.exception.BadRequestException("Invalid coordinates or search radius.");
+        }
         Boolean availableFilter = parseAvailableFilter(available);
         List<ProviderResponse> providers = providerService.findNearbyProviders(
                 latitude, longitude, radius, serviceId, minRating, maxPrice, availableFilter, sortBy

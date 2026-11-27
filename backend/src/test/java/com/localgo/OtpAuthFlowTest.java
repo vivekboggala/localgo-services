@@ -70,6 +70,24 @@ class OtpAuthFlowTest {
         lenient().when(firestore.collection("otp_verifications")).thenReturn(otpCollection);
         lenient().when(firestore.collection("users")).thenReturn(usersCollection);
 
+        lenient().when(firestore.runTransaction(any())).thenAnswer(inv -> {
+            com.google.cloud.firestore.Transaction.Function<?> fn = inv.getArgument(0);
+            com.google.cloud.firestore.Transaction tx = mock(com.google.cloud.firestore.Transaction.class);
+            lenient().when(tx.get(any(DocumentReference.class))).thenAnswer(g -> {
+                DocumentReference ref = g.getArgument(0);
+                return ref.get();
+            });
+            lenient().when(tx.set(any(DocumentReference.class), any())).thenAnswer(s -> {
+                DocumentReference ref = s.getArgument(0);
+                Object val = s.getArgument(1);
+                if (val instanceof OtpDoc doc) {
+                    ref.set(doc);
+                }
+                return tx;
+            });
+            return ApiFutures.immediateFuture(fn.updateCallback(tx));
+        });
+
         lenient().when(otpCollection.document(anyString())).thenAnswer(inv -> {
             String docId = inv.getArgument(0);
             DocumentReference docRef = mock(DocumentReference.class);

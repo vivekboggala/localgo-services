@@ -78,6 +78,9 @@ public class ProviderService {
         List<ProviderResponse> results = new ArrayList<>();
 
         for (ProviderDoc candidate : candidatesMap.values()) {
+            if (!"VERIFIED".equalsIgnoreCase(candidate.getVerificationStatus())) {
+                continue;
+            }
             if (candidate.getLatitude() == null || candidate.getLongitude() == null) {
                 continue;
             }
@@ -191,13 +194,6 @@ public class ProviderService {
             ProviderDoc doc = docSnap.toObject(ProviderDoc.class);
             if (doc != null) {
                 doc.setId(id);
-                Integer actualCompleted = fetchCompletedJobsCount(id);
-                if (actualCompleted != null && !actualCompleted.equals(doc.getCompletedJobs())) {
-                    doc.setCompletedJobs(actualCompleted);
-                    try {
-                        docRef.update("completedJobs", actualCompleted);
-                    } catch (Exception ignored) {}
-                }
                 Double distance = null;
                 if (userLat != null && userLon != null && doc.getLatitude() != null && doc.getLongitude() != null) {
                     distance = GeoUtils.haversineDistanceKm(userLat, userLon, doc.getLatitude(), doc.getLongitude());
@@ -244,6 +240,10 @@ public class ProviderService {
             if (request.getDescription() != null) doc.setDescription(request.getDescription());
             if (request.getExperienceYears() != null) doc.setExperienceYears(request.getExperienceYears());
             if (request.getServiceRadiusKm() != null) doc.setServiceRadiusKm(request.getServiceRadiusKm());
+            if (request.getStartingPrice() != null && doc.getServices() != null && !doc.getServices().isEmpty()) {
+                long pricePaise = Math.round(request.getStartingPrice() * 100.0);
+                doc.getServices().get(0).setStartingPrice(pricePaise);
+            }
             if (request.getAvailable() != null) {
                 doc.setAvailable(request.getAvailable());
                 doc.setManualOffline(!request.getAvailable());

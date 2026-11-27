@@ -59,7 +59,7 @@ public class BookingStateMachine {
                     throw new ResourceNotFoundException("Booking not found: " + bookingId);
                 }
                 // Guard: current status must match expected "from"
-                if (!booking.getStatus().equalsIgnoreCase(from.name())) {
+                if (booking.getStatus() == null || !booking.getStatus().equalsIgnoreCase(from.name())) {
                     throw new BadRequestException("Invalid transition: current status is " + booking.getStatus());
                 }
 
@@ -108,7 +108,7 @@ public class BookingStateMachine {
                                 String actorId) {
         // Example guard: only a provider can move from REQUESTED to ACCEPTED.
         if (from == BookingStatus.REQUESTED && to == BookingStatus.ACCEPTED) {
-            if (!booking.getProviderId().equals(actorId)) {
+            if (!Objects.equals(booking.getProviderId(), actorId)) {
                 throw new ForbiddenException("Only the assigned provider can accept a booking.");
             }
         }

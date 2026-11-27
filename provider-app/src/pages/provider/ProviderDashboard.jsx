@@ -156,6 +156,10 @@ export const ProviderDashboard = () => {
 
   const [stats, setStats] = useState(null);
   const [chartDays, setChartDays] = useState(7);
+  const chartDaysRef = useRef(7);
+  useEffect(() => {
+    chartDaysRef.current = chartDays;
+  }, [chartDays]);
   const [trendData, setTrendData] = useState([]);
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -208,12 +212,12 @@ export const ProviderDashboard = () => {
       return;
     }
 
-    refreshStats(chartDays);
+    refreshStats(chartDaysRef.current);
 
     const q = query(collection(db, 'bookings'), where('providerId', '==', uid));
     const unsubscribe = onSnapshot(
       q,
-      () => refreshStats(chartDays),
+      () => refreshStats(chartDaysRef.current),
       (err) => console.warn('Real-time bookings trigger error on dashboard:', err)
     );
     return () => unsubscribe();

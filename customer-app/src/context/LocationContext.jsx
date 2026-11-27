@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { DEFAULT_LOCATION, PREDEFINED_LOCATIONS } from '../utils/constants';
 
 export const LocationContext = createContext(null);
@@ -15,6 +15,7 @@ export const LocationProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [usingGPS, setUsingGPS] = useState(false);
+  const requestIdRef = useRef(0);
 
   const requestGPSLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -22,11 +23,13 @@ export const LocationProvider = ({ children }) => {
       return;
     }
 
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (reqId !== requestIdRef.current) return;
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         const initialCoords = {
@@ -45,6 +48,7 @@ export const LocationProvider = ({ children }) => {
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`)
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
+            if (reqId !== requestIdRef.current) return;
             const addr = data?.address;
             if (!addr) return;
             const area = addr.village || addr.suburb || addr.town || addr.city_district || addr.city || addr.county;
@@ -61,6 +65,7 @@ export const LocationProvider = ({ children }) => {
           .catch(() => {});
       },
       (err) => {
+        if (reqId !== requestIdRef.current) return;
         setLoading(false);
         setUsingGPS(false);
         switch (err.code) {
@@ -82,9 +87,11 @@ export const LocationProvider = ({ children }) => {
   }, []);
 
   const selectManualLocation = useCallback((loc) => {
+    requestIdRef.current += 1;
     setLocation(loc);
     setUsingGPS(false);
     setError(null);
+    setLoading(false);
     try {
       localStorage.setItem('localgo_custom_location', JSON.stringify(loc));
     } catch {}

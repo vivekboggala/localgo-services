@@ -46,6 +46,7 @@ const VerifyEmailPage = () => {
   }, [cooldownLeft]);
 
   const handleVerify = async (codeToVerify) => {
+    if (submitting) return;
     const targetOtp = codeToVerify || otp;
     if (!targetOtp || targetOtp.length !== 6) {
       setError('Please enter all 6 digits of the verification code.');

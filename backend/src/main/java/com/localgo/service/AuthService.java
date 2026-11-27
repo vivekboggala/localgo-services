@@ -87,11 +87,9 @@ public class AuthService {
 
     public AuthResponse registerCustomer(RegisterRequest request, String authenticatedUid) {
         String cleanEmail = request.getEmail().trim().toLowerCase();
-        String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
-
-        if (uid == null || uid.isBlank()) {
-            uid = createOrUpdateFirebaseUser(cleanEmail, request.getPassword(), request.getName(), request.getPhone(), "Registration");
-        }
+        String uid = (authenticatedUid != null && !authenticatedUid.isBlank())
+                ? authenticatedUid
+                : createOrUpdateFirebaseUser(cleanEmail, request.getPassword(), request.getName(), request.getPhone(), "Registration");
 
         UserDoc userDoc = UserDoc.builder()
                 .id(uid)
@@ -119,11 +117,9 @@ public class AuthService {
 
     public AuthResponse registerProvider(ProviderRegisterRequest request, String authenticatedUid) {
         String cleanEmail = request.getEmail().trim().toLowerCase();
-        String uid = authenticatedUid != null ? authenticatedUid : request.getUid();
-
-        if (uid == null || uid.isBlank()) {
-            uid = createOrUpdateFirebaseUser(cleanEmail, request.getPassword(), request.getName(), request.getPhone(), "Provider registration");
-        }
+        String uid = (authenticatedUid != null && !authenticatedUid.isBlank())
+                ? authenticatedUid
+                : createOrUpdateFirebaseUser(cleanEmail, request.getPassword(), request.getName(), request.getPhone(), "Provider registration");
 
         UserDoc userDoc = UserDoc.builder()
                 .id(uid)

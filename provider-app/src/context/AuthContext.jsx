@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !localStorage.getItem('localgo_user'));
 
   const fetchProfile = async () => {
     try {

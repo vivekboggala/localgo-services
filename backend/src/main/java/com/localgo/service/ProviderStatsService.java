@@ -30,19 +30,29 @@ public class ProviderStatsService {
     }
 
     @Scheduled(cron = "0 0 * * * *") // hourly
-    public void cleanupOldStats() throws ExecutionException, InterruptedException {
-        PlatformConfig config = configService.getConfig();
-        Instant cutoff = Instant.now().minus(Duration.ofDays(config.getStatsWindowDays()));
-        var docs = statsCol.listDocuments();
-        for (var docRef : docs) {
-            var snapshot = docRef.get().get();
-            if (!snapshot.exists()) continue;
-            ProviderStats stats = snapshot.toObject(ProviderStats.class);
-            if (stats == null) continue;
-            stats.getAcceptedTimestamps().removeIf(t -> t.isBefore(cutoff));
-            stats.getRejectedTimestamps().removeIf(t -> t.isBefore(cutoff));
-            stats.getStrikeTimestamps().removeIf(t -> t.isBefore(cutoff));
-            docRef.set(stats).get();
+    public void cleanupOldStats() {
+        try {
+            PlatformConfig config = configService.getConfig();
+            Instant cutoff = Instant.now().minus(Duration.ofDays(config.getStatsWindowDays()));
+            var docs = statsCol.listDocuments();
+            for (var docRef : docs) {
+                var snapshot = docRef.get().get();
+                if (!snapshot.exists()) continue;
+                ProviderStats stats = snapshot.toObject(ProviderStats.class);
+                if (stats == null) continue;
+                if (stats.getAcceptedTimestamps() != null) {
+                    stats.getAcceptedTimestamps().removeIf(t -> t.isBefore(cutoff));
+                }
+                if (stats.getRejectedTimestamps() != null) {
+                    stats.getRejectedTimestamps().removeIf(t -> t.isBefore(cutoff));
+                }
+                if (stats.getStrikeTimestamps() != null) {
+                    stats.getStrikeTimestamps().removeIf(t -> t.isBefore(cutoff));
+                }
+                docRef.set(stats).get();
+            }
+        } catch (Exception e) {
+            log.error("Error cleaning up old provider stats: {}", e.getMessage());
         }
     }
 

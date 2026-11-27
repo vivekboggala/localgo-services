@@ -35,7 +35,7 @@ const exportBookingsCsv = (rows) => {
   const lines = [
     headers.join(','),
     ...rows.map((b) =>
-      [b.id, b.serviceName, b.customerName, b.providerName, b.scheduledDate, b.scheduledTime, b.amount, b.paymentMethod, b.paymentStatus, b.status]
+      [b.id, b.serviceName, b.customerName, b.providerName, b.scheduledDate, b.scheduledTime, b.totalAmount ?? b.amount, b.paymentMethod, b.paymentStatus, b.status]
         .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
         .join(',')
     ),
@@ -102,8 +102,8 @@ export const AdminBookings = () => {
       );
     }
     list.sort((a, b) => {
-      if (sortBy === 'amount_desc') return (Number(b.amount) || 0) - (Number(a.amount) || 0);
-      if (sortBy === 'amount_asc') return (Number(a.amount) || 0) - (Number(b.amount) || 0);
+      if (sortBy === 'amount_desc') return (Number(b.totalAmount ?? b.amount) || 0) - (Number(a.totalAmount ?? a.amount) || 0);
+      if (sortBy === 'amount_asc') return (Number(a.totalAmount ?? a.amount) || 0) - (Number(b.totalAmount ?? b.amount) || 0);
       const da = `${a.scheduledDate || ''}T${a.scheduledTime || ''}`;
       const dbStr = `${b.scheduledDate || ''}T${b.scheduledTime || ''}`;
       return sortBy === 'date_asc' ? da.localeCompare(dbStr) : dbStr.localeCompare(da);
@@ -213,7 +213,7 @@ export const AdminBookings = () => {
                     {b.scheduledDate} {b.scheduledTime}
                   </td>
                   <td className="py-4 px-4 text-right whitespace-nowrap">
-                    <div className="font-display font-bold text-ds-14 text-brand-ink">₹{b.amount ?? 0}</div>
+                    <div className="font-display font-bold text-ds-14 text-brand-ink">₹{b.totalAmount ?? b.amount ?? 0}</div>
                     <div className="text-[11px] text-gray-600">{b.paymentMethod} • {b.paymentStatus}</div>
                   </td>
                   <td className="py-4 px-4">

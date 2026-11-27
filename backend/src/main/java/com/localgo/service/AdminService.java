@@ -61,11 +61,11 @@ public class AdminService {
 
     public Map<String, Object> getDashboardOverview(int days) {
         int window = normalizeWindowDays(days);
-        LocalDate end = LocalDate.now();
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        LocalDate end = LocalDate.now(zone);
         LocalDate currentStart = end.minusDays(window - 1L);
         LocalDate previousEnd = currentStart.minusDays(1L);
         LocalDate previousStart = previousEnd.minusDays(window - 1L);
-        ZoneId zone = ZoneId.systemDefault();
 
         try {
             var usersSnap = firestore.collection("users").get().get();
@@ -136,7 +136,8 @@ public class AdminService {
                 boolean isCompleted = BookingStatus.COMPLETED.name().equals(status);
                 boolean isPaid = "PAID".equalsIgnoreCase(doc.getString("paymentStatus"));
                 Long amount = doc.getLong("amount");
-                long amt = amount != null ? amount : 0L;
+                Long extra = doc.getLong("extraAmountPaise");
+                long amt = (amount != null ? amount : 0L) + (extra != null ? extra : 0L);
 
                 if (status != null && activeStatuses.contains(status)) {
                     activeBookings++;
@@ -517,7 +518,8 @@ public class AdminService {
 
     public List<Map<String, Object>> getAnalyticsTrends(int days) {
         int window = days > 0 ? Math.min(days, 90) : 7;
-        LocalDate end = LocalDate.now();
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        LocalDate end = LocalDate.now(zone);
         LocalDate start = end.minusDays(window - 1L);
 
         Map<LocalDate, Long> paiseByDate = new LinkedHashMap<>();
@@ -543,7 +545,9 @@ public class AdminService {
                     if (BookingStatus.COMPLETED.name().equals(doc.getString("status"))
                             && "PAID".equalsIgnoreCase(doc.getString("paymentStatus"))) {
                         Long amount = doc.getLong("amount");
-                        paiseByDate.put(d, paiseByDate.get(d) + (amount != null ? amount : 0L));
+                        Long extra = doc.getLong("extraAmountPaise");
+                        long totalPaise = (amount != null ? amount : 0L) + (extra != null ? extra : 0L);
+                        paiseByDate.put(d, paiseByDate.get(d) + totalPaise);
                     }
                 } catch (Exception ignored) {}
             }
@@ -567,9 +571,9 @@ public class AdminService {
 
     public List<Map<String, Object>> getUsersTrend(int days) {
         int window = normalizeWindowDays(days);
-        LocalDate end = LocalDate.now();
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        LocalDate end = LocalDate.now(zone);
         LocalDate start = end.minusDays(window - 1L);
-        ZoneId zone = ZoneId.systemDefault();
 
         Date startDate = Date.from(start.atStartOfDay(zone).toInstant());
         Date endExclusive = Date.from(end.plusDays(1L).atStartOfDay(zone).toInstant());

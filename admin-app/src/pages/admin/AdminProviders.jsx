@@ -79,6 +79,7 @@ export const AdminProviders = () => {
 
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [search, setSearch] = useState(initialQ);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialQ);
   const [providers, setProviders] = useState([]);
   const [counts, setCounts] = useState({ ALL: 0, PENDING: 0, VERIFIED: 0, REJECTED: 0 });
   const [cursorStack, setCursorStack] = useState([null]);
@@ -97,14 +98,25 @@ export const AdminProviders = () => {
 
   useEffect(() => {
     const q = searchParams.get('q');
-    if (q !== null) setSearch(q);
+    if (q !== null) {
+      setSearch(q);
+      setCursorStack([null]);
+    }
   }, [searchParams]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCursorStack([null]);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchProviders = useCallback(async () => {
     setLoading(true);
     setLoadError('');
     try {
-      const data = await adminService.getAllProviders(statusFilter, search, 15, currentCursor);
+      const data = await adminService.getAllProviders(statusFilter, debouncedSearch, 15, currentCursor);
       setProviders(data?.content || []);
       setNextCursor(data?.nextCursor || null);
       setHasMore(Boolean(data?.hasMore));
@@ -117,7 +129,7 @@ export const AdminProviders = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search, currentCursor]);
+  }, [statusFilter, debouncedSearch, currentCursor]);
 
   useEffect(() => {
     fetchProviders();

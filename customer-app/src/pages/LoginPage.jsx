@@ -39,9 +39,9 @@ export const LoginPage = () => {
     try {
       const user = await login(email, password);
       showToast.success(`Welcome back, ${user.name || user.email}!`);
-      const from = location.state?.from?.pathname;
-      if (from) {
-        navigate(from, { replace: true });
+      const fromLoc = location.state?.from;
+      if (fromLoc?.pathname) {
+        navigate(`${fromLoc.pathname}${fromLoc.search || ''}${fromLoc.hash || ''}`, { replace: true });
       } else {
         navigate('/dashboard');
       }

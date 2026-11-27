@@ -33,8 +33,12 @@ public class StuckBookingMonitorService {
         try {
             var query = bookingsCol.whereEqualTo("status", BookingStatus.DISPATCHING.name()).get().get();
             List<BookingDoc> stuck = query.getDocuments().stream()
-                    .map(doc -> doc.toObject(BookingDoc.class))
-                    .filter(b -> b.getCreatedAt() != null &&
+                    .map(doc -> {
+                        BookingDoc b = doc.toObject(BookingDoc.class);
+                        if (b != null) b.setId(doc.getId());
+                        return b;
+                    })
+                    .filter(b -> b != null && b.getCreatedAt() != null &&
                             Instant.now().minusSeconds(stuckTimeoutSeconds).isAfter(b.getCreatedAt().toInstant()))
                     .collect(Collectors.toList());
             if (!stuck.isEmpty()) {

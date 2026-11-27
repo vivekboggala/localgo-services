@@ -162,8 +162,20 @@ public class NotificationService {
                     .whereEqualTo("userId", userId)
                     .whereEqualTo("read", false)
                     .get().get();
-            for (var doc : snapshot.getDocuments()) {
-                doc.getReference().update("read", true);
+            var docs = snapshot.getDocuments();
+            if (docs.isEmpty()) return;
+            var batch = firestore.batch();
+            int count = 0;
+            for (var doc : docs) {
+                batch.update(doc.getReference(), "read", true);
+                count++;
+                if (count % 450 == 0) {
+                    batch.commit().get();
+                    batch = firestore.batch();
+                }
+            }
+            if (count % 450 != 0) {
+                batch.commit().get();
             }
         } catch (Exception e) {
             log.error("Failed to mark all notifications as read for {}: {}", userId, e.getMessage());

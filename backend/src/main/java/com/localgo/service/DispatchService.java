@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -204,7 +205,7 @@ public class DispatchService {
             throw new BadRequestException("Rate limit exceeded for accepting offers");
         }
         try {
-            return firestore.runTransaction(tx -> {
+            boolean accepted = firestore.runTransaction(tx -> {
                 DocumentReference offerRef = firestore.collection(OFFERS_COLLECTION).document(offerId);
                 DispatchOffer offer = tx.get(offerRef).get().toObject(DispatchOffer.class);
                 if (offer == null) throw new ResourceNotFoundException("Offer not found");
@@ -218,6 +219,19 @@ public class DispatchService {
                 if (!BookingStatus.DISPATCHING.name().equalsIgnoreCase(booking.getStatus())) {
                     return false;
                 }
+
+                // Read all sibling offers BEFORE performing any writes (Firestore transaction requirement)
+                Query sibling = firestore.collection(OFFERS_COLLECTION)
+                        .whereEqualTo("bookingId", offer.getBookingId())
+                        .whereNotEqualTo("id", offerId);
+                List<DispatchOffer> siblingOffers = new ArrayList<>();
+                for (var doc : tx.get(sibling).get().getDocuments()) {
+                    DispatchOffer o = doc.toObject(DispatchOffer.class);
+                    if (o != null && OFFER_PENDING.equalsIgnoreCase(o.getStatus())) {
+                        siblingOffers.add(o);
+                    }
+                }
+
                 booking.setStatus(BookingStatus.ACCEPTED.name());
                 booking.setProviderId(providerUid);
                 tx.set(bookingRef, booking);
@@ -225,19 +239,16 @@ public class DispatchService {
                 offer.setStatus(BookingStatus.ACCEPTED.name());
                 tx.set(offerRef, offer);
 
-                Query sibling = firestore.collection(OFFERS_COLLECTION)
-                        .whereEqualTo("bookingId", offer.getBookingId())
-                        .whereNotEqualTo("id", offerId);
-                for (var doc : tx.get(sibling).get().getDocuments()) {
-                    DispatchOffer o = doc.toObject(DispatchOffer.class);
-                    if (o != null && OFFER_PENDING.equalsIgnoreCase(o.getStatus())) {
-                        o.setStatus(BookingStatus.CANCELLED.name());
-                        tx.set(firestore.collection(OFFERS_COLLECTION).document(o.getId()), o);
-                    }
+                for (DispatchOffer o : siblingOffers) {
+                    o.setStatus(BookingStatus.CANCELLED.name());
+                    tx.set(firestore.collection(OFFERS_COLLECTION).document(o.getId()), o);
                 }
-                providerStatsService.recordAccepted(providerUid);
                 return true;
             }).get();
+            if (accepted) {
+                providerStatsService.recordAccepted(providerUid);
+            }
+            return accepted;
         } catch (Exception e) {
             log.error("Error accepting offer {}: {}", offerId, e.getMessage());
             throw new RuntimeException("Error accepting offer: " + e.getMessage(), e);
@@ -305,16 +316,25 @@ public class DispatchService {
             Query expiring = firestore.collection(OFFERS_COLLECTION)
                     .whereEqualTo("status", OFFER_PENDING)
                     .whereLessThanOrEqualTo("expiresAt", new Date(now));
+            Set<String> expiredReferenceOfferIds = new LinkedHashSet<>();
+            Set<String> processedBookingIds = new HashSet<>();
             for (var doc : expiring.get().get().getDocuments()) {
-                firestore.runTransaction(tx -> {
+                DispatchOffer expiredOffer = firestore.runTransaction(tx -> {
                     DispatchOffer o = tx.get(doc.getReference()).get().toObject(DispatchOffer.class);
                     if (o != null && OFFER_PENDING.equalsIgnoreCase(o.getStatus())) {
                         o.setStatus(BookingStatus.EXPIRED.name());
                         tx.set(doc.getReference(), o);
+                        return o;
                     }
                     return null;
                 }).get();
-                topUpOffers(doc.getId());
+                if (expiredOffer != null && expiredOffer.getBookingId() != null
+                        && processedBookingIds.add(expiredOffer.getBookingId())) {
+                    expiredReferenceOfferIds.add(doc.getId());
+                }
+            }
+            for (String refOfferId : expiredReferenceOfferIds) {
+                topUpOffers(refOfferId);
             }
 
             PlatformConfig cfg = configService.getConfig();
@@ -325,7 +345,7 @@ public class DispatchService {
                 BookingDoc b = bdoc.toObject(BookingDoc.class);
                 if (b.getCreatedAt() != null && (now - b.getCreatedAt().getTime()) > maxDispatchMs) {
                     bookingStateMachine.transition(
-                            b.getId(),
+                            bdoc.getId(),
                             BookingStatus.DISPATCHING,
                             BookingStatus.NO_PROVIDER_FOUND,
                             "SYSTEM",
