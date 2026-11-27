@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { TILE_URL, TILE_ATTRIBUTION } from '../../utils/constants';
@@ -64,15 +64,20 @@ export const ProviderMap = ({
   recenterKey = 0,
   onViewportChange = null,
   showPopups = false,
+  radiusKm = null,
   className = '',
 }) => {
-  const center = useMemo(
-    () =>
-      customerLocation?.lat && customerLocation?.lng
-        ? { lat: customerLocation.lat, lng: customerLocation.lng }
-        : { lat: 12.9716, lng: 77.5946 },
-    [customerLocation?.lat, customerLocation?.lng]
-  );
+  const focusProvider = selectedProvider || (providers.length === 1 ? providers[0] : null);
+
+  const center = useMemo(() => {
+    if (customerLocation?.lat && customerLocation?.lng) {
+      return { lat: customerLocation.lat, lng: customerLocation.lng };
+    }
+    if (focusProvider?.latitude != null && focusProvider?.longitude != null) {
+      return { lat: focusProvider.latitude, lng: focusProvider.longitude };
+    }
+    return { lat: 12.9716, lng: 77.5946 };
+  }, [customerLocation?.lat, customerLocation?.lng, focusProvider?.latitude, focusProvider?.longitude]);
 
   return (
     <div className={`w-full h-full min-h-[260px] overflow-hidden relative z-0 ${className}`}>
@@ -99,6 +104,19 @@ export const ProviderMap = ({
               </div>
             </Popup>
           </Marker>
+        )}
+
+        {radiusKm != null && focusProvider?.latitude != null && focusProvider?.longitude != null && (
+          <Circle
+            center={[focusProvider.latitude, focusProvider.longitude]}
+            radius={Number(radiusKm) * 1000}
+            pathOptions={{
+              color: '#FFC700',
+              fillColor: '#FFC700',
+              fillOpacity: 0.12,
+              weight: 2,
+            }}
+          />
         )}
 
         {providers

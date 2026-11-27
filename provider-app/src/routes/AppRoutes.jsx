@@ -5,21 +5,35 @@ import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import { Skeleton, SkeletonCard } from '../components/ui';
 import { ErrorPage } from '../pages/ErrorPage';
 
-const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
-const SignupPage = lazy(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
-const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const lazyWithRetry = (importer) =>
+  lazy(() =>
+    importer().catch((error) => {
+      const key = 'localgo_chunk_reload_at';
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    })
+  );
 
-const ProviderDashboard = lazy(() => import('../pages/provider/ProviderDashboard').then((m) => ({ default: m.ProviderDashboard })));
-const ProviderRequests = lazy(() => import('../pages/provider/ProviderRequests').then((m) => ({ default: m.ProviderRequests })));
-const ProviderActiveJob = lazy(() => import('../pages/provider/ProviderActiveJob').then((m) => ({ default: m.ProviderActiveJob })));
-const ProviderJobDetailPage = lazy(() => import('../pages/provider/ProviderJobDetailPage').then((m) => ({ default: m.ProviderJobDetailPage })));
-const ProviderBookings = lazy(() => import('../pages/provider/ProviderBookings').then((m) => ({ default: m.ProviderBookings })));
-const ProviderEarnings = lazy(() => import('../pages/provider/ProviderEarnings').then((m) => ({ default: m.ProviderEarnings })));
-const ProviderProfile = lazy(() => import('../pages/provider/ProviderProfile').then((m) => ({ default: m.ProviderProfile })));
+const LoginPage = lazyWithRetry(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const SignupPage = lazyWithRetry(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
+const NotFoundPage = lazyWithRetry(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
-const VerifyEmailPage = lazy(() => import('../pages/auth/VerifyEmailPage'));
-const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
-const DesignPreviewPage = lazy(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
+const ProviderDashboard = lazyWithRetry(() => import('../pages/provider/ProviderDashboard').then((m) => ({ default: m.ProviderDashboard })));
+const ProviderRequests = lazyWithRetry(() => import('../pages/provider/ProviderRequests').then((m) => ({ default: m.ProviderRequests })));
+const ProviderActiveJob = lazyWithRetry(() => import('../pages/provider/ProviderActiveJob').then((m) => ({ default: m.ProviderActiveJob })));
+const ProviderJobDetailPage = lazyWithRetry(() => import('../pages/provider/ProviderJobDetailPage').then((m) => ({ default: m.ProviderJobDetailPage })));
+const ProviderBookings = lazyWithRetry(() => import('../pages/provider/ProviderBookings').then((m) => ({ default: m.ProviderBookings })));
+const ProviderEarnings = lazyWithRetry(() => import('../pages/provider/ProviderEarnings').then((m) => ({ default: m.ProviderEarnings })));
+const ProviderProfile = lazyWithRetry(() => import('../pages/provider/ProviderProfile').then((m) => ({ default: m.ProviderProfile })));
+
+const VerifyEmailPage = lazyWithRetry(() => import('../pages/auth/VerifyEmailPage'));
+const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
+const DesignPreviewPage = lazyWithRetry(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
 
 const RouteFallback = () => (
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

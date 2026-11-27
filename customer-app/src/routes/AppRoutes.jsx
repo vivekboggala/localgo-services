@@ -6,25 +6,39 @@ import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import { Skeleton, SkeletonCard } from '../components/ui';
 import { ErrorPage } from '../pages/ErrorPage';
 
-const LandingPage = lazy(() => import('../pages/LandingPage').then((m) => ({ default: m.LandingPage })));
-const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
-const SignupPage = lazy(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
-const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const lazyWithRetry = (importer) =>
+  lazy(() =>
+    importer().catch((error) => {
+      const key = 'localgo_chunk_reload_at';
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    })
+  );
 
-const ServiceListPage = lazy(() => import('../pages/customer/ServiceListPage').then((m) => ({ default: m.ServiceListPage })));
-const CustomerDashboard = lazy(() => import('../pages/customer/CustomerDashboard').then((m) => ({ default: m.CustomerDashboard })));
-const NearbyProvidersPage = lazy(() => import('../pages/customer/NearbyProvidersPage').then((m) => ({ default: m.NearbyProvidersPage })));
-const MapPage = lazy(() => import('../pages/customer/MapPage').then((m) => ({ default: m.MapPage })));
-const ProviderDetailPage = lazy(() => import('../pages/customer/ProviderDetailPage').then((m) => ({ default: m.ProviderDetailPage })));
-const BookingFlow = lazy(() => import('../pages/customer/BookingFlow').then((m) => ({ default: m.BookingFlow })));
-const MyBookingsPage = lazy(() => import('../pages/customer/MyBookingsPage').then((m) => ({ default: m.MyBookingsPage })));
-const BookingDetailPage = lazy(() => import('../pages/customer/BookingDetailPage').then((m) => ({ default: m.BookingDetailPage })));
-const NotificationsPage = lazy(() => import('../pages/customer/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
-const FavoritesPage = lazy(() => import('../pages/customer/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
-const ProfilePage = lazy(() => import('../pages/customer/ProfilePage'));
-const VerifyEmailPage = lazy(() => import('../pages/auth/VerifyEmailPage'));
-const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
-const DesignPreviewPage = lazy(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
+const LandingPage = lazyWithRetry(() => import('../pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+const LoginPage = lazyWithRetry(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const SignupPage = lazyWithRetry(() => import('../pages/SignupPage').then((m) => ({ default: m.SignupPage })));
+const NotFoundPage = lazyWithRetry(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+
+const ServiceListPage = lazyWithRetry(() => import('../pages/customer/ServiceListPage').then((m) => ({ default: m.ServiceListPage })));
+const CustomerDashboard = lazyWithRetry(() => import('../pages/customer/CustomerDashboard').then((m) => ({ default: m.CustomerDashboard })));
+const NearbyProvidersPage = lazyWithRetry(() => import('../pages/customer/NearbyProvidersPage').then((m) => ({ default: m.NearbyProvidersPage })));
+const MapPage = lazyWithRetry(() => import('../pages/customer/MapPage').then((m) => ({ default: m.MapPage })));
+const ProviderDetailPage = lazyWithRetry(() => import('../pages/customer/ProviderDetailPage').then((m) => ({ default: m.ProviderDetailPage })));
+const BookingFlow = lazyWithRetry(() => import('../pages/customer/BookingFlow').then((m) => ({ default: m.BookingFlow })));
+const MyBookingsPage = lazyWithRetry(() => import('../pages/customer/MyBookingsPage').then((m) => ({ default: m.MyBookingsPage })));
+const BookingDetailPage = lazyWithRetry(() => import('../pages/customer/BookingDetailPage').then((m) => ({ default: m.BookingDetailPage })));
+const NotificationsPage = lazyWithRetry(() => import('../pages/customer/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const FavoritesPage = lazyWithRetry(() => import('../pages/customer/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
+const ProfilePage = lazyWithRetry(() => import('../pages/customer/ProfilePage'));
+const VerifyEmailPage = lazyWithRetry(() => import('../pages/auth/VerifyEmailPage'));
+const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
+const DesignPreviewPage = lazyWithRetry(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
 
 const RouteFallback = () => (
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

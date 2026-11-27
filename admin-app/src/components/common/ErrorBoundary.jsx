@@ -2,6 +2,16 @@ import React from 'react';
 import { AlertTriangle, RotateCw } from 'lucide-react';
 import { Button, Logo } from '../ui';
 
+const isChunkLoadError = (error) => {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return (
+    msg.includes('failed to fetch dynamically imported module') ||
+    msg.includes('importing a module script failed') ||
+    msg.includes('loading chunk') ||
+    msg.includes('error loading dynamically imported module')
+  );
+};
+
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -14,6 +24,14 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('LocalGo Admin ErrorBoundary caught error:', error, errorInfo);
+    if (isChunkLoadError(error)) {
+      const key = 'localgo_chunk_reload_at';
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+      }
+    }
   }
 
   render() {

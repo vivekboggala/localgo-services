@@ -5,16 +5,30 @@ import { ProtectedRoute } from '../components/common/ProtectedRoute';
 import { Skeleton, SkeletonCard } from '../components/ui';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 
-const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
-const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
-const AdminProviders = lazy(() => import('../pages/admin/AdminProviders').then((m) => ({ default: m.AdminProviders })));
-const AdminUsers = lazy(() => import('../pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers })));
-const AdminBookings = lazy(() => import('../pages/admin/AdminBookings').then((m) => ({ default: m.AdminBookings })));
-const AdminReviews = lazy(() => import('../pages/admin/AdminReviews').then((m) => ({ default: m.AdminReviews })));
-const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
-const DesignPreviewPage = lazy(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
-const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
-const ErrorPage = lazy(() => import('../pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
+const lazyWithRetry = (importer) =>
+  lazy(() =>
+    importer().catch((error) => {
+      const key = 'localgo_chunk_reload_at';
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    })
+  );
+
+const LoginPage = lazyWithRetry(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const AdminDashboard = lazyWithRetry(() => import('../pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const AdminProviders = lazyWithRetry(() => import('../pages/admin/AdminProviders').then((m) => ({ default: m.AdminProviders })));
+const AdminUsers = lazyWithRetry(() => import('../pages/admin/AdminUsers').then((m) => ({ default: m.AdminUsers })));
+const AdminBookings = lazyWithRetry(() => import('../pages/admin/AdminBookings').then((m) => ({ default: m.AdminBookings })));
+const AdminReviews = lazyWithRetry(() => import('../pages/admin/AdminReviews').then((m) => ({ default: m.AdminReviews })));
+const ForgotPasswordPage = lazyWithRetry(() => import('../pages/auth/ForgotPasswordPage'));
+const DesignPreviewPage = lazyWithRetry(() => import('../pages/DesignPreviewPage').then((m) => ({ default: m.DesignPreviewPage })));
+const NotFoundPage = lazyWithRetry(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const ErrorPage = lazyWithRetry(() => import('../pages/ErrorPage').then((m) => ({ default: m.ErrorPage })));
 
 const RouteFallback = () => (
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
